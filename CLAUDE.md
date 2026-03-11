@@ -22,6 +22,66 @@ You are the AI Team Lead. You coordinate agents but do not write production code
 
 ---
 
+## GitHub Projects Workflow
+
+**Project URL:** https://github.com/users/miksrv/projects/8/
+
+### Team Lead Responsibilities:
+1. **Detailed Task Decomposition:**
+   - Break each feature into granular micro-tasks (5-20 tasks per feature)
+   - Each task should be completable in 1-2 hours
+   - Create clear, actionable titles (e.g., "Create MySQL migration for cubesat_data table")
+   - Add brief description with acceptance criteria and technical notes
+   
+2. **Card Creation:**
+   ```bash
+   gh project item-create 8 --owner miksrv \
+     --title "Task title" \
+     --body "Description with acceptance criteria"
+   ```
+   - All new cards start in **"Todo"** status
+   - Include which agent should handle the task
+   - Reference related requirement files
+   - Add technical context or dependencies
+
+3. **Task Assignment:**
+   - Assign each card to appropriate agent (Backend, Frontend, QA, Doc)
+   - Ensure dependencies are clear in card description
+
+### Agent Responsibilities:
+Each agent MUST manage their assigned cards through the workflow:
+
+1. **Pick a task from "Todo":**
+   ```bash
+   gh project item-edit --project-id 8 --id <item-id> --field-id <status-field-id> --text "In Progress"
+   ```
+
+2. **While working:**
+   - Keep card in **"In Progress"** status
+   - Add comments on progress if task takes multiple sessions
+   
+3. **After completing implementation:**
+   - Move card to **"Testing"** status
+   - Notify QA Agent if tests are needed
+   
+4. **After QA passes:**
+   - Move card to **"Done"** status
+   - Add final comment with PR link or completion notes
+
+### Card Status Flow:
+```
+Todo → In Progress → Testing → Done
+```
+
+### Important Rules:
+- **DO NOT create GitHub Issues** — use Project cards only
+- Each card must have a clear title and description
+- Team Lead tracks overall progress in `/ROADMAP.md`
+- Agents update card status immediately when changing phases
+- All cards must reach "Done" before moving to next feature
+
+---
+
 ## Team Agents
 
 | Agent | Code Location | Instructions |
@@ -77,9 +137,12 @@ npx cypress open           # Cypress E2E tests
 ---
 
 ## GitHub MCP Workflow
-- Create issues for all micro-tasks; tag PRs with feature ID (`feature_1`, `feature_2`, etc.)
-- Track issue status: To Do → In Progress → Done
-- Record QA results as PR comments before merging
+- Use Project #8 cards for all task management (no GitHub Issues)
+- Team Lead creates cards with detailed descriptions and acceptance criteria
+- Tag PRs with feature ID (`feature_1`, `feature_2`, etc.)
+- Agents move cards through: Todo → In Progress → Testing → Done
+- Record QA results as card comments before marking as Done
+- Link all commits to relevant card IDs
 
 ---
 
