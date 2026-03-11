@@ -21,7 +21,6 @@ server/writable/cache/*
 server/writable/session/*
 server/writable/uploads/*
 !server/writable/.htaccess
-composer.lock
 
 # Frontend (React/Node)
 client/node_modules/
