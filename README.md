@@ -85,6 +85,10 @@ cubesat-groundstation/
 │   │   └── utils/          # Utilities
 │   └── cypress/            # E2E tests
 │
+├── docker/                 # Docker configuration
+│   ├── mysql/             # MySQL init scripts
+│   └── README.md          # Docker setup guide
+│
 ├── docs/                   # Documentation
 │   ├── architecture/       # System diagrams
 │   ├── api/               # API documentation
@@ -92,6 +96,7 @@ cubesat-groundstation/
 │
 ├── requirements/          # Feature specifications
 ├── agents/               # AI agent instructions
+├── docker-compose.yml    # MySQL container config
 ├── ROADMAP.md           # Project roadmap
 └── CLAUDE.md            # AI team lead instructions
 ```
@@ -102,23 +107,45 @@ cubesat-groundstation/
 
 ### Prerequisites
 - PHP 8.1+ with Composer
-- MySQL 8.0+
+- MySQL 8.0+ **OR** Docker (recommended)
 - Node.js 18+
 - Git
 
-### Backend Setup
+### 1. Clone Repository
 
 ```bash
-# Clone repository
 git clone https://github.com/miksrv/cubesat-groundstation.git
 cd cubesat-groundstation
+```
 
-# Backend setup
+### 2. Start MySQL (Docker - Recommended)
+
+```bash
+# Start MySQL container in background
+docker compose up -d
+
+# Verify MySQL is running
+docker compose ps
+
+# Check MySQL health
+docker compose logs cubesat
+```
+
+**Database credentials:**
+- Host: `localhost:3306`
+- Database: `cubesat_groundstation`
+- User: `cubesat_user`
+- Password: `cubesat_password`
+
+### 3. Backend Setup
+
+```bash
+# Navigate to server directory
 cd server
 composer install
 cp env.example .env
 
-# Configure database in .env
+# Configure database in .env (use Docker credentials above)
 # Then run migrations
 php spark migrate
 
@@ -127,10 +154,10 @@ php spark serve
 # API available at http://localhost:8080
 ```
 
-### Frontend Setup
+### 4. Frontend Setup
 
 ```bash
-# Frontend setup
+# Navigate to client directory
 cd client
 npm install
 

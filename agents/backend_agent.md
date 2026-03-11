@@ -12,6 +12,41 @@
 7. Commit and open PRs via GitHub MCP
 8. Manage assigned cards in Project #8
 
+## Environment Setup
+
+### MySQL Database (Docker)
+
+**IMPORTANT:** Always start MySQL before working on backend tasks:
+
+```bash
+# Start MySQL container
+docker compose up -d
+
+# Verify MySQL is running
+docker compose ps
+
+# Check MySQL health
+docker compose exec cubesat mysqladmin -uroot -prootpassword ping
+```
+
+### Database Connection
+
+Use these credentials in CodeIgniter `.env` file:
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=cubesat_groundstation
+DB_USERNAME=cubesat_user
+DB_PASSWORD=cubesat_password
+```
+
+### After Work
+
+```bash
+# Stop MySQL (optional, can keep running)
+docker compose down
+```
+
 ## GitHub Project Card Management
 
 **Before starting any task:**

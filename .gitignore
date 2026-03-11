@@ -2,4 +2,50 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# IDEs
 .idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Docker
+docker/mysql/data/
+
+# Backend (PHP/CodeIgniter)
+server/vendor/
+server/.env
+server/writable/logs/*
+server/writable/cache/*
+server/writable/session/*
+server/writable/uploads/*
+!server/writable/.htaccess
+composer.lock
+
+# Frontend (React/Node)
+client/node_modules/
+client/dist/
+client/build/
+client/.env
+client/.env.local
+client/coverage/
+client/.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Testing
+server/tests/_output/
+client/cypress/videos/
+client/cypress/screenshots/
+
+# Logs
+*.log
+logs/
+
+# Database backups
+*.sql.gz
+*.sql.backup

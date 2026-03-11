@@ -136,18 +136,105 @@ npx cypress open           # Cypress E2E tests
 
 ---
 
-## GitHub MCP Workflow
-- Use Project #8 cards for all task management (no GitHub Issues)
-- Team Lead creates cards with detailed descriptions and acceptance criteria
-- Tag PRs with feature ID (`feature_1`, `feature_2`, etc.)
-- Agents move cards through: Todo → In Progress → Testing → Done
-- Record QA results as card comments before marking as Done
-- Link all commits to relevant card IDs
+## Docker Compose Setup
+
+**MySQL Database for Development and Testing**
+
+The project uses Docker Compose to run MySQL database locally. This ensures consistent database environment for Backend and QA agents.
+
+### Prerequisites
+- Docker Desktop installed and running
+- Docker Compose v2+ available
+
+### Quick Start
+
+**1. Start MySQL container:**
+```bash
+docker compose up -d
+```
+
+**2. Verify MySQL is running:**
+```bash
+docker compose ps
+```
+
+**3. Access MySQL (optional):**
+```bash
+docker compose exec cubesat mysql -uroot -prootpassword cubesat_groundstation
+```
+
+**4. Stop and remove containers:**
+```bash
+docker compose down
+```
+
+**5. Stop and remove with data cleanup:**
+```bash
+docker compose down -v
+```
+
+### Database Connection Details
+
+When MySQL container is running, use these credentials in your `.env` files:
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=cubesat_groundstation
+DB_USERNAME=cubesat_user
+DB_PASSWORD=cubesat_password
+DB_ROOT_PASSWORD=rootpassword
+```
+
+### Agent Usage
+
+**Backend Agent:**
+- Start MySQL before running migrations: `docker compose up -d`
+- Configure CodeIgniter database settings to use container
+- Run migrations: `php spark migrate`
+- Stop after work: `docker compose down`
+
+**QA Agent:**
+- Use same MySQL container for tests
+- Tests should use test database or fixtures
+- Can reset database between test runs
+- Check logs: `docker compose logs cubesat`
+
+### Container Management
+
+**View logs:**
+```bash
+docker compose logs -f cubesat
+```
+
+**Restart container:**
+```bash
+docker compose restart cubesat
+```
+
+**Check container status:**
+```bash
+docker compose ps
+docker compose exec cubesat mysqladmin -uroot -prootpassword ping
+```
+
+### Data Persistence
+
+MySQL data is stored in Docker volume `cubesat`. This persists between container restarts.
+
+To completely reset database:
+```bash
+docker compose down -v
+docker compose up -d
+cd server && php spark migrate
+```
+
+### Important Notes
+- MySQL runs on port 3306 (mapped to host)
+- Database `cubesat_groundstation` is created automatically
+- User `cubesat_user` has full access to the database
+- Root password is for admin access only
+- Volume `cubesat` ensures data persists between restarts
+- Container starts automatically with `restart: always`
 
 ---
-
-## Coding Conventions
-- PHP: CodeIgniter structure, all timestamps in UTC
-- React: functional components with hooks, responsive layout
-- JSON payload must match CubeSat telemetry spec (see `/requirements/feature_1.md`)
-- Docs: Markdown + Mermaid diagrams

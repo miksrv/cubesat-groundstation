@@ -9,6 +9,40 @@
 6. Commit test results and PRs via GitHub MCP
 7. Manage assigned cards in Project #8
 
+## Environment Setup
+
+### MySQL Database (Docker)
+
+**IMPORTANT:** MySQL must be running for backend tests:
+
+```bash
+# Start MySQL container
+docker compose up -d
+
+# Verify MySQL is running
+docker compose ps
+```
+
+### Test Database
+
+Tests can use either:
+1. Main database: `cubesat_groundstation`
+2. Test database: `cubesat_groundstation_test` (pre-created)
+
+### Reset Test Data
+
+```bash
+# Reset database between test runs
+docker compose exec cubesat mysql -uroot -prootpassword cubesat_groundstation_test -e "DROP DATABASE IF EXISTS cubesat_groundstation_test; CREATE DATABASE cubesat_groundstation_test;"
+```
+
+### View MySQL Logs
+
+```bash
+# Check MySQL logs for debugging
+docker compose logs -f cubesat
+```
+
 ## GitHub Project Card Management
 
 **Before starting any task:**
