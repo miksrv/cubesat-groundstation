@@ -56,10 +56,11 @@ cubesat-groundstation/
 ## Features & Progress
 
 ### Feature 1: Backend API - Data Ingestion
-**Status:** 🔴 Not Started  
-**Requirements:** `/requirements/feature_1.md`  
-**Agent:** Backend Agent  
-**Progress:** 0/10 tasks
+**Status:** 🟢 Complete
+**Requirements:** `/requirements/feature_1.md`
+**Agent:** Backend Agent
+**Progress:** 10/10 tasks
+**PR:** https://github.com/miksrv/cubesat-groundstation/pull/1
 
 **Deliverables:**
 - ✅ CodeIgniter 4 project in `/server`
@@ -202,9 +203,14 @@ Todo → In Progress → Testing → Done
 
 **Last Updated:** 2026-03-11
 
-**Active Phase:** Planning & Setup  
-**Next Milestone:** Feature 1 - Backend API  
+**Active Phase:** Backend Development → Feature 2 Ready
+**Next Milestone:** Feature 2 - Frontend Dashboard
 **Blockers:** None
+
+### Feature 1 Notes (2026-03-11)
+- 28 PHPUnit tests pass on Docker MySQL
+- Two fixes applied during QA: validation uses `array_key_exists` (not CI4 `required`) so empty subsystem objects are accepted; `range()` validates date formats before querying DB
+- Migration uses `IF NOT EXISTS` for safe re-runs in test environment
 
 ---
 
