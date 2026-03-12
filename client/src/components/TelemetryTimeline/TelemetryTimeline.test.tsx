@@ -1,8 +1,7 @@
-import React from 'react'
+import type { TelemetryRecord } from '../../features/telemetry/types'
+import { render, screen } from '../../test-utils'
 
-import TelemetryTimeline from '../components/TelemetryTimeline/TelemetryTimeline'
-import type { TelemetryRecord } from '../features/telemetry/types'
-import { render, screen } from '../test-utils'
+import TelemetryTimeline from './TelemetryTimeline'
 
 import '@testing-library/jest-dom'
 
@@ -34,8 +33,7 @@ const makeRecord = (id: number): TelemetryRecord => ({
     obc_state: 'NOMINAL',
     latitude: 51.5,
     longitude: -0.1,
-    altitude: 400,
-    raw_json: null
+    altitude: 400
 })
 
 describe('TelemetryTimeline', () => {
@@ -68,7 +66,6 @@ describe('TelemetryTimeline', () => {
                 isLoading={true}
             />
         )
-        // The skeleton div is rendered instead of the table
         const skeleton = container.querySelector('[class*="skeleton"]')
         expect(skeleton).toBeInTheDocument()
     })

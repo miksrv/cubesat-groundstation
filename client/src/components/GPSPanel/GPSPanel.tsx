@@ -18,7 +18,9 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
     const showSkeleton = isLoading && !latest
 
     useEffect(() => {
-        if (showSkeleton) return
+        if (showSkeleton) {
+            return
+        }
 
         if (altRef.current && !altChart.current) {
             altChart.current = echarts.init(altRef.current, 'dark')
@@ -57,7 +59,7 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             series: [
                 {
                     type: 'line',
-                    data: history.slice(-50).map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.altitude ?? 0]),
+                    data: history.slice(-50).map((r) => [new Date(r.timestamp), r.altitude ?? 0]),
                     smooth: true,
                     lineStyle: { color: '#10b981' },
                     areaStyle: { color: 'rgba(16,185,129,0.15)' },
@@ -75,7 +77,7 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
         }
     }, [altOption, showSkeleton])
 
-    const fmt = (n: number | null | undefined, d = 4) => (n != null ? Number(n).toFixed(d) : '—')
+    const fmt = (n: number | null | undefined, d = 4) => (n != null ? n.toFixed(d) : '—')
 
     return (
         <div className={styles.panel}>

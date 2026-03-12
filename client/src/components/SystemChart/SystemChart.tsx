@@ -28,7 +28,9 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
     const showSkeleton = isLoading && history.length === 0
 
     useEffect(() => {
-        if (showSkeleton) return
+        if (showSkeleton) {
+            return
+        }
 
         if (chartRef.current && !chart.current) {
             chart.current = echarts.init(chartRef.current, 'dark')
@@ -55,7 +57,7 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
             name,
             type: 'line',
             stack: 'total',
-            data: r.map((d) => [new Date(d.timestamp.replace(' ', 'T')), (d[key] as number | null) ?? 0]),
+            data: r.map((d) => [new Date(d.timestamp), (d[key] as number | null) ?? 0]),
             areaStyle: { color: `${color}40` },
             lineStyle: { color },
             symbol: 'none',
@@ -112,8 +114,7 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
             />
             <div className={styles.meta}>
                 <span>
-                    CPU Temp:{' '}
-                    <b>{latest?.cpu_temperature != null ? Number(latest.cpu_temperature).toFixed(1) : '—'}°C</b>
+                    CPU Temp: <b>{latest?.cpu_temperature != null ? latest.cpu_temperature.toFixed(1) : '—'}°C</b>
                 </span>
                 <span>
                     Uptime: <b>{fmtUptime(latest?.uptime_seconds)}</b>

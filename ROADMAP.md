@@ -98,7 +98,12 @@ cubesat-groundstation/
 - ✅ Performance: React.memo + useMemo on all chart components
 - ✅ 12 Jest + React Testing Library tests passing
 
-### Feature 3: QA and Testing
+### Feature 3: Refactoring
+**Status:** 🔴 Not Started  
+**Requirements:** `/requirements/feature_3.md`  
+**Agent:** Frontend Agent, Backend Agent
+
+### Feature 4: QA and Testing
 **Status:** 🔴 Not Started  
 **Requirements:** `/requirements/feature_3.md`  
 **Agent:** QA Agent  
@@ -115,7 +120,7 @@ cubesat-groundstation/
 - ✅ Code coverage reports (Backend 80%, Frontend 75%)
 - ✅ CI/CD integration
 
-### Feature 4: Documentation
+### Feature 5: Documentation
 **Status:** 🔴 Not Started  
 **Requirements:** `/requirements/feature_4.md`  
 **Agent:** Doc Agent  

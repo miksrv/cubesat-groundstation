@@ -17,7 +17,9 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
     const showSkeleton = isLoading && history.length === 0
 
     useEffect(() => {
-        if (showSkeleton) return
+        if (showSkeleton) {
+            return
+        }
 
         if (chartRef.current && !chart.current) {
             chart.current = echarts.init(chartRef.current, 'dark')
@@ -72,7 +74,7 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                 {
                     name: 'Temp (°C)',
                     type: 'line',
-                    data: r.map((d) => [new Date(d.timestamp.replace(' ', 'T')), d.temperature ?? 0]),
+                    data: r.map((d) => [new Date(d.timestamp), d.temperature ?? 0]),
                     lineStyle: { color: '#ef4444' },
                     symbol: 'none',
                     smooth: true
@@ -80,7 +82,7 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                 {
                     name: 'Humidity (%)',
                     type: 'line',
-                    data: r.map((d) => [new Date(d.timestamp.replace(' ', 'T')), d.humidity ?? 0]),
+                    data: r.map((d) => [new Date(d.timestamp), d.humidity ?? 0]),
                     lineStyle: { color: '#3b82f6' },
                     symbol: 'none',
                     smooth: true
@@ -89,7 +91,7 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     name: 'Pressure (hPa)',
                     type: 'line',
                     yAxisIndex: 1,
-                    data: r.map((d) => [new Date(d.timestamp.replace(' ', 'T')), d.pressure ?? 0]),
+                    data: r.map((d) => [new Date(d.timestamp), d.pressure ?? 0]),
                     lineStyle: { color: '#f59e0b' },
                     symbol: 'none',
                     smooth: true

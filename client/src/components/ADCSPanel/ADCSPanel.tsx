@@ -18,7 +18,9 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
     const showSkeleton = isLoading && !latest
 
     useEffect(() => {
-        if (showSkeleton) return
+        if (showSkeleton) {
+            return
+        }
 
         if (gyroRef.current && !gyroChart.current) {
             gyroChart.current = echarts.init(gyroRef.current, 'dark')
@@ -62,7 +64,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                 {
                     name: 'Gyro X',
                     type: 'line',
-                    data: recent.map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.gyro_x ?? 0]),
+                    data: recent.map((r) => [new Date(r.timestamp), r.gyro_x ?? 0]),
                     lineStyle: { color: '#ef4444' },
                     symbol: 'none',
                     smooth: true
@@ -70,7 +72,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                 {
                     name: 'Gyro Y',
                     type: 'line',
-                    data: recent.map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.gyro_y ?? 0]),
+                    data: recent.map((r) => [new Date(r.timestamp), r.gyro_y ?? 0]),
                     lineStyle: { color: '#10b981' },
                     symbol: 'none',
                     smooth: true
@@ -78,7 +80,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                 {
                     name: 'Gyro Z',
                     type: 'line',
-                    data: recent.map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.gyro_z ?? 0]),
+                    data: recent.map((r) => [new Date(r.timestamp), r.gyro_z ?? 0]),
                     lineStyle: { color: '#3b82f6' },
                     symbol: 'none',
                     smooth: true
@@ -114,7 +116,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                         className={styles.metric}
                     >
                         <span className={styles.label}>{label}</span>
-                        <span className={styles.value}>{val != null ? Number(val).toFixed(1) : '—'}°</span>
+                        <span className={styles.value}>{val != null ? val.toFixed(1) : '—'}°</span>
                     </div>
                 ))}
             </div>
@@ -125,7 +127,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
             />
             {!showSkeleton && (
                 <div className={styles.imuTemp}>
-                    IMU Temp: <b>{latest?.imu_temp != null ? Number(latest.imu_temp).toFixed(1) : '—'}°C</b>
+                    IMU Temp: <b>{latest?.imu_temp != null ? latest.imu_temp.toFixed(1) : '—'}°C</b>
                 </div>
             )}
         </div>

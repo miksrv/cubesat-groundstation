@@ -1,8 +1,7 @@
-import React from 'react'
+import type { TelemetryRecord } from '../../features/telemetry/types'
+import { render, screen } from '../../test-utils'
 
-import Header from '../components/Header/Header'
-import type { TelemetryRecord } from '../features/telemetry/types'
-import { render, screen } from '../test-utils'
+import Header from './Header'
 
 import '@testing-library/jest-dom'
 
@@ -34,8 +33,7 @@ const mockRecord: TelemetryRecord = {
     obc_state: 'NOMINAL',
     latitude: 51.5,
     longitude: -0.1,
-    altitude: 400,
-    raw_json: null
+    altitude: 400
 }
 
 describe('Header', () => {

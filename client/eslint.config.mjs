@@ -65,7 +65,10 @@ export default defineConfig([
             // Jest
             '**/jest.config.ts',
             '**/jest.setup.ts',
-            '**/simple-react-ui-kit.js'
+            '**/simple-react-ui-kit.js',
+
+            // Standalone utility scripts not included in tsconfig
+            'update.ts'
         ],
     },
 

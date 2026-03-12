@@ -1,22 +1,25 @@
-name: API Deploy
+name: Deploy
 
 on:
   push:
     branches:
       - main
-#    paths:
-#      - 'server/**/*'
 
-# https://github.com/codeigniter4/CodeIgniter4/blob/develop/.github/workflows/deploy-apidocs.yml
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  api-ssh-deploy:
-    name: Production
+  # ============================================
+  # Job 1: API Deploy
+  # ============================================
+  api-deploy:
+    name: API Deploy
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      # Docs: https://github.com/shivammathur/setup-php
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -49,12 +52,11 @@ jobs:
       - name: Load Secrets
         run: echo "machine ${{ secrets.FTP_HOSTNAME }} login ${{ secrets.FTP_USERNAME }} password ${{ secrets.FTP_PASSWORD }}" > ~/.netrc
 
-      - name: Upload Folder
+      - name: Upload API
         run: |
           lftp -e "mkdir -f server" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "put -O /server .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "put -O /server .env.production" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "mv /server/.env.production /server/.env" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "put -O /server spark" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "rm -r /server/app" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "rm -r /server/vendor" ${{ secrets.FTP_HOSTNAME }} || true
@@ -63,8 +65,8 @@ jobs:
           lftp -e "mirror --parallel=100 -R public /server/public" ${{ secrets.FTP_HOSTNAME }}
           lftp -e "mirror --parallel=100 -R writable /server/writable" ${{ secrets.FTP_HOSTNAME }}
         working-directory: server
-      
-      - name: Set permissions (if FTP supports SITE CHMOD)
+
+      - name: Set permissions
         run: |
           lftp -e "chmod 755 /server/spark" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "chmod -R 755 /server/writable" ${{ secrets.FTP_HOSTNAME }} || true
@@ -73,3 +75,62 @@ jobs:
           lftp -e "chmod -R 755 /server/writable/session" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "chmod -R 755 /server/writable/uploads" ${{ secrets.FTP_HOSTNAME }} || true
         continue-on-error: true
+
+  # ============================================
+  # Job 2: UI Deploy (runs after API deploy)
+  # ============================================
+  ui-deploy:
+    name: UI Deploy
+    runs-on: ubuntu-latest
+    needs: api-deploy
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        id: cache-npm
+        with:
+          path: |
+            client/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-modules-${{ hashFiles('client/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-modules-
+            ${{ runner.os }}-
+
+      - if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+        name: Install dependencies
+        working-directory: client
+        run: npm install
+
+      - name: Build UI
+        run: |
+          export dateNow=$(date +"%Y-%m-%dT%H:%M")
+          echo "export const update = '$dateNow'" > update.ts
+          npm run build
+        working-directory: client
+
+      - name: Install LFTP
+        run: sudo apt install lftp
+
+      - name: Configure LFTP
+        run: mkdir ~/.lftp && echo "set ssl:verify-certificate false;" >> ~/.lftp/rc
+
+      - name: Load Secrets
+        run: echo "machine ${{ secrets.FTP_HOSTNAME }} login ${{ secrets.FTP_USERNAME }} password ${{ secrets.FTP_PASSWORD }}" > ~/.netrc
+
+      - name: Upload UI
+        run: |
+          lftp -e "rm -r static" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm favicon.png" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm index.html" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "mirror --parallel=100 -R dist /" ${{ secrets.FTP_HOSTNAME }}
+        working-directory: client
+

@@ -11,7 +11,7 @@ const config: Config = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: './tsconfig.test.json' }],
   },
-  testMatch: ['**/__tests__/**/*.test.tsx', '**/__tests__/**/*.test.ts'],
+  testMatch: ['**/*.test.tsx', '**/*.test.ts'],
   moduleDirectories: ['node_modules', 'src'],
 }
 

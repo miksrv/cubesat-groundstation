@@ -1,8 +1,7 @@
-import React from 'react'
+import type { TelemetryRecord } from '../../features/telemetry/types'
+import { render, screen } from '../../test-utils'
 
-import EPSPanel from '../components/EPSPanel/EPSPanel'
-import type { TelemetryRecord } from '../features/telemetry/types'
-import { render, screen } from '../test-utils'
+import EPSPanel from './EPSPanel'
 
 import '@testing-library/jest-dom'
 
@@ -49,7 +48,6 @@ const makeRecord = (overrides: Partial<TelemetryRecord> = {}): TelemetryRecord =
     latitude: 51.5,
     longitude: -0.1,
     altitude: 400,
-    raw_json: null,
     ...overrides
 })
 

@@ -1,12 +1,11 @@
-import React from 'react'
+import { useGetHistoryQuery, useGetLatestQuery } from '../../features/telemetry/telemetryAPI'
+import { render, screen } from '../../test-utils'
 
-import Dashboard from '../components/Dashboard/Dashboard'
-import { useGetHistoryQuery, useGetLatestQuery } from '../features/telemetry/telemetryAPI'
-import { render, screen } from '../test-utils'
+import Dashboard from './Dashboard'
 
 import '@testing-library/jest-dom'
 
-jest.mock('../features/telemetry/telemetryAPI', () => ({
+jest.mock('../../features/telemetry/telemetryAPI', () => ({
     useGetLatestQuery: jest.fn(() => ({ data: null, isLoading: false, isError: false })),
     useGetHistoryQuery: jest.fn(() => ({ data: null, isLoading: false })),
     telemetryApi: {
