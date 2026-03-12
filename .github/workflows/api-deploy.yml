@@ -51,19 +51,19 @@ jobs:
 
       - name: Upload Folder
         run: |
-          lftp -e "
-            set ftp:list-options -a;
-            mkdir -p /server;
-            cd /server;
-            rm -rf app || echo 'app not found, skipping';
-            rm -rf vendor || echo 'vendor not found, skipping';
-            mkdir -p app vendor public writable;
-            lcd $GITHUB_WORKSPACE/server;
-            put .htaccess || echo '.htaccess upload skipped';
-            mirror --parallel=100 -R app app;
-            mirror --parallel=100 -R vendor vendor;
-            mirror --parallel=100 -R public public;
-            mirror --parallel=100 -R writable writable;
+          lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOSTNAME }} <<EOF
+            set ftp:list-options -a
+            mkdir -p /server
+            cd /server
+            rm -rf app || echo 'app not found, skipping'
+            rm -rf vendor || echo 'vendor not found, skipping'
+            mkdir -p app vendor public writable
+            lcd $GITHUB_WORKSPACE/server
+            put .htaccess || echo '.htaccess upload skipped'
+            mirror --parallel=100 -R app app
+            mirror --parallel=100 -R vendor vendor
+            mirror --parallel=100 -R public public
+            mirror --parallel=100 -R writable writable
             bye
-          " ${{ secrets.FTP_HOSTNAME }}
+          EOF
         working-directory: server

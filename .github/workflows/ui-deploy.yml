@@ -66,19 +66,19 @@ jobs:
 
       - name: Clean old UI files
         run: |
-          lftp -e "
-            set ftp:list-options -a;
-            rm -rf /static || echo 'static not found, skipping';
-            rm -f /favicon.png || echo 'favicon.png not found, skipping';
-            rm -f /index.html || echo 'index.html not found, skipping';
+          lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOSTNAME }} <<EOF
+            set ftp:list-options -a
+            rm -rf /static || echo 'static not found, skipping'
+            rm -f /favicon.png || echo 'favicon.png not found, skipping'
+            rm -f /index.html || echo 'index.html not found, skipping'
             bye
-          " ${{ secrets.FTP_HOSTNAME }}
+          EOF
 
       - name: Upload Folder
         run: |
-          lftp -e "
-            set ftp:list-options -a;
-            lcd $GITHUB_WORKSPACE/client/dist;
-            mirror --parallel=100 -R . /;
+          lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOSTNAME }} <<EOF
+            set ftp:list-options -a
+            lcd $GITHUB_WORKSPACE/client/dist
+            mirror --parallel=100 -R . /
             bye
-          " ${{ secrets.FTP_HOSTNAME }}
+          EOF
