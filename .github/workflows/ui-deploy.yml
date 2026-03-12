@@ -64,27 +64,11 @@ jobs:
       - name: Load Secrets
         run: echo "machine ${{ secrets.FTP_HOSTNAME }} login ${{ secrets.FTP_USERNAME }} password ${{ secrets.FTP_PASSWORD }}" > ~/.netrc
 
-      - name: Create cleanup script
-        run: |
-          cat > /tmp/lftp_cleanup.txt << 'SCRIPT'
-          set ftp:list-options -a
-          rm -rf /static || echo 'static not found, skipping'
-          rm -f /favicon.png || echo 'favicon.png not found, skipping'
-          rm -f /index.html || echo 'index.html not found, skipping'
-          bye
-          SCRIPT
-
-      - name: Clean old UI files
-        run: lftp -f /tmp/lftp_cleanup.txt ${{ secrets.FTP_HOSTNAME }}
-
-      - name: Create upload script
-        run: |
-          cat > /tmp/lftp_upload.txt << 'SCRIPT'
-          set ftp:list-options -a
-          lcd $GITHUB_WORKSPACE/client/dist
-          mirror --parallel=100 -R . /
-          bye
-          SCRIPT
-
       - name: Upload Folder
-        run: lftp -f /tmp/lftp_upload.txt ${{ secrets.FTP_HOSTNAME }}
+        run: |
+          lftp -e "rm -r static" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "rm favicon.png" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "rm index.html" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "rm .htaccess" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "mirror --parallel=100 -R dist /" ${{ secrets.FTP_HOSTNAME }}
+        working-directory: client
