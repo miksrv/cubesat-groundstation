@@ -24,8 +24,13 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
     const chartRef = useRef<HTMLDivElement>(null)
     const chart = useRef<echarts.ECharts | null>(null)
 
+    const latest = history.length > 0 ? history[history.length - 1] : null
+    const showSkeleton = isLoading && history.length === 0
+
     useEffect(() => {
-        if (chartRef.current) {
+        if (showSkeleton) return
+
+        if (chartRef.current && !chart.current) {
             chart.current = echarts.init(chartRef.current, 'dark')
         }
         const observer = new ResizeObserver(() => chart.current?.resize())
@@ -34,11 +39,14 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
         }
         return () => {
             observer.disconnect()
+        }
+    }, [showSkeleton])
+
+    useEffect(() => {
+        return () => {
             chart.current?.dispose()
         }
     }, [])
-
-    const latest = history.length > 0 ? history[history.length - 1] : null
 
     const option = useMemo(() => {
         const r = history.slice(-100)
@@ -47,7 +55,7 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
             name,
             type: 'line',
             stack: 'total',
-            data: r.map((d) => [d.timestamp, (d[key] as number | null) ?? 0]),
+            data: r.map((d) => [new Date(d.timestamp.replace(' ', 'T')), (d[key] as number | null) ?? 0]),
             areaStyle: { color: `${color}40` },
             lineStyle: { color },
             symbol: 'none',
@@ -88,20 +96,20 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
     }, [history])
 
     useEffect(() => {
-        chart.current?.setOption(option, { notMerge: false })
-    }, [option])
+        if (!showSkeleton && chart.current) {
+            chart.current.setOption(option, { notMerge: false })
+        }
+    }, [option, showSkeleton])
 
     return (
         <div className={styles.panel}>
             <h3 className={styles.title}>💻 System</h3>
-            {isLoading && history.length === 0 ? (
-                <div className={styles.skeleton} />
-            ) : (
-                <div
-                    ref={chartRef}
-                    className={styles.chart}
-                />
-            )}
+            {showSkeleton && <div className={styles.skeleton} />}
+            <div
+                ref={chartRef}
+                className={styles.chart}
+                style={{ display: showSkeleton ? 'none' : 'block' }}
+            />
             <div className={styles.meta}>
                 <span>
                     CPU Temp:{' '}

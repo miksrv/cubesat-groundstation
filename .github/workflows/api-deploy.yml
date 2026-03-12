@@ -53,6 +53,9 @@ jobs:
         run: |
           lftp -e "mkdir -f server" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "put -O /server .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "put -O /server .env.production" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "mv /server/.env.production /server/.env" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "put -O /server spark" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "rm -r /server/app" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "rm -r /server/vendor" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "mirror --parallel=100 -R app /server/app" ${{ secrets.FTP_HOSTNAME }}
@@ -60,3 +63,13 @@ jobs:
           lftp -e "mirror --parallel=100 -R public /server/public" ${{ secrets.FTP_HOSTNAME }}
           lftp -e "mirror --parallel=100 -R writable /server/writable" ${{ secrets.FTP_HOSTNAME }}
         working-directory: server
+      
+      - name: Set permissions (if FTP supports SITE CHMOD)
+        run: |
+          lftp -e "chmod 755 /server/spark" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "chmod -R 755 /server/writable" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "chmod -R 755 /server/writable/cache" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "chmod -R 755 /server/writable/logs" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "chmod -R 755 /server/writable/session" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "chmod -R 755 /server/writable/uploads" ${{ secrets.FTP_HOSTNAME }} || true
+        continue-on-error: true

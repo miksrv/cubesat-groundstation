@@ -1,0 +1,116 @@
+{
+	"info": {
+		"_postman_id": "cubesat-groundstation-api",
+		"name": "CubeSat GroundStation API",
+		"description": "API collection for CubeSat GroundStation telemetry",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://cubesat.miksoft.pro",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "your-api-key-here",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Telemetry",
+			"item": [
+				{
+					"name": "Store Telemetry",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"timestamp\": \"2026-03-12T14:30:00\",\n    \"eps\": {\n        \"battery\": 85.5,\n        \"voltage\": 7.8,\n        \"external_power\": 1\n    },\n    \"adcs\": {\n        \"roll\": 0.5,\n        \"pitch\": -1.2,\n        \"yaw\": 45.3,\n        \"imu_temp\": 25.4,\n        \"accel\": {\n            \"x\": 0.01,\n            \"y\": -0.02,\n            \"z\": 9.81\n        },\n        \"gyro\": {\n            \"x\": 0.001,\n            \"y\": 0.002,\n            \"z\": -0.001\n        }\n    },\n    \"payload\": {\n        \"temperature\": 22.5,\n        \"humidity\": 45.0,\n        \"pressure\": 1013.25\n    },\n    \"system\": {\n        \"cpu_percent\": 15.5,\n        \"ram_percent\": 42.3,\n        \"swap_percent\": 5.0,\n        \"disk_percent\": 35.8,\n        \"uptime_seconds\": 86400,\n        \"cpu_temperature\": 48.5\n    },\n    \"obc\": {\n        \"state\": \"NOMINAL\"\n    },\n    \"gps\": {\n        \"latitude\": 55.7558,\n        \"longitude\": 37.6173,\n        \"altitude\": 420.5\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/cubesat/telemetry",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cubesat", "telemetry"]
+						},
+						"description": "Store a new telemetry record from CubeSat.\n\nRequires X-API-Key header for authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Latest Telemetry",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cubesat/telemetry/latest",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cubesat", "telemetry", "latest"]
+						},
+						"description": "Get the most recent telemetry record."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Telemetry History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cubesat/telemetry/history?limit=100",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cubesat", "telemetry", "history"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Number of records to return (default: 100, max: 1000)"
+								}
+							]
+						},
+						"description": "Get telemetry history with optional limit parameter."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Telemetry Range",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cubesat/telemetry/range?start=2026-03-12T00:00:00&end=2026-03-12T23:59:59",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "cubesat", "telemetry", "range"],
+							"query": [
+								{
+									"key": "start",
+									"value": "2026-03-12T00:00:00",
+									"description": "Start datetime (ISO 8601 format)"
+								},
+								{
+									"key": "end",
+									"value": "2026-03-12T23:59:59",
+									"description": "End datetime (ISO 8601 format)"
+								}
+							]
+						},
+						"description": "Get telemetry records within a specific date range."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
+

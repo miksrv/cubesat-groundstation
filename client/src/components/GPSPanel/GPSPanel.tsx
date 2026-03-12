@@ -15,8 +15,12 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
     const altRef = useRef<HTMLDivElement>(null)
     const altChart = useRef<echarts.ECharts | null>(null)
 
+    const showSkeleton = isLoading && !latest
+
     useEffect(() => {
-        if (altRef.current) {
+        if (showSkeleton) return
+
+        if (altRef.current && !altChart.current) {
             altChart.current = echarts.init(altRef.current, 'dark')
         }
         const observer = new ResizeObserver(() => altChart.current?.resize())
@@ -25,6 +29,11 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
         }
         return () => {
             observer.disconnect()
+        }
+    }, [showSkeleton])
+
+    useEffect(() => {
+        return () => {
             altChart.current?.dispose()
         }
     }, [])
@@ -48,7 +57,7 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             series: [
                 {
                     type: 'line',
-                    data: history.slice(-50).map((r) => [r.timestamp, r.altitude ?? 0]),
+                    data: history.slice(-50).map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.altitude ?? 0]),
                     smooth: true,
                     lineStyle: { color: '#10b981' },
                     areaStyle: { color: 'rgba(16,185,129,0.15)' },
@@ -61,23 +70,21 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
     )
 
     useEffect(() => {
-        altChart.current?.setOption(altOption, { notMerge: false })
-    }, [altOption])
-
-    if (isLoading && !latest) {
-        return (
-            <div className={styles.panel}>
-                <div className={styles.skeleton} />
-            </div>
-        )
-    }
+        if (!showSkeleton && altChart.current) {
+            altChart.current.setOption(altOption, { notMerge: false })
+        }
+    }, [altOption, showSkeleton])
 
     const fmt = (n: number | null | undefined, d = 4) => (n != null ? Number(n).toFixed(d) : '—')
 
     return (
         <div className={styles.panel}>
             <h3 className={styles.title}>🌍 GPS</h3>
-            <div className={styles.coords}>
+            {showSkeleton && <div className={styles.skeleton} />}
+            <div
+                className={styles.coords}
+                style={{ display: showSkeleton ? 'none' : 'flex' }}
+            >
                 <div className={styles.coord}>
                     <span>LAT</span>
                     <b>{fmt(latest?.latitude)}°</b>
@@ -94,6 +101,7 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             <div
                 ref={altRef}
                 className={styles.chart}
+                style={{ display: showSkeleton ? 'none' : 'block' }}
             />
         </div>
     )

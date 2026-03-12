@@ -19,7 +19,10 @@ const OBC_COLORS: Record<string, string> = {
 }
 
 const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
-    const sorted = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    const sorted = [...history].sort(
+        (a, b) =>
+            new Date(b.timestamp.replace(' ', 'T')).getTime() - new Date(a.timestamp.replace(' ', 'T')).getTime()
+    )
 
     if (isLoading && history.length === 0) {
         return (
@@ -54,7 +57,7 @@ const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
                     <tbody>
                         {sorted.map((r) => (
                             <tr key={r.id}>
-                                <td>{new Date(r.timestamp).toLocaleString()}</td>
+                                <td>{new Date(r.timestamp.replace(' ', 'T')).toLocaleString()}</td>
                                 <td>
                                     <span
                                         className={styles.badge}

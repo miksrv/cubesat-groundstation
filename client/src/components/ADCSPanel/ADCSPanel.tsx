@@ -15,8 +15,12 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
     const gyroRef = useRef<HTMLDivElement>(null)
     const gyroChart = useRef<echarts.ECharts | null>(null)
 
+    const showSkeleton = isLoading && !latest
+
     useEffect(() => {
-        if (gyroRef.current) {
+        if (showSkeleton) return
+
+        if (gyroRef.current && !gyroChart.current) {
             gyroChart.current = echarts.init(gyroRef.current, 'dark')
         }
         const observer = new ResizeObserver(() => gyroChart.current?.resize())
@@ -25,6 +29,11 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
         }
         return () => {
             observer.disconnect()
+        }
+    }, [showSkeleton])
+
+    useEffect(() => {
+        return () => {
             gyroChart.current?.dispose()
         }
     }, [])
@@ -53,7 +62,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                 {
                     name: 'Gyro X',
                     type: 'line',
-                    data: recent.map((r) => [r.timestamp, r.gyro_x ?? 0]),
+                    data: recent.map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.gyro_x ?? 0]),
                     lineStyle: { color: '#ef4444' },
                     symbol: 'none',
                     smooth: true
@@ -61,7 +70,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                 {
                     name: 'Gyro Y',
                     type: 'line',
-                    data: recent.map((r) => [r.timestamp, r.gyro_y ?? 0]),
+                    data: recent.map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.gyro_y ?? 0]),
                     lineStyle: { color: '#10b981' },
                     symbol: 'none',
                     smooth: true
@@ -69,7 +78,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                 {
                     name: 'Gyro Z',
                     type: 'line',
-                    data: recent.map((r) => [r.timestamp, r.gyro_z ?? 0]),
+                    data: recent.map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.gyro_z ?? 0]),
                     lineStyle: { color: '#3b82f6' },
                     symbol: 'none',
                     smooth: true
@@ -80,21 +89,19 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
     }, [history])
 
     useEffect(() => {
-        gyroChart.current?.setOption(gyroOption, { notMerge: false })
-    }, [gyroOption])
-
-    if (isLoading && !latest) {
-        return (
-            <div className={styles.panel}>
-                <div className={styles.skeleton} />
-            </div>
-        )
-    }
+        if (!showSkeleton && gyroChart.current) {
+            gyroChart.current.setOption(gyroOption, { notMerge: false })
+        }
+    }, [gyroOption, showSkeleton])
 
     return (
         <div className={styles.panel}>
             <h3 className={styles.title}>🧭 ADCS</h3>
-            <div className={styles.orientation}>
+            {showSkeleton && <div className={styles.skeleton} />}
+            <div
+                className={styles.orientation}
+                style={{ display: showSkeleton ? 'none' : 'flex' }}
+            >
                 {(
                     [
                         ['Roll', latest?.roll],
@@ -114,10 +121,13 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
             <div
                 ref={gyroRef}
                 className={styles.chart}
+                style={{ display: showSkeleton ? 'none' : 'block' }}
             />
-            <div className={styles.imuTemp}>
-                IMU Temp: <b>{latest?.imu_temp?.toFixed(1) ?? '—'}°C</b>
-            </div>
+            {!showSkeleton && (
+                <div className={styles.imuTemp}>
+                    IMU Temp: <b>{latest?.imu_temp != null ? Number(latest.imu_temp).toFixed(1) : '—'}°C</b>
+                </div>
+            )}
         </div>
     )
 })

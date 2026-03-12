@@ -4,7 +4,7 @@
 
     # Redirect API requests to /server directory
     RewriteCond %{REQUEST_URI} ^/api/cubesat/(.*)$ [NC]
-    RewriteRule ^api/cubesat/(.*)$ /server/api/cubesat/$1 [L,P,QSA]
+    RewriteRule ^api/cubesat/(.*)$ /server/api/cubesat/$1 [L,QSA]
 
     # Don't rewrite files or directories that exist
     RewriteCond %{REQUEST_FILENAME} !-f
@@ -42,4 +42,3 @@
     ExpiresByType application/font-woff "access plus 1 year"
     ExpiresByType application/font-woff2 "access plus 1 year"
 </IfModule>
-

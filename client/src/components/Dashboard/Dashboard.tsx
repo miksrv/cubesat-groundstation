@@ -20,7 +20,7 @@ const Dashboard: React.FC = () => {
 
     const { data: historyData, isLoading: historyLoading } = useGetHistoryQuery(100, { pollingInterval: 30000 })
 
-    const latest = latestData?.data ?? null
+    const latest = latestData ?? null
     const history = historyData?.records ?? []
 
     return (
