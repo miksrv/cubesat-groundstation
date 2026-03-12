@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'server/**/*'
+#    paths:
+#      - 'server/**/*'
 
 # https://github.com/codeigniter4/CodeIgniter4/blob/develop/.github/workflows/deploy-apidocs.yml
 jobs:
