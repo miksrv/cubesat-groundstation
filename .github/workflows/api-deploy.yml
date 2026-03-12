@@ -49,21 +49,25 @@ jobs:
       - name: Load Secrets
         run: echo "machine ${{ secrets.FTP_HOSTNAME }} login ${{ secrets.FTP_USERNAME }} password ${{ secrets.FTP_PASSWORD }}" > ~/.netrc
 
-      - name: Upload Folder
+      - name: Create LFTP script
         run: |
-          lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOSTNAME }} <<EOF
-            set ftp:list-options -a
-            mkdir -p /server
-            cd /server
-            rm -rf app || echo 'app not found, skipping'
-            rm -rf vendor || echo 'vendor not found, skipping'
-            mkdir -p app vendor public writable
-            lcd $GITHUB_WORKSPACE/server
-            put .htaccess || echo '.htaccess upload skipped'
-            mirror --parallel=100 -R app app
-            mirror --parallel=100 -R vendor vendor
-            mirror --parallel=100 -R public public
-            mirror --parallel=100 -R writable writable
-            bye
-          EOF
+          cat > /tmp/lftp_commands.txt << 'SCRIPT'
+          set ftp:list-options -a
+          mkdir -p /server
+          cd /server
+          rm -rf app || echo 'app not found, skipping'
+          rm -rf vendor || echo 'vendor not found, skipping'
+          mkdir -p app vendor public writable
+          lcd $GITHUB_WORKSPACE/server
+          put .htaccess || echo '.htaccess upload skipped'
+          mirror --parallel=100 -R app app
+          mirror --parallel=100 -R vendor vendor
+          mirror --parallel=100 -R public public
+          mirror --parallel=100 -R writable writable
+          bye
+          SCRIPT
+        working-directory: server
+
+      - name: Upload Folder
+        run: lftp -f /tmp/lftp_commands.txt ${{ secrets.FTP_HOSTNAME }}
         working-directory: server
