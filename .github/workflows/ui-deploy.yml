@@ -66,9 +66,9 @@ jobs:
 
       - name: Upload Folder
         run: |
-          lftp -e "rm -r static" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "rm favicon.png" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "rm index.html" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "rm .htaccess" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "rm -r static" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm favicon.png" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm index.html" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "mirror --parallel=100 -R dist /" ${{ secrets.FTP_HOSTNAME }}
         working-directory: client

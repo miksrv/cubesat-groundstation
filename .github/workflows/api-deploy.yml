@@ -51,10 +51,10 @@ jobs:
 
       - name: Upload Folder
         run: |
-          lftp -e "mkdir -f server" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "put -O /server .htaccess" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "rm -r /server/app" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "rm -r /server/vendor" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "mkdir -f server" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "put -O /server .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm -r /server/app" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "rm -r /server/vendor" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "mirror --parallel=100 -R app /server/app" ${{ secrets.FTP_HOSTNAME }}
           lftp -e "mirror --parallel=100 -R vendor /server/vendor" ${{ secrets.FTP_HOSTNAME }}
           lftp -e "mirror --parallel=100 -R public /server/public" ${{ secrets.FTP_HOSTNAME }}
