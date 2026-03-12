@@ -5,8 +5,6 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
-$routes->get('/', 'Home::index');
-
 // CubeSat Telemetry API routes
 $routes->post('api/cubesat/telemetry', 'Api\TelemetryController::store');
 $routes->get('api/cubesat/telemetry/latest', 'Api\TelemetryController::latest');

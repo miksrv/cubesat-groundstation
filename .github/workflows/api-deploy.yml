@@ -51,11 +51,11 @@ jobs:
 
       - name: Upload Folder
         run: |
-          lftp -e "put -O / .htaccess" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "rm -r app" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "rm -r vendor" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "mirror --parallel=100 -R app" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "mirror --parallel=100 -R vendor" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "mirror --parallel=100 -R public" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "mirror --parallel=100 -R writable" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "put -O /server .htaccess" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "rm -r /server/app" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "rm -r /server/vendor" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "mirror --parallel=100 -R app /server/app" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "mirror --parallel=100 -R vendor /server/vendor" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "mirror --parallel=100 -R public /server/public" ${{ secrets.FTP_HOSTNAME }}
+          lftp -e "mirror --parallel=100 -R writable /server/writable" ${{ secrets.FTP_HOSTNAME }}
         working-directory: server
