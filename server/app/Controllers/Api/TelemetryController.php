@@ -35,14 +35,31 @@ class TelemetryController extends ResourceController
      * are present, flattens the nested structure into a single DB row, and
      * persists it via TelemetryModel.
      *
+     * Requires a valid API key passed via X-API-Key header for authentication.
+     *
      * POST /api/cubesat/telemetry
+     * Headers: X-API-Key: your-api-key
      *
      * @return \CodeIgniter\HTTP\ResponseInterface JSON response with status 201
-     *         on success, 400 on validation failure, 422 on malformed JSON, or
-     *         500 on a database error.
+     *         on success, 401 on invalid/missing API key, 400 on validation
+     *         failure, 422 on malformed JSON, or 500 on a database error.
      */
     public function store()
     {
+        // Validate API key from X-API-Key header
+        $providedKey = $this->request->getHeaderLine('X-API-Key');
+        $validKey    = getenv('api.telemetry.key');
+
+        if (empty($validKey) || $providedKey !== $validKey) {
+            return $this->response
+                ->setStatusCode(401)
+                ->setContentType('application/json')
+                ->setJSON([
+                    'error'   => 'Unauthorized',
+                    'details' => ['Invalid or missing API key'],
+                ]);
+        }
+
         $body = $this->request->getBody();
 
         // 422 if body is not valid JSON

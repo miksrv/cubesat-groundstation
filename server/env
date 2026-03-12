@@ -56,6 +56,14 @@
 # encryption.key =
 
 #--------------------------------------------------------------------
+# API SECURITY
+#--------------------------------------------------------------------
+
+# CubeSat telemetry API key (required for POST /api/cubesat/telemetry)
+# Generate a secure random key for production use
+api.telemetry.key = your-secret-api-key-here-change-in-production
+
+#--------------------------------------------------------------------
 # SESSION
 #--------------------------------------------------------------------
 

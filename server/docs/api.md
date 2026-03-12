@@ -8,6 +8,15 @@ http://localhost:8080
 
 All responses are `Content-Type: application/json`.
 
+## Authentication
+
+The `POST /api/cubesat/telemetry` endpoint requires authentication via API key. Include the API key in the `X-API-Key` header with every POST request.
+
+**Configuration:**
+- API key is stored in `.env` file: `api.telemetry.key`
+- Generate a secure random key for production use
+- Keep the key secret and never commit it to version control
+
 ---
 
 ## Endpoints
@@ -15,6 +24,8 @@ All responses are `Content-Type: application/json`.
 ### POST /api/cubesat/telemetry
 
 Ingest a telemetry snapshot transmitted by the CubeSat. The request body must be a valid JSON object containing all required subsystem keys. The server validates the payload, flattens the nested structure, and persists a single row to the database.
+
+**Authentication required:** Yes (X-API-Key header)
 
 #### Request Body
 
@@ -112,6 +123,7 @@ Ingest a telemetry snapshot transmitted by the CubeSat. The request body must be
 
 | Status | Condition | Example body |
 |--------|-----------|--------------|
+| `401 Unauthorized` | Missing or invalid API key in `X-API-Key` header | `{"error":"Unauthorized","details":["Invalid or missing API key"]}` |
 | `400 Bad Request` | One or more required top-level keys (`timestamp`, `eps`, `adcs`, `payload`, `system`, `obc`, `gps`) are missing | `{"error":"Validation failed","details":["The eps field is required."]}` |
 | `422 Unprocessable Entity` | Request body is not valid JSON | `{"error":"Invalid JSON payload","details":["Syntax error"]}` |
 | `500 Internal Server Error` | Database write failed | `{"error":"Failed to save telemetry data"}` |
@@ -121,6 +133,7 @@ Ingest a telemetry snapshot transmitted by the CubeSat. The request body must be
 ```bash
 curl -X POST http://localhost:8080/api/cubesat/telemetry \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: your-secret-api-key-here-change-in-production" \
   -d '{
     "timestamp": "2026-03-11T14:30:00Z",
     "eps":     {"battery": 87.5, "voltage": 12.4, "external_power": 1},
