@@ -1,0 +1,44 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.panel {
+  @include panel-card;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 300px;
+}
+
+.title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gauge { height: 140px; }
+.chart { height: 90px; }
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: $text-secondary;
+  b { color: $text-primary; }
+}
+
+.on { color: $accent-success; }
+.off { color: $accent-warning; }
+
+.skeleton {
+  height: 300px;
+  background: $bg-secondary;
+  border-radius: 6px;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}

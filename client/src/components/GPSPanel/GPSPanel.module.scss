@@ -1,0 +1,55 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.panel {
+  @include panel-card;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 300px;
+}
+
+.title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.coords { display: flex; gap: 8px; }
+
+.coord {
+  flex: 1;
+  background: $bg-secondary;
+  padding: 8px;
+  border-radius: 6px;
+  text-align: center;
+
+  span {
+    display: block;
+    font-size: 0.7rem;
+    color: $text-secondary;
+  }
+
+  b {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: $accent-success;
+  }
+}
+
+.chart { height: 175px; flex: 1; }
+
+.skeleton {
+  height: 300px;
+  background: $bg-secondary;
+  border-radius: 8px;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
