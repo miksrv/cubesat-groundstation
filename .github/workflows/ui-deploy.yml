@@ -19,8 +19,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
-          cache-dependency-path: 'client/yarn.lock'
+          cache: 'package'
+          cache-dependency-path: 'client/package-lock.json'
 
       - name: Cache node modules
         uses: actions/cache@v4
@@ -29,8 +29,7 @@ jobs:
           path: |
             client/node_modules
             ~/.npm
-            ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-modules-${{ hashFiles('client/yarn.lock') }}
+          key: ${{ runner.os }}-modules-${{ hashFiles('client/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-modules-
             ${{ runner.os }}-
@@ -38,7 +37,7 @@ jobs:
       - if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
         name: Install dependencies
         working-directory: client
-        run: yarn workspaces focus
+        run: npm run build
 
       - name: Cache UI build
         uses: actions/cache@v4
