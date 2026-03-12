@@ -99,7 +99,7 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
       )}
       <div className={styles.meta}>
         <span>
-          CPU Temp: <b>{latest?.cpu_temperature?.toFixed(1) ?? '—'}°C</b>
+          CPU Temp: <b>{latest?.cpu_temperature != null ? Number(latest.cpu_temperature).toFixed(1) : '—'}°C</b>
         </span>
         <span>
           Uptime: <b>{fmtUptime(latest?.uptime_seconds)}</b>

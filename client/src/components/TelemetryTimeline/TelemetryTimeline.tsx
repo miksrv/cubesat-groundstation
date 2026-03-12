@@ -67,13 +67,13 @@ const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
                     {r.obc_state ?? '—'}
                   </span>
                 </td>
-                <td>{r.battery?.toFixed(1) ?? '—'}%</td>
-                <td>{r.voltage?.toFixed(2) ?? '—'} V</td>
-                <td>{r.cpu_percent?.toFixed(1) ?? '—'}%</td>
-                <td>{r.ram_percent?.toFixed(1) ?? '—'}%</td>
-                <td>{r.temperature?.toFixed(1) ?? '—'}°C</td>
-                <td>{r.humidity?.toFixed(1) ?? '—'}%</td>
-                <td>{r.pressure?.toFixed(0) ?? '—'} hPa</td>
+                <td>{r.battery != null ? Number(r.battery).toFixed(1) : '—'}%</td>
+                <td>{r.voltage != null ? Number(r.voltage).toFixed(2) : '—'} V</td>
+                <td>{r.cpu_percent != null ? Number(r.cpu_percent).toFixed(1) : '—'}%</td>
+                <td>{r.ram_percent != null ? Number(r.ram_percent).toFixed(1) : '—'}%</td>
+                <td>{r.temperature != null ? Number(r.temperature).toFixed(1) : '—'}°C</td>
+                <td>{r.humidity != null ? Number(r.humidity).toFixed(1) : '—'}%</td>
+                <td>{r.pressure != null ? Number(r.pressure).toFixed(0) : '—'} hPa</td>
               </tr>
             ))}
           </tbody>
