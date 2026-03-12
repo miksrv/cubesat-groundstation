@@ -84,12 +84,12 @@ Todo → In Progress → Testing → Done
 
 ## Team Agents
 
-| Agent | Code Location | Instructions |
-|-------|--------------|--------------|
-| **Backend Agent** | `/server` | `/agents/backend_agent.md` |
-| **Frontend Agent** | `/client` | `/agents/frontend_agent.md` |
-| **QA Agent** | `/server/tests`, `/client/src/tests` | `/agents/qa_agent.md` |
-| **Doc Agent** | `/docs`, `README.md` | `/agents/doc_agent.md` |
+| Agent | Code Location | Instructions                       |
+|-------|--------------|------------------------------------|
+| **Backend Agent** | `/server` | `/.claude/agents/backend_agent.md` |
+| **Frontend Agent** | `/client` | `/.claude/agents/frontend_agent.md`        |
+| **QA Agent** | `/server/tests`, `/client/src/tests` | `/.claude/agents/qa_agent.md`              |
+| **Doc Agent** | `/docs`, `README.md` | `/.claude/agents/doc_agent.md`             |
 
 Agents must read their instruction file before starting. Each agent reports completion to Team Lead.
 
