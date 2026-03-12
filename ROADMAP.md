@@ -75,25 +75,28 @@ cubesat-groundstation/
 - ✅ PHPUnit tests
 
 ### Feature 2: Frontend Dashboard
-**Status:** 🔴 Not Started  
-**Requirements:** `/requirements/feature_2.md`  
-**Agent:** Frontend Agent  
-**Progress:** 0/20 tasks
+**Status:** 🟢 Complete
+**Requirements:** `/requirements/feature_2.md`
+**Agent:** Frontend Agent
+**Progress:** 20/20 tasks
+**PR:** https://github.com/miksrv/cubesat-groundstation/pull/2
 
 **Deliverables:**
-- ✅ React + Rsbuild + TypeScript project in `/client`
-- ✅ Redux Toolkit store with RTK Query
-- ✅ Dark theme SASS styling
+- ✅ React 19 + Rsbuild + TypeScript project in `/client`
+- ✅ Redux Toolkit store with RTK Query (30s polling)
+- ✅ Dark theme SASS design system
 - ✅ Dashboard with real-time charts:
-  - EPS Panel (battery gauge, voltage chart)
-  - ADCS Panel (orientation 3D, IMU data)
-  - GPS Panel (map, coordinates, altitude)
-  - Payload Chart (temperature, humidity, pressure)
-  - System Metrics Chart (CPU, RAM, disk usage)
-  - Telemetry Timeline (scrollable history)
+  - EPS Panel (battery gauge, voltage line chart)
+  - ADCS Panel (roll/pitch/yaw + gyroscope chart)
+  - GPS Panel (coordinates display + altitude chart)
+  - Payload Chart (temperature, humidity, pressure multi-axis)
+  - System Metrics Chart (CPU/RAM/Swap/Disk stacked area + CPU temp)
+  - Telemetry Timeline (scrollable table, newest first)
 - ✅ Auto-refresh every 30 seconds
-- ✅ Responsive design
-- ✅ Error handling and loading states
+- ✅ Responsive design (desktop/tablet/mobile)
+- ✅ Error handling and loading skeletons
+- ✅ Performance: React.memo + useMemo on all chart components
+- ✅ 12 Jest + React Testing Library tests passing
 
 ### Feature 3: QA and Testing
 **Status:** 🔴 Not Started  
@@ -203,9 +206,15 @@ Todo → In Progress → Testing → Done
 
 **Last Updated:** 2026-03-11
 
-**Active Phase:** Backend Development → Feature 2 Ready
-**Next Milestone:** Feature 2 - Frontend Dashboard
+**Active Phase:** Feature 2 Complete → Feature 3 Ready
+**Next Milestone:** Feature 3 - QA and Testing
 **Blockers:** None
+
+### Feature 2 Notes (2026-03-11)
+- 12 Jest tests pass (Header, TelemetryTimeline, EPSPanel, Dashboard integration)
+- All 20 project board cards moved to Done
+- `npm run build` produces clean 1.4 MB production bundle
+- `client/package-lock.json` not committed — root `.gitignore` excludes it globally (note for future: may want to scope that rule)
 
 ### Feature 1 Notes (2026-03-11)
 - 28 PHPUnit tests pass on Docker MySQL
