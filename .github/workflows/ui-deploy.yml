@@ -64,5 +64,21 @@ jobs:
       - name: Load Secrets
         run: echo "machine ${{ secrets.FTP_HOSTNAME }} login ${{ secrets.FTP_USERNAME }} password ${{ secrets.FTP_PASSWORD }}" > ~/.netrc
 
+      - name: Clean old UI files
+        run: |
+          lftp -e "
+            set ftp:list-options -a;
+            rm -rf /static || echo 'static not found, skipping';
+            rm -f /favicon.png || echo 'favicon.png not found, skipping';
+            rm -f /index.html || echo 'index.html not found, skipping';
+            bye
+          " ${{ secrets.FTP_HOSTNAME }}
+
       - name: Upload Folder
-        run: lftp -e "mirror --parallel=100 -R client/dist/ /" ${{ secrets.FTP_HOSTNAME }}
+        run: |
+          lftp -e "
+            set ftp:list-options -a;
+            lcd $GITHUB_WORKSPACE/client/dist;
+            mirror --parallel=100 -R . /;
+            bye
+          " ${{ secrets.FTP_HOSTNAME }}
