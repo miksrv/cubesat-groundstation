@@ -2,49 +2,49 @@
 @use '../../styles/mixins' as *;
 
 .dashboard {
-  min-height: 100vh;
-  background: $bg-primary;
+    min-height: 100vh;
+    background: $bg-primary;
 }
 
 .errorBanner {
-  background: rgba(239, 68, 68, 0.15);
-  border-bottom: 1px solid $accent-danger;
-  color: $accent-danger;
-  padding: 8px 20px;
-  font-size: 0.85rem;
-  text-align: center;
+    background: rgba(239, 68, 68, 0.15);
+    border-bottom: 1px solid $accent-danger;
+    color: $accent-danger;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    text-align: center;
 }
 
 .grid {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .row1 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
 
-  @include breakpoint-tablet {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  @include breakpoint-mobile {
-    grid-template-columns: 1fr;
-  }
+    @include breakpoint-tablet {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    @include breakpoint-mobile {
+        grid-template-columns: 1fr;
+    }
 }
 
 .row2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
 
-  @include breakpoint-mobile {
-    grid-template-columns: 1fr;
-  }
+    @include breakpoint-mobile {
+        grid-template-columns: 1fr;
+    }
 }
 
 .row3 {
-  width: 100%;
+    width: 100%;
 }

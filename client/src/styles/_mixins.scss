@@ -1,22 +1,26 @@
 @use 'variables' as *;
 
 @mixin panel-card {
-  background: $bg-panel;
-  border: 1px solid $border-color;
-  border-radius: 8px;
-  padding: 16px;
+    background: $bg-panel;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    padding: 16px;
 }
 
 @mixin flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @mixin breakpoint-tablet {
-  @media (max-width: 1023px) { @content; }
+    @media (max-width: 1023px) {
+        @content;
+    }
 }
 
 @mixin breakpoint-mobile {
-  @media (max-width: 767px) { @content; }
+    @media (max-width: 767px) {
+        @content;
+    }
 }

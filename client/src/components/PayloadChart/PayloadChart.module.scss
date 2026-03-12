@@ -1,27 +1,36 @@
 @use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
-.panel { @include panel-card; }
-
-.title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: $text-secondary;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
+.panel {
+    @include panel-card;
 }
 
-.chart { height: 230px; }
+.title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+
+.chart {
+    height: 230px;
+}
 
 .skeleton {
-  height: 230px;
-  background: $bg-secondary;
-  border-radius: 6px;
-  animation: shimmer 1.5s infinite;
+    height: 230px;
+    background: $bg-secondary;
+    border-radius: 6px;
+    animation: shimmer 1.5s infinite;
 }
 
 @keyframes shimmer {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
 }

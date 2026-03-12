@@ -1,75 +1,88 @@
 @use '../../styles/variables' as *;
 
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: $bg-secondary;
-  border-bottom: 1px solid $border-color;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: $bg-secondary;
+    border-bottom: 1px solid $border-color;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-  h1 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: $text-primary;
-  }
+    h1 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: $text-primary;
+    }
 }
 
-.icon { font-size: 1.3rem; }
+.icon {
+    font-size: 1.3rem;
+}
 
 .status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 0.85rem;
-  color: $text-secondary;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: $text-secondary;
 }
 
 .badge {
-  padding: 3px 8px;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
-.ts { color: $text-secondary; }
+.ts {
+    color: $text-secondary;
+}
 
 .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
 }
 
 .dotLive {
-  background: $accent-success;
-  box-shadow: 0 0 6px $accent-success;
+    background: $accent-success;
+    box-shadow: 0 0 6px $accent-success;
 }
 
-.dotError { background: $accent-danger; }
+.dotError {
+    background: $accent-danger;
+}
 
 .countdown {
-  color: $accent-primary;
-  font-weight: 500;
+    color: $accent-primary;
+    font-weight: 500;
 }
 
-.errorText { color: $accent-danger; }
+.errorText {
+    color: $accent-danger;
+}
 
 .loading {
-  color: $text-secondary;
-  animation: pulse 1s infinite;
+    color: $text-secondary;
+    animation: pulse 1s infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
 }

@@ -1,106 +1,113 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import * as echarts from 'echarts';
-import styles from './PayloadChart.module.scss';
-import type { TelemetryRecord } from '../../features/telemetry/types';
+import React, { useEffect, useMemo, useRef } from 'react'
+import * as echarts from 'echarts'
+
+import type { TelemetryRecord } from '../../features/telemetry/types'
+
+import styles from './PayloadChart.module.scss'
 
 interface Props {
-  history: TelemetryRecord[];
-  isLoading: boolean;
+    history: TelemetryRecord[]
+    isLoading: boolean
 }
 
 const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
-  const chartRef = useRef<HTMLDivElement>(null);
-  const chart = useRef<echarts.ECharts | null>(null);
+    const chartRef = useRef<HTMLDivElement>(null)
+    const chart = useRef<echarts.ECharts | null>(null)
 
-  useEffect(() => {
-    if (chartRef.current) {
-      chart.current = echarts.init(chartRef.current, 'dark');
-    }
-    const observer = new ResizeObserver(() => chart.current?.resize());
-    if (chartRef.current) observer.observe(chartRef.current);
-    return () => {
-      observer.disconnect();
-      chart.current?.dispose();
-    };
-  }, []);
+    useEffect(() => {
+        if (chartRef.current) {
+            chart.current = echarts.init(chartRef.current, 'dark')
+        }
+        const observer = new ResizeObserver(() => chart.current?.resize())
+        if (chartRef.current) {
+            observer.observe(chartRef.current)
+        }
+        return () => {
+            observer.disconnect()
+            chart.current?.dispose()
+        }
+    }, [])
 
-  const option = useMemo(() => {
-    const r = history.slice(-100);
-    return {
-      backgroundColor: 'transparent',
-      legend: {
-        data: ['Temp (°C)', 'Humidity (%)', 'Pressure (hPa)'],
-        textStyle: { color: '#94a3b8', fontSize: 9 },
-        top: 0,
-      },
-      grid: { top: 32, right: 55, bottom: 28, left: 45 },
-      xAxis: {
-        type: 'time',
-        axisLabel: { color: '#94a3b8', fontSize: 9 },
-        axisLine: { lineStyle: { color: '#2d3548' } },
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: '°C / %',
-          nameTextStyle: { color: '#94a3b8', fontSize: 9 },
-          axisLabel: { color: '#94a3b8', fontSize: 9 },
-          splitLine: { lineStyle: { color: '#2d3548' } },
-        },
-        {
-          type: 'value',
-          name: 'hPa',
-          nameTextStyle: { color: '#f59e0b', fontSize: 9 },
-          axisLabel: { color: '#f59e0b', fontSize: 9 },
-          splitLine: { show: false },
-        },
-      ],
-      series: [
-        {
-          name: 'Temp (°C)',
-          type: 'line',
-          data: r.map((d) => [d.timestamp, d.temperature ?? 0]),
-          lineStyle: { color: '#ef4444' },
-          symbol: 'none',
-          smooth: true,
-        },
-        {
-          name: 'Humidity (%)',
-          type: 'line',
-          data: r.map((d) => [d.timestamp, d.humidity ?? 0]),
-          lineStyle: { color: '#3b82f6' },
-          symbol: 'none',
-          smooth: true,
-        },
-        {
-          name: 'Pressure (hPa)',
-          type: 'line',
-          yAxisIndex: 1,
-          data: r.map((d) => [d.timestamp, d.pressure ?? 0]),
-          lineStyle: { color: '#f59e0b' },
-          symbol: 'none',
-          smooth: true,
-        },
-      ],
-      tooltip: { trigger: 'axis' },
-    };
-  }, [history]);
+    const option = useMemo(() => {
+        const r = history.slice(-100)
+        return {
+            backgroundColor: 'transparent',
+            legend: {
+                data: ['Temp (°C)', 'Humidity (%)', 'Pressure (hPa)'],
+                textStyle: { color: '#94a3b8', fontSize: 9 },
+                top: 0
+            },
+            grid: { top: 32, right: 55, bottom: 28, left: 45 },
+            xAxis: {
+                type: 'time',
+                axisLabel: { color: '#94a3b8', fontSize: 9 },
+                axisLine: { lineStyle: { color: '#2d3548' } }
+            },
+            yAxis: [
+                {
+                    type: 'value',
+                    name: '°C / %',
+                    nameTextStyle: { color: '#94a3b8', fontSize: 9 },
+                    axisLabel: { color: '#94a3b8', fontSize: 9 },
+                    splitLine: { lineStyle: { color: '#2d3548' } }
+                },
+                {
+                    type: 'value',
+                    name: 'hPa',
+                    nameTextStyle: { color: '#f59e0b', fontSize: 9 },
+                    axisLabel: { color: '#f59e0b', fontSize: 9 },
+                    splitLine: { show: false }
+                }
+            ],
+            series: [
+                {
+                    name: 'Temp (°C)',
+                    type: 'line',
+                    data: r.map((d) => [d.timestamp, d.temperature ?? 0]),
+                    lineStyle: { color: '#ef4444' },
+                    symbol: 'none',
+                    smooth: true
+                },
+                {
+                    name: 'Humidity (%)',
+                    type: 'line',
+                    data: r.map((d) => [d.timestamp, d.humidity ?? 0]),
+                    lineStyle: { color: '#3b82f6' },
+                    symbol: 'none',
+                    smooth: true
+                },
+                {
+                    name: 'Pressure (hPa)',
+                    type: 'line',
+                    yAxisIndex: 1,
+                    data: r.map((d) => [d.timestamp, d.pressure ?? 0]),
+                    lineStyle: { color: '#f59e0b' },
+                    symbol: 'none',
+                    smooth: true
+                }
+            ],
+            tooltip: { trigger: 'axis' }
+        }
+    }, [history])
 
-  useEffect(() => {
-    chart.current?.setOption(option, { notMerge: false });
-  }, [option]);
+    useEffect(() => {
+        chart.current?.setOption(option, { notMerge: false })
+    }, [option])
 
-  return (
-    <div className={styles.panel}>
-      <h3 className={styles.title}>🌡 Payload</h3>
-      {isLoading && history.length === 0 ? (
-        <div className={styles.skeleton} />
-      ) : (
-        <div ref={chartRef} className={styles.chart} />
-      )}
-    </div>
-  );
-});
+    return (
+        <div className={styles.panel}>
+            <h3 className={styles.title}>🌡 Payload</h3>
+            {isLoading && history.length === 0 ? (
+                <div className={styles.skeleton} />
+            ) : (
+                <div
+                    ref={chartRef}
+                    className={styles.chart}
+                />
+            )}
+        </div>
+    )
+})
 
-PayloadChart.displayName = 'PayloadChart';
-export default PayloadChart;
+PayloadChart.displayName = 'PayloadChart'
+export default PayloadChart

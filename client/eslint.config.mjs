@@ -44,6 +44,9 @@ export default defineConfig([
             // RollUp
             '**/rollup.config.js',
 
+            // RS Build
+            '**/rsbuild.config.ts',
+
             // PM2 Server
             '**/ecosystem.config.js',
 
@@ -95,7 +98,7 @@ export default defineConfig([
             // ✅ Require === and !== except when comparing to null
             eqeqeq: ['error', 'always', { null: 'never' }],
             // ✅ Error when the same module is imported multiple times
-            'no-duplicate-imports': 'error',
+            'no-duplicate-imports': 'warn',
             // ✅ Enforce using logical assignment operators (&&=, ||=, ??=)
             'logical-assignment-operators': 'error',
             // ✅ Disallow return in else after if with return
@@ -273,6 +276,7 @@ export default defineConfig([
                         '**/stories/*.stories.{ts,tsx}',
                         '**/storybook/**/*.stories.{ts,tsx}',
                         '**/setupTests.ts',
+                        '**/test-utils.tsx',
                     ],
                 },
             ],
@@ -355,43 +359,43 @@ export default defineConfig([
             // next
             //
             // ✅ Enforce google font display strategy
-            'next/google-font-display': 'warn',
+            // 'next/google-font-display': 'warn',
             // ✅ Warn if google fonts are not preconnected
-            'next/google-font-preconnect': 'warn',
+            // 'next/google-font-preconnect': 'warn',
             // ✅ Warn if next/script is not used for Google Analytics
-            'next/next-script-for-ga': 'warn',
+            // 'next/next-script-for-ga': 'warn',
             // ✅ Warn about async client components
-            'next/no-async-client-component': 'warn',
+            // 'next/no-async-client-component': 'warn',
             // ✅ Warn about beforeInteractive scripts outside _document.js
-            'next/no-before-interactive-script-outside-document': 'warn',
+            // 'next/no-before-interactive-script-outside-document': 'warn',
             // ✅ Warn about CSS <link> tags
-            'next/no-css-tags': 'warn',
+            // 'next/no-css-tags': 'warn',
             // ✅ Warn about <head> elements outside _document.js
-            'next/no-head-element': 'warn',
+            // 'next/no-head-element': 'warn',
             // ✅ Warn about <a href> pointing to pages directory
-            'next/no-html-link-for-pages': 'warn',
+            // 'next/no-html-link-for-pages': 'warn',
             // ✅ Warn about styled-jsx in _document.js
-            'next/no-styled-jsx-in-document': 'warn',
+            // 'next/no-styled-jsx-in-document': 'warn',
             // ✅ Warn about synchronous scripts
-            'next/no-sync-scripts': 'warn',
+            // 'next/no-sync-scripts': 'warn',
             // ✅ Enforce using <Image> instead of <img>
-            'next/no-img-element': 'warn',
+            // 'next/no-img-element': 'warn',
             // ✅ Warn about <title> in _document.js
-            'next/no-title-in-document-head': 'warn',
+            // 'next/no-title-in-document-head': 'warn',
             // ✅ Warn about typos in Next.js specific APIs
-            'next/no-typos': 'warn',
+            // 'next/no-typos': 'warn',
             // ✅ Warn about unwanted Polyfill.io usage
-            'next/no-unwanted-polyfillio': 'warn',
+            // 'next/no-unwanted-polyfillio': 'warn',
             // ✅ Require unique inline script IDs
-            'next/inline-script-id': 'error',
+            // 'next/inline-script-id': 'error',
             // ✅ Disallow assignment to module variable
-            'next/no-assign-module-variable': 'error',
+            // 'next/no-assign-module-variable': 'error',
             // ✅ Disallow _document.js import in pages
-            'next/no-document-import-in-page': 'error',
+            // 'next/no-document-import-in-page': 'error',
             // ✅ Disallow <Head> import in _document.js
-            'next/no-head-import-in-document': 'error',
+            // 'next/no-head-import-in-document': 'error',
             // ✅ Disallow <Script> component in <Head>
-            'next/no-script-component-in-head': 'error',
+            // 'next/no-script-component-in-head': 'error',
 
         },
     },

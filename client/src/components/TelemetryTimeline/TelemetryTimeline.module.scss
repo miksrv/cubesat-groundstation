@@ -1,73 +1,82 @@
 @use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
-.panel { @include panel-card; }
+.panel {
+    @include panel-card;
+}
 
 .title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: $text-secondary;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
 }
 
 .tableWrapper {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 300px;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 300px;
 }
 
 .table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.78rem;
-  white-space: nowrap;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    white-space: nowrap;
 
-  th {
-    background: $bg-secondary;
-    color: $text-secondary;
-    padding: 8px 12px;
-    text-align: left;
-    position: sticky;
-    top: 0;
-    font-weight: 500;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    z-index: 1;
-  }
+    th {
+        background: $bg-secondary;
+        color: $text-secondary;
+        padding: 8px 12px;
+        text-align: left;
+        position: sticky;
+        top: 0;
+        font-weight: 500;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        z-index: 1;
+    }
 
-  td {
-    padding: 6px 12px;
-    border-bottom: 1px solid $border-color;
-    color: $text-primary;
-  }
+    td {
+        padding: 6px 12px;
+        border-bottom: 1px solid $border-color;
+        color: $text-primary;
+    }
 
-  tbody tr:hover { background: $bg-secondary; }
+    tbody tr:hover {
+        background: $bg-secondary;
+    }
 }
 
 .badge {
-  padding: 2px 6px;
-  border-radius: 3px;
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
 }
 
 .empty {
-  text-align: center;
-  padding: 40px;
-  color: $text-secondary;
+    text-align: center;
+    padding: 40px;
+    color: $text-secondary;
 }
 
 .skeleton {
-  height: 200px;
-  background: $bg-secondary;
-  border-radius: 6px;
-  animation: shimmer 1.5s infinite;
+    height: 200px;
+    background: $bg-secondary;
+    border-radius: 6px;
+    animation: shimmer 1.5s infinite;
 }
 
 @keyframes shimmer {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
 }
