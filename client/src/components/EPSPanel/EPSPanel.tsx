@@ -103,21 +103,23 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             xAxis: {
                 type: 'time',
                 axisLabel: { color: '#94a3b8', fontSize: 9 },
-                axisLine: { lineStyle: { color: '#2d3548' } }
+                axisLine: { lineStyle: { color: '#2d3548', width: 1 } }
             },
             yAxis: {
                 type: 'value',
                 name: '',
                 nameTextStyle: { color: '#94a3b8', fontSize: 9 },
                 axisLabel: { color: '#94a3b8', fontSize: 9 },
-                splitLine: { lineStyle: { color: '#2d3548' } }
+                splitLine: { lineStyle: { color: '#2d3548', width: 1 } },
+                scale: true
             },
             series: [
                 {
                     type: 'line',
                     data: history.slice(-50).map((r) => [new Date(r.timestamp), r.voltage ?? 0]),
                     smooth: true,
-                    lineStyle: { color: chartColors.blue[0] },
+                    lineStyle: { color: chartColors.blue[0], width: 1 },
+                    temStyle: { color: chartColors.blue[0] },
                     areaStyle: { color: `${chartColors.blue[0]}26` },
                     symbol: 'none'
                 }

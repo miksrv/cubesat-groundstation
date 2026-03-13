@@ -10,6 +10,9 @@ body {
     background: var(--body-background);
     color: var(--text-color-primary);
     font-family: var(--font-family), serif;
+    line-height: 1.5;
+    font-size: var(--font-size);
+    letter-spacing: var(--letter-spacing);
     min-height: 100vh;
 }
 

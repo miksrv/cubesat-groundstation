@@ -46,30 +46,35 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
         return {
             backgroundColor: 'transparent',
             legend: {
-                data: ['Temp (°C)', 'Humidity (%)', 'Pressure (hPa)'],
-                textStyle: { color: '#94a3b8', fontSize: 9 },
+                type: 'plain',
+                orient: 'horizontal',
+                itemWidth: 20,
+                itemHeight: 2,
+                textStyle: { color: '#94a3b8', fontSize: 12 },
                 top: 0
             },
             grid: { top: 32, right: 55, bottom: 28, left: 45 },
             xAxis: {
                 type: 'time',
-                axisLabel: { color: '#94a3b8', fontSize: 9 },
+                axisLabel: { color: '#94a3b8', fontSize: 10 },
                 axisLine: { lineStyle: { color: '#2d3548' } }
             },
             yAxis: [
                 {
                     type: 'value',
                     name: '°C / %',
-                    nameTextStyle: { color: '#94a3b8', fontSize: 9 },
-                    axisLabel: { color: '#94a3b8', fontSize: 9 },
-                    splitLine: { lineStyle: { color: '#2d3548' } }
+                    nameTextStyle: { color: chartColors.red[0], fontSize: 10 },
+                    axisLabel: { color: chartColors.red[0], fontSize: 10 },
+                    splitLine: { lineStyle: { color: '#2d3548' } },
+                    scale: true
                 },
                 {
                     type: 'value',
                     name: 'hPa',
-                    nameTextStyle: { color: '#f59e0b', fontSize: 9 },
-                    axisLabel: { color: '#f59e0b', fontSize: 9 },
-                    splitLine: { show: false }
+                    nameTextStyle: { color: chartColors.purple[0], fontSize: 10 },
+                    axisLabel: { color: chartColors.purple[0], fontSize: 10 },
+                    splitLine: { show: false },
+                    scale: true
                 }
             ],
             series: [
@@ -77,7 +82,8 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     name: 'Temp (°C)',
                     type: 'line',
                     data: r.map((d) => [new Date(d.timestamp), d.temperature ?? 0]),
-                    lineStyle: { color: chartColors.red[0] },
+                    lineStyle: { color: chartColors.red[0], width: 1 },
+                    itemStyle: { color: chartColors.red[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -85,7 +91,8 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     name: 'Humidity (%)',
                     type: 'line',
                     data: r.map((d) => [new Date(d.timestamp), d.humidity ?? 0]),
-                    lineStyle: { color: chartColors.lightblue[0] },
+                    lineStyle: { color: chartColors.lightblue[0], width: 1 },
+                    itemStyle: { color: chartColors.lightblue[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -94,7 +101,8 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     type: 'line',
                     yAxisIndex: 1,
                     data: r.map((d) => [new Date(d.timestamp), d.pressure ?? 0]),
-                    lineStyle: { color: chartColors.orange[0] },
+                    lineStyle: { color: chartColors.purple[0], width: 1 },
+                    itemStyle: { color: chartColors.purple[0] },
                     symbol: 'none',
                     smooth: true
                 }

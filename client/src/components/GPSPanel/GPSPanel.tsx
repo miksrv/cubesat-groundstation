@@ -63,7 +63,8 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
                     type: 'line',
                     data: history.slice(-50).map((r) => [new Date(r.timestamp), r.altitude ?? 0]),
                     smooth: true,
-                    lineStyle: { color: chartColors.teal[0] },
+                    lineStyle: { color: chartColors.teal[0], width: 1 },
+                    temStyle: { color: chartColors.teal[0] },
                     areaStyle: { color: `${chartColors.teal[0]}26` },
                     symbol: 'none'
                 }

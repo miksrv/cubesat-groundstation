@@ -47,7 +47,10 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
         return {
             backgroundColor: 'transparent',
             legend: {
-                data: ['Gyro X', 'Gyro Y', 'Gyro Z'],
+                type: 'plain',
+                orient: 'horizontal',
+                itemWidth: 20,
+                itemHeight: 2,
                 textStyle: { color: '#94a3b8', fontSize: 9 },
                 top: 0
             },
@@ -55,7 +58,8 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
             xAxis: {
                 type: 'time',
                 axisLabel: { color: '#94a3b8', fontSize: 9 },
-                axisLine: { lineStyle: { color: '#2d3548' } }
+                axisLine: { lineStyle: { color: '#2d3548' } },
+                scale: true
             },
             yAxis: {
                 type: 'value',
@@ -67,7 +71,8 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     name: 'Gyro X',
                     type: 'line',
                     data: recent.map((r) => [new Date(r.timestamp), r.gyro_x ?? 0]),
-                    lineStyle: { color: chartColors.red[0] },
+                    lineStyle: { color: chartColors.red[0], width: 1 },
+                    itemStyle: { color: chartColors.red[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -75,7 +80,8 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     name: 'Gyro Y',
                     type: 'line',
                     data: recent.map((r) => [new Date(r.timestamp), r.gyro_y ?? 0]),
-                    lineStyle: { color: chartColors.green[0] },
+                    lineStyle: { color: chartColors.green[0], width: 1 },
+                    itemStyle: { color: chartColors.green[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -83,7 +89,8 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     name: 'Gyro Z',
                     type: 'line',
                     data: recent.map((r) => [new Date(r.timestamp), r.gyro_z ?? 0]),
-                    lineStyle: { color: chartColors.blue[0] },
+                    lineStyle: { color: chartColors.blue[0], width: 1 },
+                    itemStyle: { color: chartColors.blue[0] },
                     symbol: 'none',
                     smooth: true
                 }

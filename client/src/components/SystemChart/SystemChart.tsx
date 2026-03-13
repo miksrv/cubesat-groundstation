@@ -61,7 +61,8 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
             stack: 'total',
             data: r.map((d) => [new Date(d.timestamp), (d[key] as number | null) ?? 0]),
             areaStyle: { color: `${color}40` },
-            lineStyle: { color },
+            lineStyle: { color, width: 1 },
+            itemStyle: { color },
             symbol: 'none',
             smooth: true
         })
@@ -69,14 +70,18 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
         return {
             backgroundColor: 'transparent',
             legend: {
-                data: ['CPU%', 'RAM%', 'Swap%', 'Disk%'],
-                textStyle: { color: '#94a3b8', fontSize: 9 },
-                top: 0
+                type: 'plain',
+                orient: 'horizontal',
+                textStyle: { color: '#94a3b8', fontSize: 12 },
+                itemWidth: 20,
+                itemHeight: 2,
+                top: 0,
+                icon: 'rect'
             },
             grid: { top: 32, right: 8, bottom: 28, left: 38 },
             xAxis: {
                 type: 'time',
-                axisLabel: { color: '#94a3b8', fontSize: 9 },
+                axisLabel: { color: '#94a3b8', fontSize: 12 },
                 axisLine: { lineStyle: { color: '#2d3548' } }
             },
             yAxis: {
@@ -84,16 +89,16 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                 max: 100,
                 axisLabel: {
                     color: '#94a3b8',
-                    fontSize: 9,
+                    fontSize: 12,
                     formatter: '{value}%'
                 },
                 splitLine: { lineStyle: { color: '#2d3548' } }
             },
             series: [
-                mkSeries('CPU%', 'cpu_percent', chartColors.red[0]),
-                mkSeries('RAM%', 'ram_percent', chartColors.blue[0]),
-                mkSeries('Swap%', 'swap_percent', chartColors.orange[0]),
-                mkSeries('Disk%', 'disk_percent', chartColors.green[0])
+                mkSeries('CPU', 'cpu_percent', chartColors.red[0]),
+                mkSeries('RAM', 'ram_percent', chartColors.blue[0]),
+                mkSeries('Swap', 'swap_percent', chartColors.orange[0]),
+                mkSeries('Disk', 'disk_percent', chartColors.green[0])
             ],
             tooltip: { trigger: 'axis' }
         }

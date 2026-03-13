@@ -1,6 +1,6 @@
 @mixin panel-card {
     background: var(--container-background-color);
-    border: 1px solid var(--input-border-color);
+    border: var(--input-border);
     border-radius: 8px;
     padding: 16px;
 }
