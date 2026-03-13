@@ -72,7 +72,6 @@ client/
 │   │       ├── TelemetryTimeline.tsx
 │   │       └── TelemetryTimeline.module.scss
 │   ├── styles/
-│   │   ├── _variables.scss       # SASS variables (colors, spacing)
 │   │   ├── _mixins.scss          # SASS mixins
 │   │   └── global.scss           # Global styles
 │   ├── utils/
@@ -117,20 +116,6 @@ client/
 2. **Redux Store** maintains telemetry history (last 100 records)
 3. **Components** subscribe to store changes via `useSelector`
 4. **ECharts** instances update reactively on data changes
-
-## Dark Theme Colors (SASS Variables)
-```scss
-$bg-primary: #0a0e27;
-$bg-secondary: #151932;
-$bg-panel: #1a1f3a;
-$text-primary: #e2e8f0;
-$text-secondary: #94a3b8;
-$accent-primary: #3b82f6;
-$accent-success: #10b981;
-$accent-warning: #f59e0b;
-$accent-danger: #ef4444;
-$border-color: #2d3548;
-```
 
 ## Micro-tasks
 1. Initialize Rsbuild + React + TypeScript project in `client/`

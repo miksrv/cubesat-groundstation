@@ -1,4 +1,3 @@
-@use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
 .panel {
@@ -12,7 +11,7 @@
 .title {
     font-size: 0.9rem;
     font-weight: 600;
-    color: $text-secondary;
+    color: var(--text-color-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -24,7 +23,7 @@
 
 .coord {
     flex: 1;
-    background: $bg-secondary;
+    background: var(--input-background-color);
     padding: 8px;
     border-radius: 6px;
     text-align: center;
@@ -32,14 +31,14 @@
     span {
         display: block;
         font-size: 0.7rem;
-        color: $text-secondary;
+        color: var(--text-color-secondary);
     }
 
     b {
         display: block;
         font-size: 0.95rem;
         font-weight: 600;
-        color: $accent-success;
+        color: var(--color-green)s;
     }
 }
 
@@ -50,7 +49,7 @@
 
 .skeleton {
     height: 300px;
-    background: $bg-secondary;
+    background: var(--input-background-color);
     border-radius: 8px;
     animation: shimmer 1.5s infinite;
 }

@@ -1,15 +1,14 @@
-@use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
 .dashboard {
     min-height: 100vh;
-    background: $bg-primary;
+    background: var(--body-background);
 }
 
 .errorBanner {
     background: rgba(239, 68, 68, 0.15);
-    border-bottom: 1px solid $accent-danger;
-    color: $accent-danger;
+    border-bottom: 1px solid var(--color-red);
+    color: var(--color-red);
     padding: 8px 20px;
     font-size: 0.85rem;
     text-align: center;

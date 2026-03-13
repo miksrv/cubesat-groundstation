@@ -98,18 +98,18 @@ class TelemetryController extends ResourceController
             // EPS
             'battery'        => $eps['battery']        ?? null,
             'voltage'        => $eps['voltage']         ?? null,
-            'external_power' => $eps['external_power']  ?? null,
+            'external_power' => isset($eps['external_power']) ? (int) $eps['external_power'] : null,
             // ADCS
             'roll'           => $adcs['roll']           ?? null,
             'pitch'          => $adcs['pitch']          ?? null,
             'yaw'            => $adcs['yaw']            ?? null,
             'imu_temp'       => $adcs['imu_temp']       ?? null,
-            'accel_x'        => $adcs['accel']['x']     ?? null,
-            'accel_y'        => $adcs['accel']['y']     ?? null,
-            'accel_z'        => $adcs['accel']['z']     ?? null,
-            'gyro_x'         => $adcs['gyro']['x']      ?? null,
-            'gyro_y'         => $adcs['gyro']['y']      ?? null,
-            'gyro_z'         => $adcs['gyro']['z']      ?? null,
+            'accel_x'        => $adcs['accel_g']['x']   ?? null,
+            'accel_y'        => $adcs['accel_g']['y']   ?? null,
+            'accel_z'        => $adcs['accel_g']['z']   ?? null,
+            'gyro_x'         => $adcs['gyro_dps']['x']  ?? null,
+            'gyro_y'         => $adcs['gyro_dps']['y']  ?? null,
+            'gyro_z'         => $adcs['gyro_dps']['z']  ?? null,
             // Payload
             'temperature'    => $pld['temperature']     ?? null,
             'humidity'       => $pld['humidity']        ?? null,
@@ -122,7 +122,7 @@ class TelemetryController extends ResourceController
             'uptime_seconds' => $sys['uptime_seconds']  ?? null,
             'cpu_temperature'=> $sys['cpu_temperature'] ?? null,
             // OBC
-            'obc_state'      => $obc['state']           ?? null,
+            'obc_state'      => $obc['obc_state']       ?? null,
             // GPS
             'latitude'       => $gps['latitude']        ?? null,
             'longitude'      => $gps['longitude']       ?? null,

@@ -1,12 +1,10 @@
-@use '../../styles/variables' as *;
-
 .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 12px 20px;
-    background: $bg-secondary;
-    border-bottom: 1px solid $border-color;
+    background: var(--container-background-color);
+    border-bottom: 1px solid var(--input-border-color);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -20,7 +18,7 @@
     h1 {
         font-size: 1.1rem;
         font-weight: 600;
-        color: $text-primary;
+        color: var(--text-color-primary);
     }
 }
 
@@ -33,7 +31,7 @@
     align-items: center;
     gap: 12px;
     font-size: 0.85rem;
-    color: $text-secondary;
+    color: var(--text-color-secondary);
 }
 
 .badge {
@@ -45,7 +43,7 @@
 }
 
 .ts {
-    color: $text-secondary;
+    color: var(--text-color-secondary);
 }
 
 .dot {
@@ -55,25 +53,25 @@
 }
 
 .dotLive {
-    background: $accent-success;
-    box-shadow: 0 0 6px $accent-success;
+    background: var(--color-green)s;
+    box-shadow: 0 0 6px var(--color-green)s;
 }
 
 .dotError {
-    background: $accent-danger;
+    background: var(--color-red);
 }
 
 .countdown {
-    color: $accent-primary;
+    color: var(--color-main);
     font-weight: 500;
 }
 
 .errorText {
-    color: $accent-danger;
+    color: var(--color-red);
 }
 
 .loading {
-    color: $text-secondary;
+    color: var(--text-color-secondary);
     animation: pulse 1s infinite;
 }
 
