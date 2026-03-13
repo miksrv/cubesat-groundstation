@@ -30,7 +30,7 @@ Cloud-based ground station for CubeSat telemetry visualization and real-time mon
 ┌──────────────┐         ┌──────────────┐         ┌──────────────┐
 │   CubeSat    │         │   Backend    │         │   Frontend   │
 │              │         │              │         │              │
-│  SQLite +    │  MQTT   │  PHP CI4 +   │  HTTP   │  React +     │
+│  SQLite +    │  HTTP   │  PHP CI4 +   │  HTTP   │  React +     │
 │  MQTT        ├────────►│  MySQL       ├────────►│  ECharts     │
 │              │  30s    │              │  30s    │              │
 │  Telemetry   │         │  REST API    │         │  Dashboard   │

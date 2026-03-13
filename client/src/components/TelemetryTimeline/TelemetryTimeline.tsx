@@ -10,6 +10,27 @@ interface Props {
     isLoading: boolean
 }
 
+const getBadgeClass = (state: string | null | undefined): string => {
+    switch (state) {
+        case 'NOMINAL':
+            return styles.badgeNominal
+        case 'BOOT':
+            return styles.badgeBoot
+        case 'DEPLOY':
+            return styles.badgeDeploy
+        case 'SCIENCE':
+            return styles.badgeScience
+        case 'LOW_POWER':
+            return styles.badgeLowPower
+        case 'SAFE':
+            return styles.badgeSafe
+        case null:
+        case undefined:
+        default:
+            return ''
+    }
+}
+
 const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
     const sorted = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
@@ -50,7 +71,11 @@ const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
                             <tr key={r.id}>
                                 <td>{new Date(r.timestamp).toLocaleString()}</td>
                                 <td>
-                                    <Badge label={r.obc_state ?? '—'} />
+                                    <Badge
+                                        size='small'
+                                        label={r.obc_state ?? '—'}
+                                        className={getBadgeClass(r.obc_state)}
+                                    />
                                 </td>
                                 <td>{r.battery != null ? r.battery.toFixed(1) : '—'}%</td>
                                 <td>{r.voltage != null ? r.voltage.toFixed(2) : '—'} V</td>

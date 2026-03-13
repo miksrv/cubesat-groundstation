@@ -57,6 +57,28 @@
     font-weight: 600;
 }
 
+// OBC State Badge variants
+.badgeNominal {
+    background: var(--color-green) !important;
+}
+
+.badgeBoot,
+.badgeDeploy {
+    background: var(--text-color-secondary) !important;
+}
+
+.badgeScience {
+    background: var(--color-main) !important;
+}
+
+.badgeLowPower {
+    background: var(--color-orange) !important;
+}
+
+.badgeSafe {
+    background: var(--color-red) !important;
+}
+
 .empty {
     text-align: center;
     padding: 40px;

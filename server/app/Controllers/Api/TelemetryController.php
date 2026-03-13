@@ -121,8 +121,8 @@ class TelemetryController extends ResourceController
             'disk_percent'   => $sys['disk_percent']    ?? null,
             'uptime_seconds' => $sys['uptime_seconds']  ?? null,
             'cpu_temperature'=> $sys['cpu_temperature'] ?? null,
-            // OBC
-            'obc_state'      => $obc['obc_state']       ?? null,
+
+            'obc_state'      => $payload['obc_state']   ?? null,
             // GPS
             'latitude'       => $gps['latitude']        ?? null,
             'longitude'      => $gps['longitude']       ?? null,

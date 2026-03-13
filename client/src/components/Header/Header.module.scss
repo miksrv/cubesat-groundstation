@@ -34,12 +34,26 @@
     color: var(--text-color-secondary);
 }
 
-.badge {
-    padding: 3px 8px;
-    border-radius: 4px;
-    color: #fff;
-    font-size: 0.75rem;
-    font-weight: 600;
+.badgeNominal {
+    background-color: var(--color-green) !important;
+    color: var(--text-color-primary);
+}
+
+.badgeBoot,
+.badgeDeploy {
+    background-color: var(--text-color-secondary) !important;
+}
+
+.badgeScience {
+    background-color: var(--color-main) !important;
+}
+
+.badgeLowPower {
+    background-color: var(--color-orange) !important;
+}
+
+.badgeSafe {
+    background-color: var(--color-red) !important;
 }
 
 .ts {
@@ -53,8 +67,8 @@
 }
 
 .dotLive {
-    background: var(--color-green)s;
-    box-shadow: 0 0 6px var(--color-green)s;
+    background: var(--color-green);
+    box-shadow: 0 0 6px var(--color-green);
 }
 
 .dotError {
