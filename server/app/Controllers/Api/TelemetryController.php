@@ -31,9 +31,9 @@ class TelemetryController extends ResourceController
      * Store a new telemetry record.
      *
      * Accepts a JSON body containing nested telemetry subsystems (eps, adcs,
-     * payload, system, obc, gps). Validates that all required top-level keys
-     * are present, flattens the nested structure into a single DB row, and
-     * persists it via TelemetryModel.
+     * payload, system, obc, gps). Only `timestamp` is required; all subsystem
+     * fields are optional. Flattens the nested structure into a single DB row
+     * and persists it via TelemetryModel.
      *
      * Requires a valid API key passed via X-API-Key header for authentication.
      *
@@ -74,17 +74,14 @@ class TelemetryController extends ResourceController
                 ]);
         }
 
-        // Validate required top-level keys (array_key_exists used so empty sub-arrays are accepted)
-        $requiredKeys = ['timestamp', 'eps', 'adcs', 'payload', 'system', 'obc', 'gps'];
-        $missing      = array_values(array_diff($requiredKeys, array_keys($payload ?? [])));
-
-        if (! empty($missing)) {
+        // Only timestamp is required, all subsystem fields are optional
+        if (empty($payload['timestamp'])) {
             return $this->response
                 ->setStatusCode(400)
                 ->setContentType('application/json')
                 ->setJSON([
                     'error'   => 'Validation failed',
-                    'details' => array_map(fn($k) => "The field '{$k}' is required.", $missing),
+                    'details' => ["The field 'timestamp' is required."],
                 ]);
         }
 
@@ -154,6 +151,56 @@ class TelemetryController extends ResourceController
     }
 
     /**
+     * Format a telemetry record with proper types.
+     *
+     * Converts string values from database to proper numeric types,
+     * formats timestamp to ISO 8601 format, and excludes raw_json field.
+     *
+     * @param array $row Raw database row
+     * @return array Formatted record with proper types
+     */
+    private function formatRecord(array $row): array
+    {
+        return [
+            'id'              => (int) $row['id'],
+            'timestamp'       => str_replace(' ', 'T', $row['timestamp']),
+            // EPS
+            'battery'         => $row['battery'] !== null ? (float) $row['battery'] : null,
+            'voltage'         => $row['voltage'] !== null ? (float) $row['voltage'] : null,
+            'external_power'  => $row['external_power'] !== null ? (int) $row['external_power'] : null,
+            // ADCS
+            'roll'            => $row['roll'] !== null ? (float) $row['roll'] : null,
+            'pitch'           => $row['pitch'] !== null ? (float) $row['pitch'] : null,
+            'yaw'             => $row['yaw'] !== null ? (float) $row['yaw'] : null,
+            'imu_temp'        => $row['imu_temp'] !== null ? (float) $row['imu_temp'] : null,
+            'accel_x'         => $row['accel_x'] !== null ? (float) $row['accel_x'] : null,
+            'accel_y'         => $row['accel_y'] !== null ? (float) $row['accel_y'] : null,
+            'accel_z'         => $row['accel_z'] !== null ? (float) $row['accel_z'] : null,
+            'gyro_x'          => $row['gyro_x'] !== null ? (float) $row['gyro_x'] : null,
+            'gyro_y'          => $row['gyro_y'] !== null ? (float) $row['gyro_y'] : null,
+            'gyro_z'          => $row['gyro_z'] !== null ? (float) $row['gyro_z'] : null,
+            // Payload
+            'temperature'     => $row['temperature'] !== null ? (float) $row['temperature'] : null,
+            'humidity'        => $row['humidity'] !== null ? (float) $row['humidity'] : null,
+            'pressure'        => $row['pressure'] !== null ? (float) $row['pressure'] : null,
+            // System
+            'cpu_percent'     => $row['cpu_percent'] !== null ? (float) $row['cpu_percent'] : null,
+            'ram_percent'     => $row['ram_percent'] !== null ? (float) $row['ram_percent'] : null,
+            'swap_percent'    => $row['swap_percent'] !== null ? (float) $row['swap_percent'] : null,
+            'disk_percent'    => $row['disk_percent'] !== null ? (float) $row['disk_percent'] : null,
+            'uptime_seconds'  => $row['uptime_seconds'] !== null ? (int) $row['uptime_seconds'] : null,
+            'cpu_temperature' => $row['cpu_temperature'] !== null ? (float) $row['cpu_temperature'] : null,
+            // OBC
+            'obc_state'       => $row['obc_state'],
+            // GPS
+            'latitude'        => $row['latitude'] !== null ? (float) $row['latitude'] : null,
+            'longitude'       => $row['longitude'] !== null ? (float) $row['longitude'] : null,
+            'altitude'        => $row['altitude'] !== null ? (float) $row['altitude'] : null,
+            // Note: raw_json is intentionally excluded from API responses
+        ];
+    }
+
+    /**
      * Return the most recent telemetry record.
      *
      * Queries the database for the single newest row ordered by timestamp
@@ -178,7 +225,7 @@ class TelemetryController extends ResourceController
         return $this->response
             ->setStatusCode(200)
             ->setContentType('application/json')
-            ->setJSON($record);
+            ->setJSON($this->formatRecord($record));
     }
 
     /**
@@ -201,13 +248,14 @@ class TelemetryController extends ResourceController
         }
 
         $records = $this->model->getHistory($limit);
+        $formatted = array_map([$this, 'formatRecord'], $records);
 
         return $this->response
             ->setStatusCode(200)
             ->setContentType('application/json')
             ->setJSON([
-                'count'   => count($records),
-                'records' => $records,
+                'count'   => count($formatted),
+                'records' => $formatted,
             ]);
     }
 
@@ -251,15 +299,16 @@ class TelemetryController extends ResourceController
         }
 
         $records = $this->model->getRange($from, $to);
+        $formatted = array_map([$this, 'formatRecord'], $records);
 
         return $this->response
             ->setStatusCode(200)
             ->setContentType('application/json')
             ->setJSON([
-                'count'   => count($records),
+                'count'   => count($formatted),
                 'from'    => $from,
                 'to'      => $to,
-                'records' => $records,
+                'records' => $formatted,
             ]);
     }
 }

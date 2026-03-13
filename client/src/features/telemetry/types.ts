@@ -27,5 +27,4 @@ export interface TelemetryRecord {
     latitude: number | null
     longitude: number | null
     altitude: number | null
-    raw_json: string | null
 }
