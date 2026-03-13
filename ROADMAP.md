@@ -99,13 +99,43 @@ cubesat-groundstation/
 - ✅ 12 Jest + React Testing Library tests passing
 
 ### Feature 3: Refactoring
-**Status:** 🔴 Not Started  
-**Requirements:** `/requirements/feature_3.md`  
-**Agent:** Frontend Agent, Backend Agent
+**Status:** 🟢 Complete
+**Requirements:** `/requirements/feature_3.md`
+**Agent:** Frontend Agent, Backend Agent, QA Agent
+**Progress:** 10/10 tasks Done
 
-### Feature 4: QA and Testing
+**Deliverables:**
+- ✅ Test files relocated to component directories (Header, EPSPanel, Dashboard, TelemetryTimeline)
+- ✅ raw_json removed from test mocks (not in API response/TelemetryRecord type)
+- ✅ New unit tests: ADCSPanel, GPSPanel, PayloadChart, SystemChart
+- ✅ jest.config.ts updated to find co-located test files (testMatch: ['**/*.test.tsx'])
+- ✅ ESLint: 0 errors (curly/interface/trailing-newline fixes applied)
+- ✅ Prettier: all files clean
+- ✅ 28 Jest tests passing across 8 suites
+- ✅ Backend API formatRecord() verified: proper types, raw_json excluded, ISO 8601 timestamps
+- ✅ QA: All 8 component test files confirmed co-located, __tests__/ directory removed
+- ✅ QA: Cypress E2E stub created at cypress/e2e/dashboard.cy.ts (7 scenarios, API mocked with cy.intercept)
+
+### Feature 4: Refactoring UI
+**Status:** 🟢 Complete
+**Requirements:** `/requirements/feature_4.md`
+**Agent:** Frontend Agent, QA Agent
+**Progress:** 8/8 tasks Done
+
+**Deliverables:**
+- ✅ simple-react-ui-kit installed; global styles imported in index.tsx
+- ✅ data-theme="dark" applied via useEffect in App.tsx
+- ✅ global.scss updated with full dark theme CSS variable set
+- ✅ All 5 chart components use chartColors palette (no hardcoded hex)
+- ✅ Header and TelemetryTimeline OBC badges → Badge component
+- ✅ All 6 panel skeleton loaders → Skeleton component
+- ✅ All 6 panels wrapped with Container component (title prop replaces h3)
+- ✅ Jest mock for simple-react-ui-kit (ESM-only package)
+- ✅ 28 tests passing, ESLint 0 errors, Prettier clean
+
+### Feature 5: QA and Testing
 **Status:** 🔴 Not Started  
-**Requirements:** `/requirements/feature_3.md`  
+**Requirements:** `/requirements/feature_5.md`  
 **Agent:** QA Agent  
 **Progress:** 0/24 tasks
 
@@ -120,9 +150,9 @@ cubesat-groundstation/
 - ✅ Code coverage reports (Backend 80%, Frontend 75%)
 - ✅ CI/CD integration
 
-### Feature 5: Documentation
+### Feature 6: Documentation
 **Status:** 🔴 Not Started  
-**Requirements:** `/requirements/feature_4.md`  
+**Requirements:** `/requirements/feature_6.md`  
 **Agent:** Doc Agent  
 **Progress:** 0/24 tasks
 
@@ -209,11 +239,13 @@ Todo → In Progress → Testing → Done
 
 ## Current Status
 
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-12
 
-**Active Phase:** Feature 2 Complete → Feature 3 Ready
-**Next Milestone:** Feature 3 - QA and Testing
-**Blockers:** None
+**Last Updated:** 2026-03-12
+
+**Active Phase:** Feature 4 Complete → Feature 5 Ready
+**Next Milestone:** Feature 5 - QA and Testing
+**Blockers:** Cypress E2E requires `npm install --save-dev cypress` + running dev server before full execution
 
 ### Feature 2 Notes (2026-03-11)
 - 12 Jest tests pass (Header, TelemetryTimeline, EPSPanel, Dashboard integration)
