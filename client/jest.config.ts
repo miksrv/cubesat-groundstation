@@ -7,6 +7,8 @@ const config: Config = {
   moduleNameMapper: {
     '\\.module\\.scss$': 'identity-obj-proxy',
     '\\.scss$': 'identity-obj-proxy',
+    '^simple-react-ui-kit$': '<rootDir>/src/__mocks__/simple-react-ui-kit.tsx',
+    '^simple-react-ui-kit/dist/.*$': 'identity-obj-proxy',
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: './tsconfig.test.json' }],

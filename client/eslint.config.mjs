@@ -68,7 +68,10 @@ export default defineConfig([
             '**/simple-react-ui-kit.js',
 
             // Standalone utility scripts not included in tsconfig
-            'update.ts'
+            'update.ts',
+
+            // Cypress E2E tests (not in tsconfig.json)
+            'cypress/**/*'
         ],
     },
 

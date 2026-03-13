@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import * as echarts from 'echarts'
+import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
+import { chartColors } from '../../styles/chartColors'
 
 import styles from './GPSPanel.module.scss'
 
@@ -61,8 +63,8 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
                     type: 'line',
                     data: history.slice(-50).map((r) => [new Date(r.timestamp), r.altitude ?? 0]),
                     smooth: true,
-                    lineStyle: { color: '#10b981' },
-                    areaStyle: { color: 'rgba(16,185,129,0.15)' },
+                    lineStyle: { color: chartColors.teal[0] },
+                    areaStyle: { color: `${chartColors.teal[0]}26` },
                     symbol: 'none'
                 }
             ],
@@ -80,9 +82,11 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
     const fmt = (n: number | null | undefined, d = 4) => (n != null ? n.toFixed(d) : '—')
 
     return (
-        <div className={styles.panel}>
-            <h3 className={styles.title}>🌍 GPS</h3>
-            {showSkeleton && <div className={styles.skeleton} />}
+        <Container
+            title='🌍 GPS'
+            className={styles.panel}
+        >
+            {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}
             <div
                 className={styles.coords}
                 style={{ display: showSkeleton ? 'none' : 'flex' }}
@@ -105,7 +109,7 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
                 className={styles.chart}
                 style={{ display: showSkeleton ? 'none' : 'block' }}
             />
-        </div>
+        </Container>
     )
 })
 

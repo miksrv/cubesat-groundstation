@@ -1,4 +1,5 @@
 import React from 'react'
+import { Badge, Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
 
@@ -9,32 +10,22 @@ interface Props {
     isLoading: boolean
 }
 
-const OBC_COLORS: Record<string, string> = {
-    NOMINAL: '#10b981',
-    SCIENCE: '#3b82f6',
-    DEPLOY: '#f59e0b',
-    LOW_POWER: '#f59e0b',
-    SAFE: '#ef4444',
-    BOOT: '#94a3b8'
-}
-
 const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
-    const sorted = [...history].sort(
-        (a, b) =>
-            new Date(b.timestamp.replace(' ', 'T')).getTime() - new Date(a.timestamp.replace(' ', 'T')).getTime()
-    )
+    const sorted = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
     if (isLoading && history.length === 0) {
         return (
             <div className={styles.panel}>
-                <div className={styles.skeleton} />
+                <Skeleton style={{ height: '150px', width: '100%' }} />
             </div>
         )
     }
 
     return (
-        <div className={styles.panel}>
-            <h3 className={styles.title}>📋 Telemetry Timeline</h3>
+        <Container
+            title='📋 Telemetry Timeline'
+            className={styles.panel}
+        >
             <div className={styles.tableWrapper}>
                 <table className={styles.table}>
                     <thead>
@@ -57,31 +48,24 @@ const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
                     <tbody>
                         {sorted.map((r) => (
                             <tr key={r.id}>
-                                <td>{new Date(r.timestamp.replace(' ', 'T')).toLocaleString()}</td>
+                                <td>{new Date(r.timestamp).toLocaleString()}</td>
                                 <td>
-                                    <span
-                                        className={styles.badge}
-                                        style={{
-                                            background: OBC_COLORS[r.obc_state ?? ''] ?? '#94a3b8'
-                                        }}
-                                    >
-                                        {r.obc_state ?? '—'}
-                                    </span>
+                                    <Badge label={r.obc_state ?? '—'} />
                                 </td>
-                                <td>{r.battery != null ? Number(r.battery).toFixed(1) : '—'}%</td>
-                                <td>{r.voltage != null ? Number(r.voltage).toFixed(2) : '—'} V</td>
-                                <td>{r.cpu_percent != null ? Number(r.cpu_percent).toFixed(1) : '—'}%</td>
-                                <td>{r.ram_percent != null ? Number(r.ram_percent).toFixed(1) : '—'}%</td>
-                                <td>{r.temperature != null ? Number(r.temperature).toFixed(1) : '—'}°C</td>
-                                <td>{r.humidity != null ? Number(r.humidity).toFixed(1) : '—'}%</td>
-                                <td>{r.pressure != null ? Number(r.pressure).toFixed(0) : '—'} hPa</td>
+                                <td>{r.battery != null ? r.battery.toFixed(1) : '—'}%</td>
+                                <td>{r.voltage != null ? r.voltage.toFixed(2) : '—'} V</td>
+                                <td>{r.cpu_percent != null ? r.cpu_percent.toFixed(1) : '—'}%</td>
+                                <td>{r.ram_percent != null ? r.ram_percent.toFixed(1) : '—'}%</td>
+                                <td>{r.temperature != null ? r.temperature.toFixed(1) : '—'}°C</td>
+                                <td>{r.humidity != null ? r.humidity.toFixed(1) : '—'}%</td>
+                                <td>{r.pressure != null ? r.pressure.toFixed(0) : '—'} hPa</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
                 {sorted.length === 0 && <div className={styles.empty}>No telemetry data yet</div>}
             </div>
-        </div>
+        </Container>
     )
 }
 

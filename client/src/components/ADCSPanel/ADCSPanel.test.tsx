@@ -71,7 +71,7 @@ describe('ADCSPanel', () => {
                 isLoading={true}
             />
         )
-        const skeleton = container.querySelector('[class*="skeleton"]')
+        const skeleton = container.querySelector('[data-testid="skeleton"]')
         expect(skeleton).toBeInTheDocument()
     })
 

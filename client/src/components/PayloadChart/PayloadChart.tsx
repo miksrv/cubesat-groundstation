@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import * as echarts from 'echarts'
+import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
+import { chartColors } from '../../styles/chartColors'
 
 import styles from './PayloadChart.module.scss'
 
@@ -75,7 +77,7 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     name: 'Temp (°C)',
                     type: 'line',
                     data: r.map((d) => [new Date(d.timestamp), d.temperature ?? 0]),
-                    lineStyle: { color: '#ef4444' },
+                    lineStyle: { color: chartColors.red[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -83,7 +85,7 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     name: 'Humidity (%)',
                     type: 'line',
                     data: r.map((d) => [new Date(d.timestamp), d.humidity ?? 0]),
-                    lineStyle: { color: '#3b82f6' },
+                    lineStyle: { color: chartColors.lightblue[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -92,7 +94,7 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     type: 'line',
                     yAxisIndex: 1,
                     data: r.map((d) => [new Date(d.timestamp), d.pressure ?? 0]),
-                    lineStyle: { color: '#f59e0b' },
+                    lineStyle: { color: chartColors.orange[0] },
                     symbol: 'none',
                     smooth: true
                 }
@@ -108,15 +110,17 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
     }, [option, showSkeleton])
 
     return (
-        <div className={styles.panel}>
-            <h3 className={styles.title}>🌡 Payload</h3>
-            {showSkeleton && <div className={styles.skeleton} />}
+        <Container
+            title='🌡 Payload'
+            className={styles.panel}
+        >
+            {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}
             <div
                 ref={chartRef}
                 className={styles.chart}
                 style={{ display: showSkeleton ? 'none' : 'block' }}
             />
-        </div>
+        </Container>
     )
 })
 

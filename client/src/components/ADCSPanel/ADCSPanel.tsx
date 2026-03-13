@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import * as echarts from 'echarts'
+import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
+import { chartColors } from '../../styles/chartColors'
 
 import styles from './ADCSPanel.module.scss'
 
@@ -65,7 +67,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     name: 'Gyro X',
                     type: 'line',
                     data: recent.map((r) => [new Date(r.timestamp), r.gyro_x ?? 0]),
-                    lineStyle: { color: '#ef4444' },
+                    lineStyle: { color: chartColors.red[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -73,7 +75,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     name: 'Gyro Y',
                     type: 'line',
                     data: recent.map((r) => [new Date(r.timestamp), r.gyro_y ?? 0]),
-                    lineStyle: { color: '#10b981' },
+                    lineStyle: { color: chartColors.green[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -81,7 +83,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     name: 'Gyro Z',
                     type: 'line',
                     data: recent.map((r) => [new Date(r.timestamp), r.gyro_z ?? 0]),
-                    lineStyle: { color: '#3b82f6' },
+                    lineStyle: { color: chartColors.blue[0] },
                     symbol: 'none',
                     smooth: true
                 }
@@ -97,9 +99,11 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
     }, [gyroOption, showSkeleton])
 
     return (
-        <div className={styles.panel}>
-            <h3 className={styles.title}>🧭 ADCS</h3>
-            {showSkeleton && <div className={styles.skeleton} />}
+        <Container
+            title='🧭 ADCS'
+            className={styles.panel}
+        >
+            {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}
             <div
                 className={styles.orientation}
                 style={{ display: showSkeleton ? 'none' : 'flex' }}
@@ -130,7 +134,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     IMU Temp: <b>{latest?.imu_temp != null ? latest.imu_temp.toFixed(1) : '—'}°C</b>
                 </div>
             )}
-        </div>
+        </Container>
     )
 })
 

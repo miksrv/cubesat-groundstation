@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import * as echarts from 'echarts'
+import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
+import { chartColors } from '../../styles/chartColors'
 
 import styles from './EPSPanel.module.scss'
 
@@ -20,7 +22,9 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
     const showSkeleton = isLoading && !latest
 
     useEffect(() => {
-        if (showSkeleton) return
+        if (showSkeleton) {
+            return
+        }
 
         if (gaugeRef.current && !gaugeChart.current) {
             gaugeChart.current = echarts.init(gaugeRef.current, 'dark')
@@ -61,9 +65,11 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
                     type: 'gauge',
                     min: 0,
                     max: 100,
+                    radius: '110%',
+                    center: ['50%', '55%'],
                     axisLine: {
                         lineStyle: {
-                            width: 12,
+                            width: 10,
                             color: [
                                 [0.2, '#ef4444'],
                                 [0.5, '#f59e0b'],
@@ -71,15 +77,19 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
                             ]
                         }
                     },
-                    pointer: { itemStyle: { color: batteryColor } },
+                    axisTick: { length: 8, lineStyle: { color: 'auto' } },
+                    splitLine: { length: 14, lineStyle: { color: 'auto', width: 2 } },
+                    axisLabel: { distance: 12, color: '#94a3b8', fontSize: 7 },
+                    pointer: { width: 5, length: '60%', itemStyle: { color: batteryColor } },
                     detail: {
                         valueAnimation: true,
                         formatter: '{value}%',
                         color: batteryColor,
-                        fontSize: 16
+                        fontSize: 22,
+                        offsetCenter: [0, '70%']
                     },
-                    data: [{ value: battery, name: 'Battery' }],
-                    title: { offsetCenter: [0, '70%'], color: '#94a3b8', fontSize: 11 }
+                    data: [{ value: battery, name: '' }],
+                    title: { offsetCenter: [0, '90%'], color: '#94a3b8', fontSize: 12 }
                 }
             ]
         }),
@@ -97,7 +107,7 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             },
             yAxis: {
                 type: 'value',
-                name: 'V',
+                name: '',
                 nameTextStyle: { color: '#94a3b8', fontSize: 9 },
                 axisLabel: { color: '#94a3b8', fontSize: 9 },
                 splitLine: { lineStyle: { color: '#2d3548' } }
@@ -105,10 +115,10 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             series: [
                 {
                     type: 'line',
-                    data: history.slice(-50).map((r) => [new Date(r.timestamp.replace(' ', 'T')), r.voltage ?? 0]),
+                    data: history.slice(-50).map((r) => [new Date(r.timestamp), r.voltage ?? 0]),
                     smooth: true,
-                    lineStyle: { color: '#3b82f6' },
-                    areaStyle: { color: 'rgba(59,130,246,0.15)' },
+                    lineStyle: { color: chartColors.blue[0] },
+                    areaStyle: { color: `${chartColors.blue[0]}26` },
                     symbol: 'none'
                 }
             ],
@@ -130,9 +140,11 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
     }, [lineOption, showSkeleton])
 
     return (
-        <div className={styles.panel}>
-            <h3 className={styles.title}>⚡ EPS</h3>
-            {showSkeleton && <div className={styles.skeleton} />}
+        <Container
+            title='⚡ EPS'
+            className={styles.panel}
+        >
+            {showSkeleton && <Skeleton style={{ height: '220px', width: '100%' }} />}
             <div
                 ref={gaugeRef}
                 className={styles.gauge}
@@ -146,14 +158,14 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             {!showSkeleton && (
                 <div className={styles.info}>
                     <span>
-                        Voltage: <b>{latest?.voltage != null ? Number(latest.voltage).toFixed(1) : '—'} V</b>
+                        Voltage: <b>{latest?.voltage != null ? latest.voltage.toFixed(1) : '—'} V</b>
                     </span>
                     <span className={latest?.external_power ? styles.on : styles.off}>
                         {latest?.external_power ? '🔌 External ON' : '🔋 Battery Only'}
                     </span>
                 </div>
             )}
-        </div>
+        </Container>
     )
 })
 

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import * as echarts from 'echarts'
+import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
+import { chartColors } from '../../styles/chartColors'
 
 import styles from './SystemChart.module.scss'
 
@@ -88,10 +90,10 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                 splitLine: { lineStyle: { color: '#2d3548' } }
             },
             series: [
-                mkSeries('CPU%', 'cpu_percent', '#ef4444'),
-                mkSeries('RAM%', 'ram_percent', '#3b82f6'),
-                mkSeries('Swap%', 'swap_percent', '#f59e0b'),
-                mkSeries('Disk%', 'disk_percent', '#10b981')
+                mkSeries('CPU%', 'cpu_percent', chartColors.red[0]),
+                mkSeries('RAM%', 'ram_percent', chartColors.blue[0]),
+                mkSeries('Swap%', 'swap_percent', chartColors.orange[0]),
+                mkSeries('Disk%', 'disk_percent', chartColors.green[0])
             ],
             tooltip: { trigger: 'axis' }
         }
@@ -104,9 +106,11 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
     }, [option, showSkeleton])
 
     return (
-        <div className={styles.panel}>
-            <h3 className={styles.title}>💻 System</h3>
-            {showSkeleton && <div className={styles.skeleton} />}
+        <Container
+            title='💻 System'
+            className={styles.panel}
+        >
+            {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}
             <div
                 ref={chartRef}
                 className={styles.chart}
@@ -120,7 +124,7 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     Uptime: <b>{fmtUptime(latest?.uptime_seconds)}</b>
                 </span>
             </div>
-        </div>
+        </Container>
     )
 })
 

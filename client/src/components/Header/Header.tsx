@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Badge } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
 
@@ -8,15 +9,6 @@ interface Props {
     latest: TelemetryRecord | null
     isLoading: boolean
     isError: boolean
-}
-
-const OBC_COLORS: Record<string, string> = {
-    NOMINAL: '#10b981',
-    SCIENCE: '#3b82f6',
-    DEPLOY: '#f59e0b',
-    LOW_POWER: '#f59e0b',
-    SAFE: '#ef4444',
-    BOOT: '#94a3b8'
 }
 
 const Header: React.FC<Props> = ({ latest, isLoading, isError }) => {
@@ -29,7 +21,6 @@ const Header: React.FC<Props> = ({ latest, isLoading, isError }) => {
     }, [latest])
 
     const obcState = latest?.obc_state ?? 'UNKNOWN'
-    const obcColor = OBC_COLORS[obcState] ?? '#94a3b8'
 
     return (
         <header className={styles.header}>
@@ -38,12 +29,7 @@ const Header: React.FC<Props> = ({ latest, isLoading, isError }) => {
                 <h1>CubeSat Ground Station</h1>
             </div>
             <div className={styles.status}>
-                <span
-                    className={styles.badge}
-                    style={{ backgroundColor: obcColor }}
-                >
-                    {obcState}
-                </span>
+                <Badge label={obcState} />
                 {latest && <span className={styles.ts}>{new Date(latest.timestamp).toLocaleTimeString()}</span>}
                 <span className={`${styles.dot} ${isError ? styles.dotError : styles.dotLive}`} />
                 {!isError && <span className={styles.countdown}>↻ {countdown}s</span>}
