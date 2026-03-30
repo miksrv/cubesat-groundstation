@@ -148,4 +148,3 @@ describe('AttitudeIndicator', () => {
         expect(skeleton).not.toBeInTheDocument()
     })
 })
-
