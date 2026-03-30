@@ -4,6 +4,7 @@ import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
+import { createChartTooltip, valueFormatters } from '../../styles/chartTooltip'
 
 import styles from './SystemChart.module.scss'
 
@@ -100,7 +101,10 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                 mkSeries('Swap', 'swap_percent', chartColors.orange[0]),
                 mkSeries('Disk', 'disk_percent', chartColors.green[0])
             ],
-            tooltip: { trigger: 'axis' }
+            tooltip: createChartTooltip({
+                dateFormat: 'full',
+                valueFormatter: (v) => valueFormatters.percent(v)
+            })
         }
     }, [history])
 

@@ -4,6 +4,7 @@ import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
+import { createChartTooltip } from '../../styles/chartTooltip'
 
 import styles from './PayloadChart.module.scss'
 
@@ -91,8 +92,8 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     name: 'Humidity (%)',
                     type: 'line',
                     data: r.map((d) => [new Date(d.timestamp), d.humidity ?? 0]),
-                    lineStyle: { color: chartColors.lightblue[0], width: 1 },
-                    itemStyle: { color: chartColors.lightblue[0] },
+                    lineStyle: { color: chartColors.stellar[0], width: 1 },
+                    itemStyle: { color: chartColors.stellar[0] },
                     symbol: 'none',
                     smooth: true
                 },
@@ -107,7 +108,24 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                     smooth: true
                 }
             ],
-            tooltip: { trigger: 'axis' }
+            tooltip: createChartTooltip({
+                dateFormat: 'full',
+                valueFormatter: (v, name) => {
+                    if (v == null) {
+                        return '—'
+                    }
+                    if (name.includes('Temp')) {
+                        return `${v.toFixed(1)}°C`
+                    }
+                    if (name.includes('Humidity')) {
+                        return `${v.toFixed(1)}%`
+                    }
+                    if (name.includes('Pressure')) {
+                        return `${v.toFixed(1)} hPa`
+                    }
+                    return v.toFixed(2)
+                }
+            })
         }
     }, [history])
 

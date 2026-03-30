@@ -4,6 +4,7 @@ import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
+import { createChartTooltip } from '../../styles/chartTooltip'
 
 import styles from './GPSPanel.module.scss'
 
@@ -61,15 +62,19 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             series: [
                 {
                     type: 'line',
+                    name: 'Altitude',
                     data: history.slice(-50).map((r) => [new Date(r.timestamp), r.altitude ?? 0]),
                     smooth: true,
                     lineStyle: { color: chartColors.teal[0], width: 1 },
-                    temStyle: { color: chartColors.teal[0] },
+                    itemStyle: { color: chartColors.teal[0] },
                     areaStyle: { color: `${chartColors.teal[0]}26` },
                     symbol: 'none'
                 }
             ],
-            tooltip: { trigger: 'axis' }
+            tooltip: createChartTooltip({
+                dateFormat: 'full',
+                valueFormatter: (v) => (v != null ? `${v.toFixed(2)} km` : '—')
+            })
         }),
         [history]
     )
