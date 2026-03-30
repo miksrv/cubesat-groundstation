@@ -2,9 +2,11 @@ import React from 'react'
 
 import { useGetHistoryQuery, useGetLatestQuery } from '../../features/telemetry/telemetryAPI'
 import ADCSPanel from '../ADCSPanel/ADCSPanel'
+import AttitudeIndicator from '../AttitudeIndicator/AttitudeIndicator'
 import EPSPanel from '../EPSPanel/EPSPanel'
 import GPSPanel from '../GPSPanel/GPSPanel'
 import Header from '../Header/Header'
+import OrbitMap from '../OrbitMap/OrbitMap'
 import PayloadChart from '../PayloadChart/PayloadChart'
 import SystemChart from '../SystemChart/SystemChart'
 import TelemetryTimeline from '../TelemetryTimeline/TelemetryTimeline'
@@ -45,13 +47,24 @@ const Dashboard: React.FC = () => {
                         history={history}
                         isLoading={latestLoading}
                     />
+                    <AttitudeIndicator
+                        latest={latest}
+                        isLoading={latestLoading}
+                    />
+                </div>
+                <div className={styles.row2}>
+                    <OrbitMap
+                        latest={latest}
+                        history={history}
+                        isLoading={historyLoading}
+                    />
                     <GPSPanel
                         latest={latest}
                         history={history}
                         isLoading={latestLoading}
                     />
                 </div>
-                <div className={styles.row2}>
+                <div className={styles.row3}>
                     <PayloadChart
                         history={history}
                         isLoading={historyLoading}
@@ -61,7 +74,7 @@ const Dashboard: React.FC = () => {
                         isLoading={historyLoading}
                     />
                 </div>
-                <div className={styles.row3}>
+                <div className={styles.row4}>
                     <TelemetryTimeline
                         history={history}
                         isLoading={historyLoading}

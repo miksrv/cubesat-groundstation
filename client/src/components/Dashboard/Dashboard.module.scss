@@ -3,6 +3,7 @@
 .dashboard {
     min-height: 100vh;
     background: var(--body-background);
+    overflow-x: hidden;
 }
 
 .errorBanner {
@@ -19,6 +20,13 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    max-width: 100%;
+    overflow-x: hidden;
+
+    @include breakpoint-mobile {
+        padding: 8px;
+        gap: 12px;
+    }
 }
 
 .row1 {
@@ -31,19 +39,37 @@
     }
     @include breakpoint-mobile {
         grid-template-columns: 1fr;
+        gap: 12px;
     }
 }
 
 .row2 {
+    display: grid;
+    grid-template-columns: 2.04fr 1fr;
+    gap: 16px;
+
+    @include breakpoint-tablet {
+        grid-template-columns: 1fr 1fr;
+    }
+    @include breakpoint-mobile {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+.row3 {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
 
     @include breakpoint-mobile {
         grid-template-columns: 1fr;
+        gap: 12px;
     }
 }
 
-.row3 {
+.row4 {
     width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
 }
