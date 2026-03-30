@@ -131,7 +131,9 @@ export const createChartTooltip = (options?: {
         },
         formatter: (params: TooltipParam | TooltipParam[]) => {
             const items = Array.isArray(params) ? params : [params]
-            if (items.length === 0) return ''
+            if (items.length === 0) {
+                return ''
+            }
 
             const content: string[] = []
 
@@ -140,9 +142,7 @@ export const createChartTooltip = (options?: {
             let headerDate = ''
             if (firstParam.axisValue) {
                 headerDate = formatTooltipDate(
-                    typeof firstParam.axisValue === 'number' 
-                        ? firstParam.axisValue 
-                        : new Date(firstParam.axisValue),
+                    typeof firstParam.axisValue === 'number' ? firstParam.axisValue : new Date(firstParam.axisValue),
                     dateFormat
                 )
             } else if (firstParam.axisValueLabel) {
@@ -156,9 +156,11 @@ export const createChartTooltip = (options?: {
             items.forEach((item) => {
                 const color = item.color || '#64748b'
                 const value = item.value?.[1]
-                const formattedValue = valueFormatter 
+                const formattedValue = valueFormatter
                     ? valueFormatter(value ?? null, item.seriesName || '')
-                    : (value != null ? value.toFixed(2) : '—')
+                    : value != null
+                      ? value.toFixed(2)
+                      : '—'
 
                 content.push(`
                     <div style="${tooltipStyles.item}">
@@ -188,4 +190,3 @@ export const valueFormatters = {
     degrees: (v: number | null) => (v != null ? `${v.toFixed(1)}°` : '—'),
     generic: (v: number | null) => (v != null ? v.toFixed(2) : '—')
 }
-

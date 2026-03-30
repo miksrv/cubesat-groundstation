@@ -15,9 +15,12 @@
     },
     "dependencies": {
         "@reduxjs/toolkit": "^2.11.2",
+        "@types/leaflet": "^1.9.21",
         "echarts": "^6.0.0",
+        "leaflet": "^1.9.4",
         "react": "^19.2.3",
         "react-dom": "^19.2.3",
+        "react-leaflet": "^5.0.0",
         "react-redux": "^9.2.0",
         "simple-react-ui-kit": "^1.7.8"
     },

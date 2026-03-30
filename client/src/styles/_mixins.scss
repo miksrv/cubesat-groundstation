@@ -3,6 +3,9 @@
     border: var(--input-border);
     border-radius: 8px;
     padding: 16px;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 @mixin flex-center {
