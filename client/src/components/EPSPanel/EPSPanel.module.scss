@@ -6,6 +6,11 @@
     flex-direction: column;
     gap: 8px;
     min-height: 300px;
+
+    @include breakpoint-mobile {
+        padding: 12px;
+        min-height: 280px;
+    }
 }
 
 .title {
@@ -18,9 +23,22 @@
 
 .gauge {
     height: 140px;
+    width: 100%;
+    min-width: 0;
+
+    @include breakpoint-mobile {
+        height: 120px;
+    }
 }
+
 .chart {
     height: 90px;
+    width: 100%;
+    min-width: 0;
+
+    @include breakpoint-mobile {
+        height: 80px;
+    }
 }
 
 .info {
@@ -28,8 +46,15 @@
     justify-content: space-between;
     font-size: 0.8rem;
     color: var(--text-color-secondary);
+    flex-wrap: wrap;
+    gap: 4px;
+
     b {
         color: var(--text-color-primary);
+    }
+
+    @include breakpoint-mobile {
+        font-size: 0.75rem;
     }
 }
 
@@ -45,6 +70,10 @@
     background: var(--input-background-color);
     border-radius: 6px;
     animation: shimmer 1.5s infinite;
+
+    @include breakpoint-mobile {
+        height: 280px;
+    }
 }
 
 @keyframes shimmer {

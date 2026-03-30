@@ -2,6 +2,10 @@
 
 .panel {
     @include panel-card;
+
+    @include breakpoint-mobile {
+        padding: 12px;
+    }
 }
 
 .title {
@@ -17,6 +21,11 @@
     overflow-x: auto;
     overflow-y: auto;
     max-height: 300px;
+    -webkit-overflow-scrolling: touch;
+
+    @include breakpoint-mobile {
+        max-height: 250px;
+    }
 }
 
 .table {
@@ -24,6 +33,7 @@
     border-collapse: collapse;
     font-size: 0.78rem;
     white-space: nowrap;
+    min-width: 600px;
 
     th {
         background: var(--input-background-color);
@@ -36,16 +46,29 @@
         font-size: 0.72rem;
         text-transform: uppercase;
         z-index: 1;
+
+        @include breakpoint-mobile {
+            padding: 6px 8px;
+            font-size: 0.68rem;
+        }
     }
 
     td {
         padding: 6px 12px;
         border-bottom: 1px solid var(--input-border-color);
         color: var(--text-color-primary);
+
+        @include breakpoint-mobile {
+            padding: 5px 8px;
+        }
     }
 
     tbody tr:hover {
         background: var(--input-background-color);
+    }
+
+    @include breakpoint-mobile {
+        font-size: 0.72rem;
     }
 }
 

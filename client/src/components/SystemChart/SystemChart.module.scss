@@ -2,6 +2,12 @@
 
 .panel {
     @include panel-card;
+    max-width: 100%;
+    overflow: hidden;
+
+    @include breakpoint-mobile {
+        padding: 12px;
+    }
 }
 
 .title {
@@ -15,6 +21,12 @@
 
 .chart {
     height: 210px;
+    width: 100%;
+    min-width: 0;
+
+    @include breakpoint-mobile {
+        height: 180px;
+    }
 }
 
 .meta {
@@ -23,8 +35,15 @@
     font-size: 0.8rem;
     color: var(--text-color-secondary);
     margin-top: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+
     b {
         color: var(--text-color-primary);
+    }
+
+    @include breakpoint-mobile {
+        font-size: 0.75rem;
     }
 }
 
@@ -33,6 +52,10 @@
     background: var(--input-background-color);
     border-radius: 6px;
     animation: shimmer 1.5s infinite;
+
+    @include breakpoint-mobile {
+        height: 180px;
+    }
 }
 
 @keyframes shimmer {

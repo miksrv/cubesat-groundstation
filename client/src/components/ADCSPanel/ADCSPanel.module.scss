@@ -6,6 +6,11 @@
     flex-direction: column;
     gap: 8px;
     min-height: 300px;
+
+    @include breakpoint-mobile {
+        padding: 12px;
+        min-height: 280px;
+    }
 }
 
 .title {
@@ -19,6 +24,10 @@
 .orientation {
     display: flex;
     gap: 8px;
+
+    @include breakpoint-mobile {
+        gap: 6px;
+    }
 }
 
 .metric {
@@ -27,12 +36,21 @@
     padding: 8px;
     border-radius: 6px;
     text-align: center;
+    min-width: 0;
+
+    @include breakpoint-mobile {
+        padding: 6px;
+    }
 }
 
 .label {
     display: block;
     font-size: 0.7rem;
     color: var(--text-color-secondary);
+
+    @include breakpoint-mobile {
+        font-size: 0.65rem;
+    }
 }
 
 .value {
@@ -40,18 +58,33 @@
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--color-main);
+
+    @include breakpoint-mobile {
+        font-size: 1rem;
+    }
 }
 
 .chart {
     height: 140px;
+    width: 100%;
+    min-width: 0;
     flex: 1;
+
+    @include breakpoint-mobile {
+        height: 120px;
+    }
 }
 
 .imuTemp {
     font-size: 0.8rem;
     color: var(--text-color-secondary);
+
     b {
         color: var(--text-color-primary);
+    }
+
+    @include breakpoint-mobile {
+        font-size: 0.75rem;
     }
 }
 
@@ -60,6 +93,10 @@
     background: var(--input-background-color);
     border-radius: 8px;
     animation: shimmer 1.5s infinite;
+
+    @include breakpoint-mobile {
+        height: 280px;
+    }
 }
 
 @keyframes shimmer {

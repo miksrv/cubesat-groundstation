@@ -6,6 +6,11 @@
     flex-direction: column;
     gap: 8px;
     min-height: 300px;
+
+    @include breakpoint-mobile {
+        padding: 12px;
+        min-height: 280px;
+    }
 }
 
 .title {
@@ -19,6 +24,10 @@
 .coords {
     display: flex;
     gap: 8px;
+
+    @include breakpoint-mobile {
+        gap: 6px;
+    }
 }
 
 .coord {
@@ -27,6 +36,7 @@
     padding: 8px;
     border-radius: 6px;
     text-align: center;
+    min-width: 0;
 
     span {
         display: block;
@@ -38,13 +48,33 @@
         display: block;
         font-size: 0.95rem;
         font-weight: 600;
-        color: var(--color-green)s;
+        color: var(--color-green);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @include breakpoint-mobile {
+        padding: 6px;
+
+        span {
+            font-size: 0.65rem;
+        }
+
+        b {
+            font-size: 0.85rem;
+        }
     }
 }
 
 .chart {
     height: 175px;
+    width: 100%;
+    min-width: 0;
     flex: 1;
+
+    @include breakpoint-mobile {
+        height: 150px;
+    }
 }
 
 .skeleton {
@@ -52,6 +82,10 @@
     background: var(--input-background-color);
     border-radius: 8px;
     animation: shimmer 1.5s infinite;
+
+    @include breakpoint-mobile {
+        height: 280px;
+    }
 }
 
 @keyframes shimmer {

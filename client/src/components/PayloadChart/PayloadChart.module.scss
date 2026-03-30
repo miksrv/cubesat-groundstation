@@ -2,6 +2,12 @@
 
 .panel {
     @include panel-card;
+    max-width: 100%;
+    overflow: hidden;
+
+    @include breakpoint-mobile {
+        padding: 12px;
+    }
 }
 
 .title {
@@ -15,6 +21,12 @@
 
 .chart {
     height: 230px;
+    width: 100%;
+    min-width: 0;
+
+    @include breakpoint-mobile {
+        height: 200px;
+    }
 }
 
 .skeleton {
@@ -22,6 +34,10 @@
     background: var(--input-background-color);
     border-radius: 6px;
     animation: shimmer 1.5s infinite;
+
+    @include breakpoint-mobile {
+        height: 200px;
+    }
 }
 
 @keyframes shimmer {
