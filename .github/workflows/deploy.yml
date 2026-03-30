@@ -79,7 +79,7 @@ jobs:
         run: |
           lftp -e "mkdir -f server" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "put -O /server .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "put -O /server .env.production" ${{ secrets.FTP_HOSTNAME }} || true
+          lftp -e "put -O /server env" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "put -O /server spark" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "rm -r /server/app" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "rm -r /server/vendor" ${{ secrets.FTP_HOSTNAME }} || true

@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Models\TelemetryModel;
+use App\Services\DemoDataService;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\RESTful\ResourceController;
 
@@ -46,6 +47,17 @@ class TelemetryController extends ResourceController
      */
     public function store()
     {
+        // In demo mode, acknowledge the POST without touching the database
+        if ($this->isDemoMode()) {
+            return $this->response
+                ->setStatusCode(200)
+                ->setContentType('application/json')
+                ->setJSON([
+                    'status'  => 'demo',
+                    'message' => 'Demo mode active, data not stored',
+                ]);
+        }
+
         // Validate API key from X-API-Key header
         $providedKey = $this->request->getHeaderLine('X-API-Key');
         $validKey    = getenv('api.telemetry.key');
@@ -213,6 +225,17 @@ class TelemetryController extends ResourceController
      */
     public function latest()
     {
+        if ($this->isDemoMode()) {
+            $svc    = new DemoDataService();
+            $now    = new \DateTime('now', new \DateTimeZone('UTC'));
+            $record = $svc->generateRecord($now, 1);
+
+            return $this->response
+                ->setStatusCode(200)
+                ->setContentType('application/json')
+                ->setJSON($record);
+        }
+
         $record = $this->model->getLatest();
 
         if ($record === null) {
@@ -245,6 +268,19 @@ class TelemetryController extends ResourceController
 
         if ($limit < 1 || $limit > 10000) {
             $limit = 100;
+        }
+
+        if ($this->isDemoMode()) {
+            $svc     = new DemoDataService();
+            $records = $svc->generateHistory($limit);
+
+            return $this->response
+                ->setStatusCode(200)
+                ->setContentType('application/json')
+                ->setJSON([
+                    'count'   => count($records),
+                    'records' => $records,
+                ]);
         }
 
         $records = $this->model->getHistory($limit);
@@ -298,6 +334,21 @@ class TelemetryController extends ResourceController
                 ]);
         }
 
+        if ($this->isDemoMode()) {
+            $svc     = new DemoDataService();
+            $records = $svc->generateRange($from, $to);
+
+            return $this->response
+                ->setStatusCode(200)
+                ->setContentType('application/json')
+                ->setJSON([
+                    'count'   => count($records),
+                    'from'    => $from,
+                    'to'      => $to,
+                    'records' => $records,
+                ]);
+        }
+
         $records = $this->model->getRange($from, $to);
         $formatted = array_map([$this, 'formatRecord'], $records);
 
@@ -310,5 +361,23 @@ class TelemetryController extends ResourceController
                 'to'      => $to,
                 'records' => $formatted,
             ]);
+    }
+
+    /**
+     * Determine whether demo mode is currently enabled.
+     *
+     * Reads the DEMO_MODE environment variable and treats "true" or "1"
+     * (case-insensitive) as enabled; anything else (including absence) is
+     * treated as disabled.
+     *
+     * @return bool
+     */
+    private function isDemoMode(): bool
+    {
+        $val = getenv('DEMO_MODE');
+        if ($val === false) {
+            return false;
+        }
+        return in_array(strtolower(trim($val)), ['true', '1'], true);
     }
 }

@@ -14,7 +14,7 @@
 # ENVIRONMENT
 #--------------------------------------------------------------------
 
-# CI_ENVIRONMENT = production
+CI_ENVIRONMENT = development
 
 #--------------------------------------------------------------------
 # APP
@@ -27,16 +27,33 @@
 # app.CSPEnabled = false
 
 #--------------------------------------------------------------------
+# DEMO MODE
+#--------------------------------------------------------------------
+
+# Set to true to serve simulated telemetry data without a real CubeSat or DB.
+# All four endpoints will return deterministic, time-seeded synthetic data.
+# POST /api/cubesat/telemetry will return 200 {"status":"demo"} without DB writes.
+DEMO_MODE = false
+
+#--------------------------------------------------------------------
+# API SECURITY
+#--------------------------------------------------------------------
+
+# CubeSat telemetry API key (required for POST /api/cubesat/telemetry)
+# Generate a secure random key for production use
+api.telemetry.key = your-secret-api-key-here-change-in-production
+
+#--------------------------------------------------------------------
 # DATABASE
 #--------------------------------------------------------------------
 
-# database.default.hostname = localhost
-# database.default.database = ci4
-# database.default.username = root
-# database.default.password = root
-# database.default.DBDriver = MySQLi
-# database.default.DBPrefix =
-# database.default.port = 3306
+database.default.hostname = localhost
+database.default.database =
+database.default.username =
+database.default.password =
+database.default.DBDriver = MySQLi
+database.default.DBPrefix =
+database.default.port = 3306
 
 # If you use MySQLi as tests, first update the values of Config\Database::$tests.
 # database.tests.hostname = localhost
@@ -54,14 +71,6 @@
 #--------------------------------------------------------------------
 
 # encryption.key =
-
-#--------------------------------------------------------------------
-# API SECURITY
-#--------------------------------------------------------------------
-
-# CubeSat telemetry API key (required for POST /api/cubesat/telemetry)
-# Generate a secure random key for production use
-api.telemetry.key = your-secret-api-key-here-change-in-production
 
 #--------------------------------------------------------------------
 # SESSION
