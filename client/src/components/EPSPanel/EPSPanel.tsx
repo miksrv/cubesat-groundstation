@@ -4,6 +4,7 @@ import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
+import { createChartTooltip, valueFormatters } from '../../styles/chartTooltip'
 
 import styles from './EPSPanel.module.scss'
 
@@ -116,15 +117,19 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             series: [
                 {
                     type: 'line',
+                    name: 'Voltage',
                     data: history.slice(-50).map((r) => [new Date(r.timestamp), r.voltage ?? 0]),
                     smooth: true,
                     lineStyle: { color: chartColors.blue[0], width: 1 },
-                    temStyle: { color: chartColors.blue[0] },
+                    itemStyle: { color: chartColors.blue[0] },
                     areaStyle: { color: `${chartColors.blue[0]}26` },
                     symbol: 'none'
                 }
             ],
-            tooltip: { trigger: 'axis' }
+            tooltip: createChartTooltip({
+                dateFormat: 'full',
+                valueFormatter: (v) => valueFormatters.voltage(v)
+            })
         }),
         [history]
     )

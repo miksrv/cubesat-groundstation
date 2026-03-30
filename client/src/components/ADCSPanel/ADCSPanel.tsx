@@ -4,6 +4,7 @@ import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
+import { createChartTooltip, valueFormatters } from '../../styles/chartTooltip'
 
 import styles from './ADCSPanel.module.scss'
 
@@ -95,7 +96,10 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                     smooth: true
                 }
             ],
-            tooltip: { trigger: 'axis' }
+            tooltip: createChartTooltip({
+                dateFormat: 'full',
+                valueFormatter: (v) => valueFormatters.degrees(v)
+            })
         }
     }, [history])
 
