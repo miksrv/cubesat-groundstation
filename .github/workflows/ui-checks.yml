@@ -50,22 +50,11 @@ jobs:
         run: npm run prettier:check
         working-directory: client
 
-      - name: Cache UI build
-        uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: client/.next
-          key: ${{ runner.os }}-build-${{ hashFiles('client/**/*.ts', 'client/**/*.tsx') }}
-          restore-keys: |
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
       - name: UI Unit Tests
         run: npm run test
         working-directory: client
 
-      - if: ${{ steps.cache-build.outputs.cache-hit != 'true' }}
-        name: Build UI
+      - name: Build UI
         run: |
           export dateNow=$(date +"%Y-%m-%dT%H:%M")
           echo "export const update = '$dateNow'" > update.ts
