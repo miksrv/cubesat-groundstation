@@ -89,7 +89,7 @@ const GPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
 
     return (
         <Container
-            title='🌍 GPS'
+            title='GPS — Position'
             className={styles.panel}
         >
             {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}

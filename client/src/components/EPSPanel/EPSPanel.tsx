@@ -80,7 +80,7 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
                     },
                     axisTick: { length: 8, lineStyle: { color: 'auto' } },
                     splitLine: { length: 14, lineStyle: { color: 'auto', width: 2 } },
-                    axisLabel: { distance: 12, color: '#94a3b8', fontSize: 7 },
+                    axisLabel: { distance: 12, color: '#3a3a3a', fontSize: 7 },
                     pointer: { width: 5, length: '60%', itemStyle: { color: batteryColor } },
                     detail: {
                         valueAnimation: true,
@@ -90,7 +90,7 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
                         offsetCenter: [0, '70%']
                     },
                     data: [{ value: battery, name: '' }],
-                    title: { offsetCenter: [0, '90%'], color: '#94a3b8', fontSize: 12 }
+                    title: { offsetCenter: [0, '90%'], color: '#3a3a3a', fontSize: 12 }
                 }
             ]
         }),
@@ -103,15 +103,15 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
             grid: { top: 10, right: 8, bottom: 22, left: 38 },
             xAxis: {
                 type: 'time',
-                axisLabel: { color: '#94a3b8', fontSize: 9 },
-                axisLine: { lineStyle: { color: '#2d3548', width: 1 } }
+                axisLabel: { color: '#3a3a3a', fontSize: 9 },
+                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)', width: 1 } }
             },
             yAxis: {
                 type: 'value',
                 name: '',
-                nameTextStyle: { color: '#94a3b8', fontSize: 9 },
-                axisLabel: { color: '#94a3b8', fontSize: 9 },
-                splitLine: { lineStyle: { color: '#2d3548', width: 1 } },
+                nameTextStyle: { color: '#3a3a3a', fontSize: 9 },
+                axisLabel: { color: '#3a3a3a', fontSize: 9 },
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)', width: 1 } },
                 scale: true
             },
             series: [
@@ -148,7 +148,7 @@ const EPSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
 
     return (
         <Container
-            title='⚡ EPS'
+            title='EPS — Power'
             className={styles.panel}
         >
             {showSkeleton && <Skeleton style={{ height: '220px', width: '100%' }} />}
