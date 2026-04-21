@@ -134,7 +134,7 @@ const OrbitMap: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
     if (showSkeleton) {
         return (
             <Container
-                title='🗺️ Orbit Map'
+                title='Orbit Track'
                 className={styles.panel}
             >
                 <Skeleton style={{ height: '300px', width: '100%' }} />
@@ -144,7 +144,7 @@ const OrbitMap: React.FC<Props> = React.memo(({ latest, history, isLoading }) =>
 
     return (
         <Container
-            title='🗺️ Orbit Map'
+            title='Orbit Track'
             className={styles.panel}
         >
             <div className={styles.mapWrapper}>

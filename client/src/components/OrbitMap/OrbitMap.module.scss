@@ -4,45 +4,86 @@
     @include panel-card;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 
     @include breakpoint-mobile {
-        padding: 12px;
+        padding: 10px;
     }
 }
 
 .mapWrapper {
-    border-radius: 8px;
+    border-radius: 3px;
     overflow: hidden;
     height: 280px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 
     @include breakpoint-mobile {
         height: 220px;
+    }
+
+    /* Leaflet zoom control — command center style */
+    :global {
+        .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: none !important;
+            margin: 10px !important;
+        }
+
+        .leaflet-bar {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .leaflet-bar a {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 24px !important;
+            height: 24px !important;
+            line-height: 1 !important;
+            background: rgba(8, 8, 8, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            color: #484848 !important;
+            font-family: var(--font-family-mono) !important;
+            font-size: 14px !important;
+            font-weight: 300 !important;
+            text-decoration: none !important;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+            backdrop-filter: blur(4px);
+        }
+
+        .leaflet-bar a:hover {
+            background: rgba(20, 20, 20, 0.96) !important;
+            color: #d4d4d4 !important;
+            border-color: rgba(255, 255, 255, 0.16) !important;
+        }
+
+        .leaflet-bar a:first-child {
+            border-radius: 3px 3px 0 0 !important;
+            border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+            margin-bottom: 0 !important;
+        }
+
+        .leaflet-bar a:last-child {
+            border-radius: 0 0 3px 3px !important;
+            border-top: none !important;
+        }
+
+        .leaflet-bar a.leaflet-disabled {
+            color: #222 !important;
+            border-color: rgba(255, 255, 255, 0.04) !important;
+            cursor: not-allowed !important;
+        }
     }
 }
 
 .map {
     width: 100%;
     height: 100%;
-    background: #0f172a;
+    background: #050505;
 
-    // Dark theme overrides for Leaflet
-    .leaflet-container {
-        background: #0f172a;
-    }
-
-    .leaflet-control-zoom {
-        border: none;
-
-        a {
-            background: var(--container-background-color);
-            color: var(--text-color-primary);
-            border: 1px solid var(--input-border-color);
-
-            &:hover {
-                background: var(--input-background-color);
-            }
-        }
+    :global(.leaflet-container) {
+        background: #050505;
     }
 }
 
@@ -65,15 +106,15 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: rgba(34, 197, 94, 0.3);
-    animation: pulse 2s ease-out infinite;
+    background: rgba(34, 197, 94, 0.2);
+    animation: pulse 2.5s ease-out infinite;
 }
 
 .satelliteCore {
     position: relative;
     font-size: 20px;
     z-index: 1;
-    filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.8));
+    filter: drop-shadow(0 0 3px rgba(34, 197, 94, 0.6));
 }
 
 @keyframes pulse {
@@ -82,20 +123,20 @@
         opacity: 1;
     }
     100% {
-        transform: scale(2);
+        transform: scale(2.2);
         opacity: 0;
     }
 }
 
 .tooltip {
-    background: var(--container-background-color) !important;
-    border: 1px solid var(--input-border-color) !important;
-    border-radius: 4px !important;
+    background: #0e0e0e !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 3px !important;
     padding: 4px 8px !important;
-    box-shadow: var(--container-shadow) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
 
     &::before {
-        border-top-color: var(--container-background-color) !important;
+        border-top-color: #0e0e0e !important;
     }
 }
 
@@ -103,6 +144,7 @@
     font-size: 11px;
     color: var(--text-color-primary);
     font-weight: 500;
+    font-family: var(--font-family-mono);
 }
 
 .info {
@@ -113,48 +155,51 @@
 
 .coords {
     display: flex;
-    gap: 8px;
+    gap: 6px;
 
     @include breakpoint-mobile {
-        gap: 6px;
+        gap: 4px;
     }
 }
 
 .coord {
     flex: 1;
-    background: var(--input-background-color);
-    padding: 8px;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 7px 6px;
+    border-radius: 3px;
     text-align: center;
     min-width: 0;
 
     span {
         display: block;
-        font-size: 0.65rem;
+        font-size: 0.58rem;
         color: var(--text-color-secondary);
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.1em;
+        margin-bottom: 2px;
     }
 
     b {
         display: block;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 600;
         color: var(--color-green);
+        font-family: var(--font-family-mono);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
     @include breakpoint-mobile {
-        padding: 6px;
+        padding: 6px 4px;
 
         span {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
         }
 
         b {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
     }
 }
@@ -163,35 +208,35 @@
     display: flex;
     justify-content: center;
     gap: 16px;
-    padding-top: 4px;
-    border-top: 1px solid var(--input-border-color);
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
     flex-wrap: wrap;
 
     @include breakpoint-mobile {
-        gap: 12px;
+        gap: 10px;
     }
 }
 
 .legendItem {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.7rem;
+    gap: 5px;
+    font-size: 0.65rem;
     color: var(--text-color-secondary);
 
     @include breakpoint-mobile {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
 }
 
 .legendLine {
-    width: 16px;
+    width: 14px;
     height: 0;
     border-top: 2px dashed;
 }
 
 .legendDot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
 }

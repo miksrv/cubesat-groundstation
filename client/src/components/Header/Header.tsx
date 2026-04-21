@@ -13,6 +13,14 @@ interface Props {
 
 const Header: React.FC<Props> = ({ latest, isLoading, isError }) => {
     const [countdown, setCountdown] = useState(30)
+    const [utcClock, setUtcClock] = useState('')
+
+    useEffect(() => {
+        const tick = () => setUtcClock(new Date().toUTCString().replace(' GMT', ' UTC').toUpperCase())
+        tick()
+        const interval = setInterval(tick, 1000)
+        return () => clearInterval(interval)
+    }, [])
 
     useEffect(() => {
         setCountdown(30)
@@ -37,26 +45,35 @@ const Header: React.FC<Props> = ({ latest, isLoading, isError }) => {
             case 'SAFE':
                 return styles.badgeSafe
             default:
-                return ''
+                return styles.badgeUnknown
         }
     }
 
     return (
         <header className={styles.header}>
-            <div className={styles.title}>
-                <span className={styles.icon}>🛰</span>
-                <h1>CubeSat Ground Station</h1>
+            <div className={styles.left}>
+                <span className={styles.logoMark}>◈</span>
+                <span className={styles.logoName}>CUBESAT</span>
+                <span className={styles.logoDivider}>/</span>
+                <span className={styles.logoSub}>GS</span>
+                <span className={styles.version}>v1.0</span>
             </div>
-            <div className={styles.status}>
+
+            <div className={styles.center}>
+                <span className={styles.utcClock}>{utcClock}</span>
+            </div>
+
+            <div className={styles.right}>
                 <Badge
                     label={obcState}
                     className={getBadgeClass(obcState)}
                 />
-                {latest && <span className={styles.ts}>{new Date(latest.timestamp).toLocaleTimeString()}</span>}
-                <span className={`${styles.dot} ${isError ? styles.dotError : styles.dotLive}`} />
+                <div className={`${styles.liveGroup} ${isError ? styles.liveGroupOffline : styles.liveGroupOnline}`}>
+                    <span className={`${styles.liveDot} ${isError ? styles.dotError : styles.dotLive}`} />
+                    <span className={styles.liveLabel}>{isError ? 'OFFLINE' : 'LIVE'}</span>
+                </div>
                 {!isError && <span className={styles.countdown}>↻ {countdown}s</span>}
-                {isLoading && <span className={styles.loading}>Syncing…</span>}
-                {isError && <span className={styles.errorText}>API Offline</span>}
+                {isLoading && <span className={styles.syncing}>SYNC</span>}
             </div>
         </header>
     )
