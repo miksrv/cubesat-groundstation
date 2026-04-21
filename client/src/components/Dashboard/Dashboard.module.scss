@@ -7,64 +7,66 @@
 }
 
 .errorBanner {
-    background: rgba(239, 68, 68, 0.15);
-    border-bottom: 1px solid var(--color-red);
+    background: rgba(239, 68, 68, 0.08);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.25);
     color: var(--color-red);
-    padding: 8px 20px;
-    font-size: 0.85rem;
+    padding: 7px 20px;
+    font-size: 0.72rem;
     text-align: center;
+    letter-spacing: 0.08em;
+    font-weight: 500;
 }
 
 .grid {
-    padding: 16px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     max-width: 100%;
     overflow-x: hidden;
 
     @include breakpoint-mobile {
         padding: 8px;
-        gap: 12px;
+        gap: 8px;
     }
 }
 
 .row1 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 12px;
 
     @include breakpoint-tablet {
         grid-template-columns: repeat(2, 1fr);
     }
     @include breakpoint-mobile {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 8px;
     }
 }
 
 .row2 {
     display: grid;
     grid-template-columns: 2.04fr 1fr;
-    gap: 16px;
+    gap: 12px;
 
     @include breakpoint-tablet {
         grid-template-columns: 1fr 1fr;
     }
     @include breakpoint-mobile {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 8px;
     }
 }
 
 .row3 {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    gap: 12px;
 
     @include breakpoint-mobile {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 8px;
     }
 }
 
