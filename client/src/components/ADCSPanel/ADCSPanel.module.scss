@@ -8,59 +8,56 @@
     min-height: 300px;
 
     @include breakpoint-mobile {
-        padding: 12px;
+        padding: 10px;
         min-height: 280px;
     }
 }
 
-.title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
 .orientation {
     display: flex;
-    gap: 8px;
+    gap: 6px;
 
     @include breakpoint-mobile {
-        gap: 6px;
+        gap: 4px;
     }
 }
 
 .metric {
     flex: 1;
-    background: var(--input-background-color);
-    padding: 8px;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 6px;
+    border-radius: 3px;
     text-align: center;
     min-width: 0;
 
     @include breakpoint-mobile {
-        padding: 6px;
+        padding: 6px 4px;
     }
 }
 
 .label {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.58rem;
     color: var(--text-color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 3px;
 
     @include breakpoint-mobile {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 }
 
 .value {
     display: block;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--color-main);
+    font-family: var(--font-family-mono);
 
     @include breakpoint-mobile {
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
 }
 
@@ -76,35 +73,17 @@
 }
 
 .imuTemp {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     color: var(--text-color-secondary);
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
 
     b {
         color: var(--text-color-primary);
+        font-family: var(--font-family-mono);
     }
 
     @include breakpoint-mobile {
-        font-size: 0.75rem;
-    }
-}
-
-.skeleton {
-    height: 300px;
-    background: var(--input-background-color);
-    border-radius: 8px;
-    animation: shimmer 1.5s infinite;
-
-    @include breakpoint-mobile {
-        height: 280px;
-    }
-}
-
-@keyframes shimmer {
-    0%,
-    100% {
-        opacity: 0.6;
-    }
-    50% {
-        opacity: 1;
+        font-size: 0.68rem;
     }
 }

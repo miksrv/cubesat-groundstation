@@ -52,19 +52,19 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
                 orient: 'horizontal',
                 itemWidth: 20,
                 itemHeight: 2,
-                textStyle: { color: '#94a3b8', fontSize: 9 },
+                textStyle: { color: '#3a3a3a', fontSize: 9 },
                 top: 0
             },
             grid: { top: 28, right: 8, bottom: 22, left: 42 },
             xAxis: {
                 type: 'time',
-                axisLabel: { color: '#94a3b8', fontSize: 9 },
+                axisLabel: { color: '#3a3a3a', fontSize: 9 },
                 axisLine: { lineStyle: { color: '#2d3548' } },
                 scale: true
             },
             yAxis: {
                 type: 'value',
-                axisLabel: { color: '#94a3b8', fontSize: 9 },
+                axisLabel: { color: '#3a3a3a', fontSize: 9 },
                 splitLine: { lineStyle: { color: '#2d3548' } }
             },
             series: [
@@ -111,7 +111,7 @@ const ADCSPanel: React.FC<Props> = React.memo(({ latest, history, isLoading }) =
 
     return (
         <Container
-            title='🧭 ADCS'
+            title='ADCS — Attitude'
             className={styles.panel}
         >
             {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}

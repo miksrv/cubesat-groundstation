@@ -285,7 +285,7 @@ const AttitudeIndicator: React.FC<Props> = React.memo(({ latest, isLoading }) =>
 
     return (
         <Container
-            title='🛰️ Attitude 3D'
+            title='Attitude — 3D View'
             className={styles.panel}
         >
             {showSkeleton && <Skeleton style={{ height: '280px', width: '100%' }} />}
