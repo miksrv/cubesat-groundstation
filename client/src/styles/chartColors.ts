@@ -1,49 +1,39 @@
 /**
  * Chart Color Palette for ECharts
- * Space/Cosmic Theme for CubeSat Ground Station
- *
- * Each color has two variants:
- * - [0]: Primary color
- * - [1]: Secondary/hover color
- *
- * Usage: chartColors.blue[0] for primary, chartColors.blue[1] for secondary
+ * Command Center Theme — muted operational colors
  */
 export const chartColors = {
-    // Deep space blues
-    deepSpace: ['#0f172a', '#1e293b'],
-    nebula: ['#312e81', '#4338ca'],
+    // Operational signal colors
+    signal: ['#22c55e', '#4ade80'],
+    warning: ['#f59e0b', '#fbbf24'],
+    critical: ['#ef4444', '#f87171'],
+    inactive: ['#333333', '#444444'],
 
-    // Cosmic accent colors
-    plasma: ['#06b6d4', '#22d3ee'],
-    aurora: ['#10b981', '#34d399'],
+    // Telemetry data palette
+    cyan: ['#00b8d9', '#00d4f5'],
+    green: ['#22c55e', '#4ade80'],
+    amber: ['#f59e0b', '#fbbf24'],
+    red: ['#ef4444', '#f87171'],
+    blue: ['#3b82f6', '#60a5fa'],
+    purple: ['#8b5cf6', '#a78bfa'],
+    teal: ['#14b8a6', '#2dd4bf'],
+    orange: ['#f97316', '#fb923c'],
+    pink: ['#ec4899', '#f472b6'],
+    lime: ['#84cc16', '#a3e635'],
+
+    // Legacy aliases
+    plasma: ['#00b8d9', '#22d3ee'],
+    aurora: ['#22c55e', '#4ade80'],
     stellar: ['#3b82f6', '#60a5fa'],
     cosmic: ['#8b5cf6', '#a78bfa'],
-    nova: ['#f43f5e', '#fb7185'],
+    nova: ['#ef4444', '#f87171'],
     solar: ['#f59e0b', '#fbbf24'],
 
-    // Signal/Data indicators
-    signal: ['#22c55e', '#4ade80'],
-    warning: ['#eab308', '#facc15'],
-    critical: ['#ef4444', '#f87171'],
-    inactive: ['#64748b', '#94a3b8'],
-
-    // Primary UI colors
-    blue: ['#3b82f6', '#60a5fa'],
-    cyan: ['#06b6d4', '#22d3ee'],
-    teal: ['#14b8a6', '#2dd4bf'],
-    green: ['#22c55e', '#4ade80'],
-    lime: ['#84cc16', '#a3e635'],
-    yellow: ['#eab308', '#facc15'],
-    orange: ['#f97316', '#fb923c'],
-    red: ['#ef4444', '#f87171'],
-    pink: ['#ec4899', '#f472b6'],
-    magenta: ['#d946ef', '#e879f9'],
-    purple: ['#a855f7', '#c084fc'],
-    violet: ['#8b5cf6', '#a78bfa'],
-
-    // Neutral tones
-    slate: ['#475569', '#64748b'],
-    grey: ['#6b7280', '#9ca3af']
+    // Neutral
+    slate: ['#334155', '#475569'],
+    grey: ['#2a2a2a', '#3a3a3a'],
+    deepSpace: ['#0a0a0a', '#111111'],
+    nebula: ['#1a1a2e', '#16213e']
 } as const
 
 export type ChartColorKey = keyof typeof chartColors

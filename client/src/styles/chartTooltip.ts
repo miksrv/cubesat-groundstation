@@ -38,44 +38,48 @@ export const formatTooltipDate = (date: Date | number, format: 'full' | 'time' |
  */
 const tooltipStyles = {
     container: `
-        font-family: 'Inter', -apple-system, system-ui, sans-serif;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
         padding: 4px 2px;
         min-width: 140px;
     `,
     title: `
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
-        color: #e2e8f0;
-        margin-bottom: 8px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid #334155;
+        color: #888;
+        margin-bottom: 6px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        letter-spacing: 0.04em;
     `,
     item: `
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin: 4px 0;
+        margin: 3px 0;
         font-size: 11px;
     `,
     icon: `
         display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 2px;
+        width: 7px;
+        height: 7px;
+        border-radius: 1px;
         margin-right: 6px;
         flex-shrink: 0;
     `,
     label: `
-        color: #94a3b8;
+        color: #484848;
         display: flex;
         align-items: center;
         flex: 1;
+        font-size: 10px;
+        letter-spacing: 0.04em;
     `,
     value: `
-        color: #e2e8f0;
+        color: #d4d4d4;
         font-weight: 500;
-        margin-left: 12px;
+        margin-left: 10px;
         font-variant-numeric: tabular-nums;
+        font-size: 11px;
     `
 }
 
@@ -100,19 +104,19 @@ export const createChartTooltip = (options?: {
 
     return {
         trigger: 'axis',
-        backgroundColor: '#1e293b',
-        borderColor: '#334155',
+        backgroundColor: '#0a0a0a',
+        borderColor: 'rgba(255,255,255,0.1)',
         borderWidth: 1,
         padding: [8, 12],
         textStyle: {
-            color: '#e2e8f0',
+            color: '#d4d4d4',
             fontSize: 11
         },
         axisPointer: {
             type: 'cross',
             label: {
-                backgroundColor: '#334155',
-                color: '#e2e8f0',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                color: '#888',
                 fontSize: 10,
                 formatter: (params: { axisDimension?: string; value?: number }) => {
                     if (params?.axisDimension === 'x' && params?.value) {
@@ -122,11 +126,11 @@ export const createChartTooltip = (options?: {
                 }
             },
             lineStyle: {
-                color: '#475569',
+                color: 'rgba(255,255,255,0.15)',
                 type: 'dashed'
             },
             crossStyle: {
-                color: '#475569'
+                color: 'rgba(255,255,255,0.15)'
             }
         },
         formatter: (params: TooltipParam | TooltipParam[]) => {

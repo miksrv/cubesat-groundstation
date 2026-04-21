@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 *,
 *::before,
 *::after {
@@ -9,7 +11,7 @@
 body {
     background: var(--body-background);
     color: var(--text-color-primary);
-    font-family: var(--font-family), serif;
+    font-family: var(--font-family), sans-serif;
     line-height: 1.5;
     font-size: var(--font-size);
     letter-spacing: var(--letter-spacing);
@@ -17,134 +19,145 @@ body {
 }
 
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
+    height: 4px;
 }
 ::-webkit-scrollbar-track {
-    background: var(--body-background);
+    background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: var(--input-border-color);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+/* Override Container panel header + title */
+[class*='styles-module_container__'] [class*='styles-module_header__'] {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 10px;
+    margin: -5px 0 10px 0;
+}
+
+[class*='styles-module_container__'] [class*='styles-module_title__'] {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.14em !important;
+    color: var(--text-color-secondary) !important;
+    line-height: 1.2 !important;
 }
 
 :root[data-theme='dark'] {
-    --letter-spacing: 0.00938em;
-    --width-max: 1000px;
-    --width-menu: 280px;
+    --letter-spacing: 0.01em;
+    --width-max: 1400px;
+    --width-menu: 260px;
 
-    /* ========================================
-       🌌 COSMIC DARK THEME - CubeSat Ground Station
-       Deep space aesthetic with aurora accents
-       ======================================== */
+    /* ================================================
+       COMMAND CENTER THEME — CubeSat Ground Station
+       Near-black UI · minimal chrome · ops-green accent
+       ================================================ */
 
-    /* Links - Stellar Blue */
-    --link-color: #60a5fa;
-    --link-color-hover: #93c5fd;
-    --link-color-active: #3b82f6;
+    /* Links */
+    --link-color: #22c55e;
+    --link-color-hover: #4ade80;
+    --link-color-active: #16a34a;
 
-    /* Element Heights for `size` props */
+    /* Element Heights */
     --size-small: 24px;
     --size-medium: 28px;
     --size-large: 32px;
 
-    /* Primary Colors - Space-inspired palette */
-    --color-contrast: #020617;
+    --color-contrast: #000000;
 
-    /* Aurora Green - Status OK, Telemetry Active */
+    /* Operational Green */
     --color-green: #22c55e;
     --color-green-hover: #16a34a;
     --color-green-active: #15803d;
-    --color-green-background: rgba(34, 197, 94, 0.15);
+    --color-green-background: rgba(34, 197, 94, 0.1);
 
-    /* Solar Orange - Warnings, Power Indicators */
-    --color-orange: #f97316;
-    --color-orange-hover: #ea580c;
-    --color-orange-active: #c2410c;
-    --color-orange-background: rgba(249, 115, 22, 0.15);
+    /* Warning Amber */
+    --color-orange: #f59e0b;
+    --color-orange-hover: #d97706;
+    --color-orange-active: #b45309;
+    --color-orange-background: rgba(245, 158, 11, 0.1);
 
-    /* Nova Red - Alerts, Critical Status */
+    /* Critical Red */
     --color-red: #ef4444;
     --color-red-hover: #dc2626;
     --color-red-active: #b91c1c;
-    --color-red-background: rgba(239, 68, 68, 0.15);
+    --color-red-background: rgba(239, 68, 68, 0.1);
 
-    /* Plasma Cyan - Primary Actions */
-    --color-main: #06b6d4;
-    --color-main-hover: #0891b2;
-    --color-main-active: #0e7490;
-    --color-main-background: rgba(6, 182, 212, 0.15);
+    /* Telemetry Cyan */
+    --color-main: #00b8d9;
+    --color-main-hover: #009ab8;
+    --color-main-active: #007a92;
+    --color-main-background: rgba(0, 184, 217, 0.1);
 
-    /* Text and Typography */
-    --font-size: 14px;
-    --font-size-small: 12px;
-    --font-family: 'Inter', -apple-system, system-ui, 'Helvetica Neue', Roboto, sans-serif;
-    --text-color-primary: #e2e8f0;
-    --text-color-secondary: #94a3b8;
-    --text-color-secondary-hover: #cbd5e1;
+    /* Typography */
+    --font-size: 13px;
+    --font-size-small: 11px;
+    --font-family: 'Inter', -apple-system, system-ui, 'Helvetica Neue', sans-serif;
+    --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --text-color-primary: #d4d4d4;
+    --text-color-secondary: #636363;
+    --text-color-secondary-hover: #888888;
 
-    /* Layout and Containers - Deep Space */
-    --border-radius: 8px;
-    --body-background: #0f172a;
-    --modal-background: #020617;
-    --overlay-background: rgba(2, 6, 23, 0.8);
-    --container-shadow: 0 0 0 1px rgba(148, 163, 184, 0.1), 0 4px 24px rgba(0, 0, 0, 0.4);
-    --container-background-color: #1e293b;
-    --container-error-background-color: rgba(239, 68, 68, 0.1);
+    /* Near-black backgrounds (no blue tint) */
+    --border-radius: 4px;
+    --body-background: #060606;
+    --modal-background: #020202;
+    --overlay-background: rgba(0, 0, 0, 0.9);
+    --container-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --container-background-color: #0c0c0c;
+    --container-error-background-color: rgba(239, 68, 68, 0.08);
     --container-error-color: var(--color-red);
-    --container-success-background-color: rgba(34, 197, 94, 0.1);
+    --container-success-background-color: rgba(34, 197, 94, 0.08);
     --container-success-color: var(--color-green);
 
-    /* Glow effects for cosmic feel */
-    --glow-primary: 0 0 20px rgba(6, 182, 212, 0.3);
-    --glow-success: 0 0 20px rgba(34, 197, 94, 0.3);
-    --glow-warning: 0 0 20px rgba(249, 115, 22, 0.3);
-    --glow-danger: 0 0 20px rgba(239, 68, 68, 0.3);
-
-    /* Input Fields and Dropdowns - Space Console */
-    --dropdown-background-color: #1e293b;
-    --dropdown-background-color-hover: #334155;
-    --dropdown-badge-background-color: #06b6d4;
-    --input-background-color: #0f172a;
-    --input-label-color: #94a3b8;
-    --input-border-color: #334155;
+    /* Input / Dropdowns */
+    --dropdown-background-color: #111111;
+    --dropdown-background-color-hover: #191919;
+    --dropdown-badge-background-color: #22c55e;
+    --input-background-color: #080808;
+    --input-label-color: #444;
+    --input-border-color: rgba(255, 255, 255, 0.07);
     --input-border: 1px solid var(--input-border-color);
     --input-border-focus-color: var(--color-main);
 
-    /* Buttons - Mission Control */
+    /* Buttons */
     --button-font-weight: 500;
     --button-default-color: var(--text-color-primary);
     --button-default-background: transparent;
-    --button-default-background-hover: rgba(148, 163, 184, 0.1);
-    --button-default-background-active: rgba(148, 163, 184, 0.15);
+    --button-default-background-hover: rgba(255, 255, 255, 0.05);
+    --button-default-background-active: rgba(255, 255, 255, 0.08);
 
-    --button-primary-color: #020617;
-    --button-primary-background: #06b6d4;
-    --button-primary-background-hover: #22d3ee;
-    --button-primary-background-active: #0891b2;
+    --button-primary-color: #000000;
+    --button-primary-background: #22c55e;
+    --button-primary-background-hover: #16a34a;
+    --button-primary-background-active: #15803d;
 
-    --button-secondary-background: rgba(6, 182, 212, 0.15);
-    --button-secondary-background-hover: rgba(6, 182, 212, 0.25);
-    --button-secondary-background-active: rgba(6, 182, 212, 0.35);
-    --button-secondary-color: #22d3ee;
-    --button-secondary-color-hover: #67e8f9;
-    --button-secondary-color-active: #06b6d4;
+    --button-secondary-background: rgba(34, 197, 94, 0.1);
+    --button-secondary-background-hover: rgba(34, 197, 94, 0.18);
+    --button-secondary-background-active: rgba(34, 197, 94, 0.25);
+    --button-secondary-color: #22c55e;
+    --button-secondary-color-hover: #4ade80;
+    --button-secondary-color-active: #16a34a;
 
-    /* Popout - Floating Panels */
-    --popout-shadow: 0 0 0 1px rgba(148, 163, 184, 0.1), 0 8px 32px rgba(0, 0, 0, 0.5);
+    /* Popout */
+    --popout-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 8px 32px rgba(0, 0, 0, 0.8);
 
-    /* Table - Data Grid */
-    --table-header-background: #1e293b;
-    --table-header-background-hover: #334155;
-    --table-border-color: #334155;
-    --table-row-box-shadow: inset 0 -1px var(--table-border-color);
+    /* Table */
+    --table-header-background: #080808;
+    --table-header-background-hover: #111111;
+    --table-border-color: rgba(255, 255, 255, 0.05);
+    --table-row-box-shadow: inset 0 -1px rgba(255, 255, 255, 0.04);
 
     /* Skeleton Loading */
-    --skeleton-background-animation: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.08), transparent);
+    --skeleton-background-animation: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.025), transparent);
 
-    /* Status Indicators for Telemetry */
+    /* Operational Status */
     --status-online: #22c55e;
-    --status-offline: #64748b;
-    --status-warning: #f97316;
+    --status-offline: #1c1c1c;
+    --status-warning: #f59e0b;
     --status-critical: #ef4444;
-    --status-transmitting: #06b6d4;
+    --status-transmitting: #00b8d9;
 }
