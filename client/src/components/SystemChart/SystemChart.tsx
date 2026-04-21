@@ -116,7 +116,7 @@ const SystemChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
 
     return (
         <Container
-            title='💻 System'
+            title='System — Resources'
             className={styles.panel}
         >
             {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}

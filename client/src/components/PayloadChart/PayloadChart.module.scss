@@ -6,17 +6,8 @@
     overflow: hidden;
 
     @include breakpoint-mobile {
-        padding: 12px;
+        padding: 10px;
     }
-}
-
-.title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
 }
 
 .chart {
@@ -26,26 +17,5 @@
 
     @include breakpoint-mobile {
         height: 200px;
-    }
-}
-
-.skeleton {
-    height: 230px;
-    background: var(--input-background-color);
-    border-radius: 6px;
-    animation: shimmer 1.5s infinite;
-
-    @include breakpoint-mobile {
-        height: 200px;
-    }
-}
-
-@keyframes shimmer {
-    0%,
-    100% {
-        opacity: 0.6;
-    }
-    50% {
-        opacity: 1;
     }
 }

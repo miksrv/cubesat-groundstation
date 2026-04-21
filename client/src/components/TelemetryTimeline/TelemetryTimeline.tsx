@@ -44,7 +44,7 @@ const TelemetryTimeline: React.FC<Props> = ({ history, isLoading }) => {
 
     return (
         <Container
-            title='📋 Telemetry Timeline'
+            title='Telemetry — Log'
             className={styles.panel}
         >
             <div className={styles.tableWrapper}>

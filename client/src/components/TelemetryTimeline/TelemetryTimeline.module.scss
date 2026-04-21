@@ -4,17 +4,8 @@
     @include panel-card;
 
     @include breakpoint-mobile {
-        padding: 12px;
+        padding: 10px;
     }
-}
-
-.title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
 }
 
 .tableWrapper {
@@ -31,32 +22,42 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     white-space: nowrap;
     min-width: 600px;
 
     th {
-        background: var(--input-background-color);
+        background: #080808;
         color: var(--text-color-secondary);
         padding: 8px 12px;
         text-align: left;
         position: sticky;
         top: 0;
-        font-weight: 500;
-        font-size: 0.72rem;
+        font-weight: 600;
+        font-size: 0.6rem;
         text-transform: uppercase;
+        letter-spacing: 0.1em;
         z-index: 1;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
         @include breakpoint-mobile {
             padding: 6px 8px;
-            font-size: 0.68rem;
+            font-size: 0.58rem;
         }
     }
 
     td {
         padding: 6px 12px;
-        border-bottom: 1px solid var(--input-border-color);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         color: var(--text-color-primary);
+        font-family: var(--font-family-mono);
+        font-size: 0.7rem;
+
+        &:first-child {
+            font-family: var(--font-family);
+            font-size: 0.72rem;
+            color: var(--text-color-secondary);
+        }
 
         @include breakpoint-mobile {
             padding: 5px 8px;
@@ -64,63 +65,57 @@
     }
 
     tbody tr:hover {
-        background: var(--input-background-color);
+        background: rgba(255, 255, 255, 0.02);
     }
 
     @include breakpoint-mobile {
-        font-size: 0.72rem;
+        font-size: 0.68rem;
     }
 }
 
 .badge {
-    padding: 2px 6px;
-    border-radius: 3px;
-    color: #fff;
-    font-size: 0.7rem;
-    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
 }
 
-// OBC State Badge variants
 .badgeNominal {
-    background: var(--color-green) !important;
+    background: rgba(34, 197, 94, 0.12) !important;
+    color: var(--color-green) !important;
+    border: 1px solid rgba(34, 197, 94, 0.25) !important;
 }
 
 .badgeBoot,
 .badgeDeploy {
-    background: var(--text-color-secondary) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #555 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .badgeScience {
-    background: var(--color-main) !important;
+    background: rgba(0, 184, 217, 0.1) !important;
+    color: var(--color-main) !important;
+    border: 1px solid rgba(0, 184, 217, 0.22) !important;
 }
 
 .badgeLowPower {
-    background: var(--color-orange) !important;
+    background: rgba(245, 158, 11, 0.1) !important;
+    color: var(--color-orange) !important;
+    border: 1px solid rgba(245, 158, 11, 0.22) !important;
 }
 
 .badgeSafe {
-    background: var(--color-red) !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: var(--color-red) !important;
+    border: 1px solid rgba(239, 68, 68, 0.22) !important;
 }
 
 .empty {
     text-align: center;
     padding: 40px;
     color: var(--text-color-secondary);
-}
-
-.skeleton {
-    height: 200px;
-    background: var(--input-background-color);
-    border-radius: 6px;
-    animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-    0%,
-    100% {
-        opacity: 0.6;
-    }
-    50% {
-        opacity: 1;
-    }
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
 }

@@ -51,13 +51,13 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
                 orient: 'horizontal',
                 itemWidth: 20,
                 itemHeight: 2,
-                textStyle: { color: '#94a3b8', fontSize: 12 },
+                textStyle: { color: '#3a3a3a', fontSize: 12 },
                 top: 0
             },
             grid: { top: 32, right: 55, bottom: 28, left: 45 },
             xAxis: {
                 type: 'time',
-                axisLabel: { color: '#94a3b8', fontSize: 10 },
+                axisLabel: { color: '#3a3a3a', fontSize: 10 },
                 axisLine: { lineStyle: { color: '#2d3548' } }
             },
             yAxis: [
@@ -137,7 +137,7 @@ const PayloadChart: React.FC<Props> = React.memo(({ history, isLoading }) => {
 
     return (
         <Container
-            title='🌡 Payload'
+            title='Payload — Sensors'
             className={styles.panel}
         >
             {showSkeleton && <Skeleton style={{ height: '200px', width: '100%' }} />}
