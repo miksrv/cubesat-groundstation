@@ -21,6 +21,9 @@ coverage/
 # Rollup
 rollup.config.js
 
+.pnp.cjs
+.pnp.loader.mjs
+
 # NextJS
 .next/
 next-env.d.ts
