@@ -40,6 +40,8 @@ export default defineConfig([
 
             // WebPack
             // '**/webpack.config.js',
+            '**/.pnp.cjs',
+            '**/.pnp.loader.mjs',
 
             // RollUp
             '**/rollup.config.js',
