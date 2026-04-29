@@ -49,14 +49,19 @@ const Header: React.FC<Props> = ({ latest, isLoading, isError }) => {
         }
     }
 
+    const utcTime = utcClock.split(' ').slice(-2).join(' ')
+
     return (
         <header className={styles.header}>
             <div className={styles.left}>
-                <span className={styles.logoMark}>◈</span>
-                <span className={styles.logoName}>CUBESAT</span>
-                <span className={styles.logoDivider}>/</span>
-                <span className={styles.logoSub}>GS</span>
-                <span className={styles.version}>v1.0</span>
+                <div className={styles.logoRow}>
+                    <span className={styles.logoMark}>◈</span>
+                    <span className={styles.logoName}>CUBESAT</span>
+                    <span className={styles.logoDivider}>/</span>
+                    <span className={styles.logoSub}>GS</span>
+                    <span className={styles.version}>v1.0</span>
+                </div>
+                <span className={styles.utcMobile}>{utcTime}</span>
             </div>
 
             <div className={styles.center}>
