@@ -117,29 +117,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'yarn'
+          cache-dependency-path: 'client/yarn.lock'
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: cache-npm
-        with:
-          path: |
-            client/node_modules
-            ~/.npm
-          key: ${{ runner.os }}-modules-${{ hashFiles('client/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-modules-
-            ${{ runner.os }}-
-
-      - if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
-        name: Install dependencies
+      - name: Install dependencies
         working-directory: client
-        run: npm install
+        run: yarn install --immutable
 
       - name: Build UI
         run: |
           export dateNow=$(date +"%Y-%m-%dT%H:%M")
           echo "export const update = '$dateNow'" > update.ts
-          npm run build
+          yarn build
         working-directory: client
 
       - name: Install LFTP
