@@ -1,0 +1,43 @@
+.panel {
+    height: 100%;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.miniChart {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.miniHeader {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.miniTitle {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-color-secondary);
+}
+
+.miniValue {
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: var(--font-family-mono);
+    white-space: nowrap;
+}
+
+.miniCanvas {
+    height: 110px;
+    width: 100%;
+}
