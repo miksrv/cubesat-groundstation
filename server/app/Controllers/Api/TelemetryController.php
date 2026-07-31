@@ -2,8 +2,10 @@
 
 namespace App\Controllers\Api;
 
+use App\Models\EventModel;
 use App\Models\TelemetryModel;
 use App\Services\DemoDataService;
+use App\Services\DemoStateService;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\RESTful\ResourceController;
 
@@ -102,8 +104,13 @@ class TelemetryController extends ResourceController
         $adcs    = $payload['adcs']    ?? [];
         $pld     = $payload['payload'] ?? [];
         $sys     = $payload['system']  ?? [];
+        $thermal = $payload['thermal'] ?? [];
+        $comms   = $payload['comms']   ?? [];
         $obc     = $payload['obc']     ?? [];
         $gps     = $payload['gps']     ?? [];
+
+        $previousState = $this->model->getLatest()['obc_state'] ?? null;
+        $newState      = $payload['obc_state'] ?? null;
 
         $data = [
             'timestamp'      => $payload['timestamp'],
@@ -111,6 +118,7 @@ class TelemetryController extends ResourceController
             'battery'        => $eps['battery']        ?? null,
             'voltage'        => $eps['voltage']         ?? null,
             'external_power' => isset($eps['external_power']) ? (int) $eps['external_power'] : null,
+            'battery_current'=> $eps['current']        ?? null,
             // ADCS
             'roll'           => $adcs['roll']           ?? null,
             'pitch'          => $adcs['pitch']          ?? null,
@@ -123,9 +131,15 @@ class TelemetryController extends ResourceController
             'gyro_y'         => $adcs['gyro_dps']['y']  ?? null,
             'gyro_z'         => $adcs['gyro_dps']['z']  ?? null,
             // Payload
-            'temperature'    => $pld['temperature']     ?? null,
-            'humidity'       => $pld['humidity']        ?? null,
-            'pressure'       => $pld['pressure']        ?? null,
+            'temperature'         => $pld['temperature']      ?? null,
+            'humidity'            => $pld['humidity']         ?? null,
+            'pressure'            => $pld['pressure']         ?? null,
+            'camera_status'       => $pld['camera_status']    ?? null,
+            'image_count'         => $pld['image_count']      ?? null,
+            'image_resolution'    => $pld['image_resolution'] ?? null,
+            'sensor_status'       => $pld['sensor_status']    ?? null,
+            'science_mode'        => isset($pld['science_mode']) ? (int) $pld['science_mode'] : null,
+            'payload_power_watts' => $pld['power_watts']      ?? null,
             // System
             'cpu_percent'    => $sys['cpu_percent']     ?? null,
             'ram_percent'    => $sys['ram_percent']     ?? null,
@@ -133,12 +147,26 @@ class TelemetryController extends ResourceController
             'disk_percent'   => $sys['disk_percent']    ?? null,
             'uptime_seconds' => $sys['uptime_seconds']  ?? null,
             'cpu_temperature'=> $sys['cpu_temperature'] ?? null,
+            'boot_count'     => $sys['boot_count']      ?? null,
+            // Thermal
+            'obc_temperature'     => $thermal['obc_temperature']     ?? null,
+            'eps_temperature'     => $thermal['eps_temperature']     ?? null,
+            'battery_temperature' => $thermal['battery_temperature'] ?? null,
+            'payload_temperature' => $thermal['payload_temperature'] ?? null,
+            // Comms
+            'rssi'             => $comms['rssi']             ?? null,
+            'snr'              => $comms['snr']              ?? null,
+            'uplink_bps'       => $comms['uplink_bps']       ?? null,
+            'downlink_bps'     => $comms['downlink_bps']     ?? null,
+            'latency_ms'       => $comms['latency_ms']       ?? null,
+            'packet_loss_pct'  => $comms['packet_loss_pct']  ?? null,
 
-            'obc_state'      => $payload['obc_state']   ?? null,
+            'obc_state'      => $newState,
             // GPS
             'latitude'       => $gps['latitude']        ?? null,
             'longitude'      => $gps['longitude']       ?? null,
             'altitude'       => $gps['altitude']        ?? null,
+            'speed_kms'      => $gps['speed_kms']       ?? null,
             // Raw backup
             'raw_json'       => $body,
         ];
@@ -150,6 +178,10 @@ class TelemetryController extends ResourceController
                 ->setStatusCode(500)
                 ->setContentType('application/json')
                 ->setJSON(['error' => 'Failed to save telemetry data']);
+        }
+
+        if ($newState !== null && $newState !== $previousState) {
+            (new EventModel())->logStateTransition($previousState, $newState, $payload['timestamp']);
         }
 
         return $this->response
@@ -180,6 +212,7 @@ class TelemetryController extends ResourceController
             'battery'         => $row['battery'] !== null ? (float) $row['battery'] : null,
             'voltage'         => $row['voltage'] !== null ? (float) $row['voltage'] : null,
             'external_power'  => $row['external_power'] !== null ? (int) $row['external_power'] : null,
+            'battery_current' => $row['battery_current'] !== null ? (float) $row['battery_current'] : null,
             // ADCS
             'roll'            => $row['roll'] !== null ? (float) $row['roll'] : null,
             'pitch'           => $row['pitch'] !== null ? (float) $row['pitch'] : null,
@@ -192,9 +225,15 @@ class TelemetryController extends ResourceController
             'gyro_y'          => $row['gyro_y'] !== null ? (float) $row['gyro_y'] : null,
             'gyro_z'          => $row['gyro_z'] !== null ? (float) $row['gyro_z'] : null,
             // Payload
-            'temperature'     => $row['temperature'] !== null ? (float) $row['temperature'] : null,
-            'humidity'        => $row['humidity'] !== null ? (float) $row['humidity'] : null,
-            'pressure'        => $row['pressure'] !== null ? (float) $row['pressure'] : null,
+            'temperature'         => $row['temperature'] !== null ? (float) $row['temperature'] : null,
+            'humidity'            => $row['humidity'] !== null ? (float) $row['humidity'] : null,
+            'pressure'            => $row['pressure'] !== null ? (float) $row['pressure'] : null,
+            'camera_status'       => $row['camera_status'] ?? null,
+            'image_count'         => $row['image_count'] !== null ? (int) $row['image_count'] : null,
+            'image_resolution'    => $row['image_resolution'] ?? null,
+            'sensor_status'       => $row['sensor_status'] ?? null,
+            'science_mode'        => isset($row['science_mode']) ? (bool) $row['science_mode'] : null,
+            'payload_power_watts' => $row['payload_power_watts'] !== null ? (float) $row['payload_power_watts'] : null,
             // System
             'cpu_percent'     => $row['cpu_percent'] !== null ? (float) $row['cpu_percent'] : null,
             'ram_percent'     => $row['ram_percent'] !== null ? (float) $row['ram_percent'] : null,
@@ -202,12 +241,26 @@ class TelemetryController extends ResourceController
             'disk_percent'    => $row['disk_percent'] !== null ? (float) $row['disk_percent'] : null,
             'uptime_seconds'  => $row['uptime_seconds'] !== null ? (int) $row['uptime_seconds'] : null,
             'cpu_temperature' => $row['cpu_temperature'] !== null ? (float) $row['cpu_temperature'] : null,
+            'boot_count'      => $row['boot_count'] !== null ? (int) $row['boot_count'] : null,
+            // Thermal
+            'obc_temperature'     => $row['obc_temperature'] !== null ? (float) $row['obc_temperature'] : null,
+            'eps_temperature'     => $row['eps_temperature'] !== null ? (float) $row['eps_temperature'] : null,
+            'battery_temperature' => $row['battery_temperature'] !== null ? (float) $row['battery_temperature'] : null,
+            'payload_temperature' => $row['payload_temperature'] !== null ? (float) $row['payload_temperature'] : null,
+            // Comms
+            'rssi'            => $row['rssi'] !== null ? (int) $row['rssi'] : null,
+            'snr'             => $row['snr'] !== null ? (float) $row['snr'] : null,
+            'uplink_bps'      => $row['uplink_bps'] !== null ? (int) $row['uplink_bps'] : null,
+            'downlink_bps'    => $row['downlink_bps'] !== null ? (int) $row['downlink_bps'] : null,
+            'latency_ms'      => $row['latency_ms'] !== null ? (int) $row['latency_ms'] : null,
+            'packet_loss_pct' => $row['packet_loss_pct'] !== null ? (float) $row['packet_loss_pct'] : null,
             // OBC
             'obc_state'       => $row['obc_state'],
             // GPS
             'latitude'        => $row['latitude'] !== null ? (float) $row['latitude'] : null,
             'longitude'       => $row['longitude'] !== null ? (float) $row['longitude'] : null,
             'altitude'        => $row['altitude'] !== null ? (float) $row['altitude'] : null,
+            'speed_kms'       => $row['speed_kms'] !== null ? (float) $row['speed_kms'] : null,
             // Note: raw_json is intentionally excluded from API responses
         ];
     }
@@ -227,8 +280,9 @@ class TelemetryController extends ResourceController
     {
         if ($this->isDemoMode()) {
             $svc    = new DemoDataService();
+            $state  = (new DemoStateService())->getState();
             $now    = new \DateTime('now', new \DateTimeZone('UTC'));
-            $record = $svc->generateRecord($now, 1);
+            $record = $svc->generateRecord($now, 1, $state);
 
             return $this->response
                 ->setStatusCode(200)
@@ -272,7 +326,8 @@ class TelemetryController extends ResourceController
 
         if ($this->isDemoMode()) {
             $svc     = new DemoDataService();
-            $records = $svc->generateHistory($limit);
+            $state   = (new DemoStateService())->getState();
+            $records = $svc->generateHistory($limit, $state);
 
             return $this->response
                 ->setStatusCode(200)
@@ -336,7 +391,8 @@ class TelemetryController extends ResourceController
 
         if ($this->isDemoMode()) {
             $svc     = new DemoDataService();
-            $records = $svc->generateRange($from, $to);
+            $state   = (new DemoStateService())->getState();
+            $records = $svc->generateRange($from, $to, $state);
 
             return $this->response
                 ->setStatusCode(200)

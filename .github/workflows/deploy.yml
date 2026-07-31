@@ -37,7 +37,7 @@ jobs:
   api-deploy:
     name: API Deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     needs: changes
     if: needs.changes.outputs.server == 'true'
 
@@ -106,7 +106,7 @@ jobs:
   ui-deploy:
     name: UI Deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     needs: changes
     if: needs.changes.outputs.client == 'true'
 
