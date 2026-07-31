@@ -118,11 +118,15 @@ export const createChartTooltip = (options?: {
                 backgroundColor: 'rgba(255,255,255,0.06)',
                 color: '#888',
                 fontSize: 10,
-                formatter: (params: { axisDimension?: string; value?: number }) => {
-                    if (params?.axisDimension === 'x' && params?.value) {
+                // echarts 6's axis pointer label formatter param type doesn't structurally match a plain
+                // { axisDimension, value } shape we can usefully narrow ahead of time; we defensively check at
+                // runtime instead.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter: (params: any) => {
+                    if (params?.axisDimension === 'x' && params?.value != null) {
                         return formatTooltipDate(params.value, dateFormat)
                     }
-                    return params?.value != null ? params.value.toFixed(2) : ''
+                    return typeof params?.value === 'number' ? params.value.toFixed(2) : ''
                 }
             },
             lineStyle: {
@@ -133,8 +137,11 @@ export const createChartTooltip = (options?: {
                 color: 'rgba(255,255,255,0.15)'
             }
         },
-        formatter: (params: TooltipParam | TooltipParam[]) => {
-            const items = Array.isArray(params) ? params : [params]
+        // Same rationale as the axisPointer label formatter above: echarts 6's real callback param union is
+        // too broad to be a useful static type here.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        formatter: (params: any) => {
+            const items: TooltipParam[] = Array.isArray(params) ? params : [params]
             if (items.length === 0) {
                 return ''
             }
@@ -192,5 +199,6 @@ export const valueFormatters = {
     voltage: (v: number | null) => (v != null ? `${v.toFixed(2)}V` : '—'),
     pressure: (v: number | null) => (v != null ? `${v.toFixed(1)} hPa` : '—'),
     degrees: (v: number | null) => (v != null ? `${v.toFixed(1)}°` : '—'),
+    rssi: (v: number | null) => (v != null ? `${v.toFixed(0)} dBm` : '—'),
     generic: (v: number | null) => (v != null ? v.toFixed(2) : '—')
 }
