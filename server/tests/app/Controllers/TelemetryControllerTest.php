@@ -87,7 +87,8 @@ final class TelemetryControllerTest extends CIUnitTestCase
      */
     private function postTelemetry(string $body): \CodeIgniter\Test\TestResponse
     {
-        return $this->withBodyFormat('json')
+        return $this->withHeaders(['X-API-Key' => getenv('api.telemetry.key')])
+                    ->withBodyFormat('json')
                     ->withBody($body)
                     ->post('api/cubesat/telemetry');
     }
@@ -130,7 +131,10 @@ final class TelemetryControllerTest extends CIUnitTestCase
      */
     public function testStoreInvalidJsonReturns422(): void
     {
-        $response = $this->withHeaders(['Content-Type' => 'application/json'])
+        $response = $this->withHeaders([
+                            'Content-Type' => 'application/json',
+                            'X-API-Key'    => getenv('api.telemetry.key'),
+                        ])
                          ->withBody('not-valid-json{{{')
                          ->post('api/cubesat/telemetry');
 
@@ -141,20 +145,18 @@ final class TelemetryControllerTest extends CIUnitTestCase
     }
 
     /**
-     * Missing a required top-level key must return HTTP 400.
+     * A missing top-level subsystem key (e.g. "eps") is accepted — only
+     * "timestamp" is required, subsystem objects are optional and default to
+     * empty/null columns (see ROADMAP.md Feature 1 QA note).
      */
-    public function testStoreMissingEpsReturns400(): void
+    public function testStoreMissingEpsStillAccepted(): void
     {
         $payload = $this->validPayload();
         unset($payload['eps']);
 
         $response = $this->postTelemetry(json_encode($payload));
 
-        $response->assertStatus(400);
-
-        $data = json_decode($response->getJSON(), true);
-        $this->assertArrayHasKey('error', $data);
-        $this->assertSame('Validation failed', $data['error']);
+        $response->assertStatus(201);
     }
 
     /**
@@ -171,20 +173,17 @@ final class TelemetryControllerTest extends CIUnitTestCase
     }
 
     /**
-     * Missing several top-level keys must return HTTP 400 with details array.
+     * Missing several top-level subsystem keys is still accepted — same
+     * "only timestamp is required" rule as testStoreMissingEpsStillAccepted.
      */
-    public function testStoreMissingMultipleFieldsReturns400WithDetails(): void
+    public function testStoreMissingMultipleFieldsStillAccepted(): void
     {
         $payload = $this->validPayload();
         unset($payload['adcs'], $payload['system']);
 
         $response = $this->postTelemetry(json_encode($payload));
 
-        $response->assertStatus(400);
-
-        $data = json_decode($response->getJSON(), true);
-        $this->assertIsArray($data['details']);
-        $this->assertNotEmpty($data['details']);
+        $response->assertStatus(201);
     }
 
     /**
@@ -220,7 +219,8 @@ final class TelemetryControllerTest extends CIUnitTestCase
      */
     public function testStoreEmptyBodyReturnsError(): void
     {
-        $response = $this->post('api/cubesat/telemetry');
+        $response = $this->withHeaders(['X-API-Key' => getenv('api.telemetry.key')])
+                          ->post('api/cubesat/telemetry');
 
         $statusCode = $response->response()->getStatusCode();
         $this->assertContains($statusCode, [400, 422]);

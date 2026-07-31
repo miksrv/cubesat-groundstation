@@ -39,9 +39,20 @@ DEMO_MODE = false
 # API SECURITY
 #--------------------------------------------------------------------
 
-# CubeSat telemetry API key (required for POST /api/cubesat/telemetry)
+# CubeSat telemetry API key (required for POST /api/cubesat/telemetry and
+# POST /api/cubesat/commands when DEMO_MODE is false)
 # Generate a secure random key for production use
 api.telemetry.key = your-secret-api-key-here-change-in-production
+
+#--------------------------------------------------------------------
+# GROUND STATION
+#--------------------------------------------------------------------
+
+# Fixed ground station location used by /api/cubesat/orbit (next-pass
+# prediction). Defaults to Orenburg, Russia.
+GROUND_STATION_NAME = "ORENBURG, RUSSIA"
+GROUND_STATION_LAT = 51.7727
+GROUND_STATION_LON = 55.0988
 
 #--------------------------------------------------------------------
 # DATABASE
