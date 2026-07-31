@@ -1,0 +1,33 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+.ok {
+    color: var(--color-green);
+}
+
+.warn {
+    color: var(--color-orange);
+}
+
+.critical {
+    color: var(--color-red);
+}
+
+.unknown {
+    color: var(--text-color-secondary);
+}

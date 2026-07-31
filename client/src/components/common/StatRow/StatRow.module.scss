@@ -1,0 +1,40 @@
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 0;
+    font-size: 0.72rem;
+}
+
+.label {
+    color: var(--text-color-secondary);
+    letter-spacing: 0.04em;
+}
+
+.value {
+    color: var(--text-color-primary);
+    font-weight: 600;
+    text-align: right;
+}
+
+.mono {
+    font-family: var(--font-family-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.accentGreen {
+    color: var(--color-green);
+}
+
+.accentOrange {
+    color: var(--color-orange);
+}
+
+.accentRed {
+    color: var(--color-red);
+}
+
+.accentMain {
+    color: var(--color-main);
+}
