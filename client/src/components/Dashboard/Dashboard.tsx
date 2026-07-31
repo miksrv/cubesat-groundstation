@@ -1,15 +1,30 @@
 import React from 'react'
 
-import { useGetHistoryQuery, useGetLatestQuery } from '../../features/telemetry/telemetryAPI'
-import ADCSPanel from '../ADCSPanel/ADCSPanel'
-import AttitudeIndicator from '../AttitudeIndicator/AttitudeIndicator'
-import EPSPanel from '../EPSPanel/EPSPanel'
-import GPSPanel from '../GPSPanel/GPSPanel'
-import Header from '../Header/Header'
-import OrbitMap from '../OrbitMap/OrbitMap'
-import PayloadChart from '../PayloadChart/PayloadChart'
-import SystemChart from '../SystemChart/SystemChart'
-import TelemetryTimeline from '../TelemetryTimeline/TelemetryTimeline'
+import {
+    useGetEventsQuery,
+    useGetHistoryQuery,
+    useGetLatestQuery,
+    useGetOrbitQuery
+} from '../../features/telemetry/telemetryAPI'
+import ADCSWidget from '../ADCSWidget/ADCSWidget'
+import GroundStationLinkMap from '../GroundStationLinkMap/GroundStationLinkMap'
+import LiveTelemetryStreamWidget from '../LiveTelemetryStreamWidget/LiveTelemetryStreamWidget'
+import MissionConsoleWidget from '../MissionConsoleWidget/MissionConsoleWidget'
+import MissionEventsWidget from '../MissionEventsWidget/MissionEventsWidget'
+import MissionStatusBar from '../MissionStatusBar/MissionStatusBar'
+import MqttBusMonitorWidget from '../MqttBusMonitorWidget/MqttBusMonitorWidget'
+import OBCSystemWidget from '../OBCSystemWidget/OBCSystemWidget'
+import OrbitGroundTrack from '../OrbitGroundTrack/OrbitGroundTrack'
+import OrbitInfoWidget from '../OrbitInfoWidget/OrbitInfoWidget'
+import PayloadWidget from '../PayloadWidget/PayloadWidget'
+import PowerSystemWidget from '../PowerSystemWidget/PowerSystemWidget'
+import QuickCommandsWidget from '../QuickCommandsWidget/QuickCommandsWidget'
+import RecentAlertsWidget from '../RecentAlertsWidget/RecentAlertsWidget'
+import Satellite3DView from '../Satellite3DView/Satellite3DView'
+import SubsystemStatusWidget from '../SubsystemStatusWidget/SubsystemStatusWidget'
+import TelemetryGraphsWidget from '../TelemetryGraphsWidget/TelemetryGraphsWidget'
+import ThermalSystemWidget from '../ThermalSystemWidget/ThermalSystemWidget'
+import WeatherWidget from '../WeatherWidget/WeatherWidget'
 
 import styles from './Dashboard.module.scss'
 
@@ -21,14 +36,19 @@ const Dashboard: React.FC = () => {
     } = useGetLatestQuery(undefined, { pollingInterval: 30000 })
 
     const { data: historyData, isLoading: historyLoading } = useGetHistoryQuery(100, { pollingInterval: 30000 })
+    const { data: orbitData } = useGetOrbitQuery(undefined, { pollingInterval: 30000 })
+    const { data: eventsData, isLoading: eventsLoading } = useGetEventsQuery(50, { pollingInterval: 30000 })
 
     const latest = latestData ?? null
     const history = historyData?.records ?? []
+    const orbit = orbitData ?? null
+    const events = eventsData?.records ?? []
 
     return (
         <div className={styles.dashboard}>
-            <Header
+            <MissionStatusBar
                 latest={latest}
+                orbit={orbit}
                 isLoading={latestLoading}
                 isError={latestError}
             />
@@ -36,48 +56,75 @@ const Dashboard: React.FC = () => {
                 <div className={styles.errorBanner}>⚠ Unable to reach API — polling continues every 30s</div>
             )}
             <main className={styles.grid}>
-                <div className={styles.row1}>
-                    <EPSPanel
+                <div className={styles.rowTop}>
+                    <Satellite3DView
                         latest={latest}
-                        history={history}
                         isLoading={latestLoading}
                     />
-                    <ADCSPanel
+                    <OrbitGroundTrack
                         latest={latest}
                         history={history}
+                        orbit={orbit}
+                        isLoading={historyLoading}
+                    />
+                    <GroundStationLinkMap
+                        latest={latest}
                         isLoading={latestLoading}
                     />
-                    <AttitudeIndicator
+                    <div className={styles.rightStack}>
+                        <SubsystemStatusWidget
+                            latest={latest}
+                            isLoading={latestLoading}
+                        />
+                        <WeatherWidget />
+                    </div>
+                </div>
+                <div className={styles.rowSubsystems}>
+                    <PowerSystemWidget
+                        latest={latest}
+                        isLoading={latestLoading}
+                    />
+                    <ThermalSystemWidget
+                        latest={latest}
+                        isLoading={latestLoading}
+                    />
+                    <ADCSWidget
+                        latest={latest}
+                        isLoading={latestLoading}
+                    />
+                    <OBCSystemWidget
+                        latest={latest}
+                        isLoading={latestLoading}
+                    />
+                    <PayloadWidget
                         latest={latest}
                         isLoading={latestLoading}
                     />
                 </div>
-                <div className={styles.row2}>
-                    <OrbitMap
-                        latest={latest}
+                <div className={styles.rowGraphs}>
+                    <TelemetryGraphsWidget
                         history={history}
                         isLoading={historyLoading}
                     />
-                    <GPSPanel
+                    <MissionEventsWidget
+                        events={events}
+                        isLoading={eventsLoading}
+                    />
+                </div>
+                <div className={styles.rowStream}>
+                    <LiveTelemetryStreamWidget
                         latest={latest}
-                        history={history}
                         isLoading={latestLoading}
                     />
+                    <OrbitInfoWidget orbit={orbit} />
+                    <MqttBusMonitorWidget />
                 </div>
-                <div className={styles.row3}>
-                    <PayloadChart
-                        history={history}
-                        isLoading={historyLoading}
-                    />
-                    <SystemChart
-                        history={history}
-                        isLoading={historyLoading}
-                    />
-                </div>
-                <div className={styles.row4}>
-                    <TelemetryTimeline
-                        history={history}
-                        isLoading={historyLoading}
+                <div className={styles.rowConsole}>
+                    <MissionConsoleWidget latest={latest} />
+                    <QuickCommandsWidget />
+                    <RecentAlertsWidget
+                        events={events}
+                        isLoading={eventsLoading}
                     />
                 </div>
             </main>

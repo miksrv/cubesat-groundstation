@@ -31,23 +31,10 @@
     }
 }
 
-.row1 {
+/* Satellite 3D view + orbit globe + ground-station link map + subsystem status */
+.rowTop {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-
-    @include breakpoint-tablet {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    @include breakpoint-mobile {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-}
-
-.row2 {
-    display: grid;
-    grid-template-columns: 2.04fr 1fr;
+    grid-template-columns: 1fr 1.2fr 1.2fr 1fr;
     gap: 12px;
 
     @include breakpoint-tablet {
@@ -59,9 +46,25 @@
     }
 }
 
-.row3 {
+/* Per-subsystem compact widgets */
+.rowSubsystems {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+
+    @include breakpoint-tablet {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    @include breakpoint-mobile {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+}
+
+/* Telemetry graphs + mission events */
+.rowGraphs {
+    display: grid;
+    grid-template-columns: 1.51fr 1fr;
     gap: 12px;
 
     @include breakpoint-mobile {
@@ -70,8 +73,35 @@
     }
 }
 
-.row4 {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
+/* Live telemetry stream + orbit info (narrowest) + MQTT bus monitor */
+.rowStream {
+    display: grid;
+    grid-template-columns: 1.4fr 0.6fr 1fr;
+    gap: 12px;
+
+    @include breakpoint-tablet {
+        grid-template-columns: 1fr 1fr;
+    }
+    @include breakpoint-mobile {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+/* Mission console / quick commands / recent alerts */
+.rowConsole {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 12px;
+
+    @include breakpoint-tablet {
+        grid-template-columns: 1fr;
+    }
+}
+
+.rightStack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
 }
