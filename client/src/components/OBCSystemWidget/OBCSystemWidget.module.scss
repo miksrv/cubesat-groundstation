@@ -1,0 +1,83 @@
+.panel {
+    height: 100%;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.usageRow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.usageHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+}
+
+.usageLabel {
+    color: var(--text-color-secondary);
+    letter-spacing: 0.04em;
+}
+
+.usageValue {
+    color: var(--text-color-primary);
+    font-weight: 600;
+    font-family: var(--font-family-mono);
+}
+
+.barTrack {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.barFill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--color-main);
+    transition: width 0.4s ease;
+}
+
+.metaRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    padding-top: 4px;
+}
+
+.metaLabel {
+    color: var(--text-color-secondary);
+    letter-spacing: 0.04em;
+}
+
+.metaValue {
+    color: var(--text-color-primary);
+    font-weight: 600;
+    font-family: var(--font-family-mono);
+}
+
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.footerLabel {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-color-secondary);
+}
