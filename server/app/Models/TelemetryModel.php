@@ -29,6 +29,7 @@ class TelemetryModel extends Model
         'battery',
         'voltage',
         'external_power',
+        'battery_current',
         // ADCS
         'roll',
         'pitch',
@@ -51,12 +52,33 @@ class TelemetryModel extends Model
         'disk_percent',
         'uptime_seconds',
         'cpu_temperature',
+        'boot_count',
+        // Thermal
+        'obc_temperature',
+        'eps_temperature',
+        'battery_temperature',
+        'payload_temperature',
+        // Payload (extended)
+        'camera_status',
+        'image_count',
+        'image_resolution',
+        'sensor_status',
+        'science_mode',
+        'payload_power_watts',
+        // Comms
+        'rssi',
+        'snr',
+        'uplink_bps',
+        'downlink_bps',
+        'latency_ms',
+        'packet_loss_pct',
         // OBC
         'obc_state',
         // GPS
         'latitude',
         'longitude',
         'altitude',
+        'speed_kms',
         // Raw
         'raw_json',
     ];
