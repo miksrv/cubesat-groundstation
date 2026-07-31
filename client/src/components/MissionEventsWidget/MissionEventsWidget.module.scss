@@ -1,0 +1,65 @@
+.panel {
+    height: 100%;
+}
+
+.list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 270px;
+    overflow-y: auto;
+}
+
+.item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.72rem;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.time {
+    font-family: var(--font-family-mono);
+    color: var(--text-color-secondary);
+    flex-shrink: 0;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transform: translateY(-1px);
+}
+
+.severityInfo {
+    background: var(--color-main);
+}
+
+.severitySuccess {
+    background: var(--color-green);
+}
+
+.severityWarning {
+    background: var(--color-orange);
+}
+
+.severityCritical {
+    background: var(--color-red);
+}
+
+.message {
+    color: var(--text-color-primary);
+}
+
+.empty {
+    color: var(--text-color-secondary);
+    font-size: 0.72rem;
+    padding: 8px 0;
+}
