@@ -17,10 +17,16 @@ export const Container: React.FC<{
     className?: string
     action?: React.ReactNode
     footer?: React.ReactNode
-}> = ({ title, children, className }) => (
+}> = ({ title, children, className, action, footer }) => (
     <div className={className}>
-        {title && <h3>{title}</h3>}
+        {(title || action) && (
+            <div>
+                {title && <h3>{title}</h3>}
+                {action}
+            </div>
+        )}
         {children}
+        {footer}
     </div>
 )
 
