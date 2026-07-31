@@ -3,9 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Project Status](https://img.shields.io/badge/status-in%20development-orange)](https://github.com/miksrv/cubesat-groundstation)
 
-Cloud-based ground station for CubeSat telemetry visualization and real-time monitoring. This system receives telemetry data from a CubeSat every 30 seconds, stores it in MySQL, and displays interactive charts through a modern web dashboard.
+Somewhere on a workbench, a Raspberry Pi wired up like a satellite is streaming telemetry every 30 seconds — battery voltage, orientation, pressure, humidity, system health. This repo is where that data becomes mission control: a PHP/MySQL backend that ingests it and a React/ECharts dashboard that turns it into live, dark-themed charts (plus a live orbit map) you can watch from anywhere. It's the ground half of **[CubeSat Sim](https://github.com/miksrv/cubesat-sim)** — an open-source flight-software stack running on real hardware, not just a simulation on paper. If you're into satellite software, distributed systems, or just like watching real-time telemetry roll in, take a look — and a ⭐ helps others find it.
 
-**📊 Project Board:** [GitHub Projects #8](https://github.com/users/miksrv/projects/8/)
+**📊 Project Board:** [GitHub Projects #8](https://github.com/users/miksrv/projects/8/) · **🛰️ Companion Project:** [CubeSat Sim](https://github.com/miksrv/cubesat-sim)
 
 ---
 
@@ -43,7 +43,7 @@ Cloud-based ground station for CubeSat telemetry visualization and real-time mon
 - **ADCS (Attitude Determination and Control):** Orientation sensors
 - **Payload:** Science instruments and camera
 - **Telemetry Aggregator:** Data collection service
-- **Communication:** MQTT (WiFi) + LoRa 433 MHz
+- **Communication:** Subsystems talk over a local MQTT broker on the CubeSat; the Telemetry Aggregator forwards packets to this ground station over HTTP. A LoRa 433 MHz module is present on the hardware but not yet wired into any service (see [CubeSat Sim](https://github.com/miksrv/cubesat-sim#hardware))
 
 ---
 
@@ -57,7 +57,7 @@ Cloud-based ground station for CubeSat telemetry visualization and real-time mon
 
 ### Frontend
 - **Build Tool:** Rsbuild
-- **Framework:** React 18+ (TypeScript)
+- **Framework:** React 19+ (TypeScript)
 - **State Management:** Redux Toolkit (RTK Query)
 - **Charts:** Apache ECharts
 - **Styling:** SASS with dark theme
@@ -90,12 +90,10 @@ cubesat-groundstation/
 │   └── README.md          # Docker setup guide
 │
 ├── docs/                   # Documentation
-│   ├── architecture/       # System diagrams
-│   ├── api/               # API documentation
-│   └── deployment/        # Setup guides
+│   └── CubeSat_Groundstation.postman_collection.json  # API request collection
 │
 ├── requirements/          # Feature specifications
-├── agents/               # AI agent instructions
+├── .claude/agents/       # AI agent instructions
 ├── docker-compose.yml    # MySQL container config
 ├── ROADMAP.md           # Project roadmap
 └── CLAUDE.md            # AI team lead instructions
@@ -108,7 +106,7 @@ cubesat-groundstation/
 ### Prerequisites
 - PHP 8.1+ with Composer
 - MySQL 8.0+ **OR** Docker (recommended)
-- Node.js 18+
+- Node.js 18+ with [Yarn 4](https://yarnpkg.com/getting-started/install) (the client is pinned to `yarn@4.9.2` via Corepack, not npm)
 - Git
 
 ### 1. Clone Repository
@@ -143,7 +141,7 @@ docker compose logs cubesat
 # Navigate to server directory
 cd server
 composer install
-cp env.example .env
+cp env .env
 
 # Configure database in .env (use Docker credentials above)
 # Then run migrations
@@ -159,16 +157,18 @@ php spark serve
 ```bash
 # Navigate to client directory
 cd client
-npm install
+yarn install
 
 # Configure API endpoint
-cp .env.example .env
-# Edit REACT_APP_API_URL in .env
+# Edit the `server.proxy` target in rsbuild.config.ts (defaults to a remote
+# demo API — point it at http://localhost:8080 for local backend development)
 
 # Start development server
-npm start
+yarn dev
 # Dashboard available at http://localhost:3000
 ```
+
+The client has no `.env` file — the dev-server API proxy is configured directly in [`rsbuild.config.ts`](client/rsbuild.config.ts).
 
 ### Running Tests
 
@@ -179,12 +179,10 @@ cd server
 
 # Frontend tests
 cd client
-npm test
-
-# E2E tests
-cd client
-npx cypress open
+yarn test
 ```
+
+> **Note:** Cypress E2E specs exist under `client/cypress/e2e/`, but the `cypress` package isn't installed yet (`yarn add -D cypress` first) — see [ROADMAP.md](ROADMAP.md) Feature 5.
 
 ---
 
@@ -210,17 +208,17 @@ npx cypress open
 }
 ```
 
-See [API Documentation](docs/api/endpoints.md) for details.
+See the [Postman collection](docs/CubeSat_Groundstation.postman_collection.json) for ready-to-run request examples.
 
 ---
 
 ## 📚 Documentation
 
-- **[Architecture Overview](docs/architecture/system-overview.md)** - System design and data flow
-- **[API Reference](docs/api/endpoints.md)** - Complete API documentation
-- **[Frontend Guide](docs/frontend/components.md)** - Component structure
-- **[Deployment Guide](docs/deployment/)** - Production setup
-- **[Development Guide](docs/development/getting-started.md)** - Contributing
+- **[Postman Collection](docs/CubeSat_Groundstation.postman_collection.json)** - Ready-to-import API requests
+- **[ROADMAP.md](ROADMAP.md)** - Feature status, progress, and technical notes per feature
+- **[CubeSat Sim](https://github.com/miksrv/cubesat-sim)** - The CubeSat flight-software stack that sends telemetry to this ground station
+
+> Dedicated architecture/API/frontend/deployment guides under `docs/` are planned (see [ROADMAP.md](ROADMAP.md) Feature 6) but not written yet — this README plus the Postman collection are the current source of truth.
 
 ---
 
@@ -229,17 +227,14 @@ See [API Documentation](docs/api/endpoints.md) for details.
 Current project status and upcoming features tracked in [ROADMAP.md](ROADMAP.md).
 
 ### Completed Features
-- ✅ Project setup and requirements definition
-- ✅ GitHub Project board configuration
-- ✅ AI team workflow setup
-
-### In Progress
-- 🔄 Feature 1: Backend API (0/10 tasks)
+- ✅ Feature 1: Backend API (10/10 tasks)
+- ✅ Feature 2: Frontend Dashboard (20/20 tasks)
+- ✅ Feature 3: Refactoring (10/10 tasks)
+- ✅ Feature 4: Refactoring UI (8/8 tasks)
 
 ### Upcoming
-- 📋 Feature 2: Frontend Dashboard (0/20 tasks)
-- 📋 Feature 3: QA & Testing (0/24 tasks)
-- 📋 Feature 4: Documentation (0/24 tasks)
+- 📋 Feature 5: QA & Testing (0/24 tasks)
+- 📋 Feature 6: Documentation (0/24 tasks)
 
 ---
 
