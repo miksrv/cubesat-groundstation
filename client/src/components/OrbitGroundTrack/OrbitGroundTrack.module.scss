@@ -1,0 +1,122 @@
+@use '../../styles/mixins' as *;
+
+.panel {
+    @include panel-card;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    @include breakpoint-mobile {
+        padding: 10px;
+    }
+}
+
+.canvasWrapper {
+    border-radius: 3px;
+    overflow: hidden;
+    height: 280px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: #000;
+
+    @include breakpoint-mobile {
+        height: 220px;
+    }
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.coords {
+    display: flex;
+    gap: 6px;
+
+    @include breakpoint-mobile {
+        gap: 4px;
+    }
+}
+
+.coord {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 7px 6px;
+    border-radius: 3px;
+    text-align: center;
+    min-width: 0;
+
+    span {
+        display: block;
+        font-size: 0.58rem;
+        color: var(--text-color-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 2px;
+    }
+
+    b {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-green);
+        font-family: var(--font-family-mono);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @include breakpoint-mobile {
+        padding: 6px 4px;
+
+        span {
+            font-size: 0.55rem;
+        }
+
+        b {
+            font-size: 0.75rem;
+        }
+    }
+}
+
+.eclipseOn {
+    color: var(--color-orange) !important;
+}
+
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    flex-wrap: wrap;
+
+    @include breakpoint-mobile {
+        gap: 10px;
+    }
+}
+
+.legendItem {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.65rem;
+    color: var(--text-color-secondary);
+
+    @include breakpoint-mobile {
+        font-size: 0.6rem;
+    }
+}
+
+.legendLine {
+    width: 14px;
+    height: 0;
+    border-top: 2px solid;
+}
+
+.legendDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
