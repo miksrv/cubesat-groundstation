@@ -1,0 +1,54 @@
+.panel {
+    height: 100%;
+}
+
+.list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--border-radius);
+    font-size: 0.72rem;
+}
+
+.warning {
+    background: var(--color-orange-background);
+    color: var(--color-orange);
+}
+
+.critical {
+    background: var(--color-red-background);
+    color: var(--color-red);
+}
+
+.icon {
+    flex-shrink: 0;
+}
+
+.message {
+    flex: 1;
+    color: var(--text-color-primary);
+    min-width: 0;
+}
+
+.time {
+    flex-shrink: 0;
+    font-size: 0.64rem;
+    color: var(--text-color-secondary);
+    font-family: var(--font-family-mono);
+}
+
+.empty {
+    color: var(--text-color-secondary);
+    font-size: 0.72rem;
+    padding: 8px 0;
+}
