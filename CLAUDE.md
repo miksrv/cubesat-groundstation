@@ -2,12 +2,79 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# CLAUDE GroundStation Project
+# CubeSat Ground Station
+
+## Read this first
+
+Two documents are the authority, and they were written together:
+
+- [`docs/dashboard-architecture.md`](docs/dashboard-architecture.md) — *what* this repository is
+  and *why* the boundary with `cubesat-sim` falls where it does.
+- [`docs/dashboard-plan.md`](docs/dashboard-plan.md) — *in what order*, and what is left.
 
 ## Project Overview
-A cloud-based GroundStation for CubeSat telemetry. CubeSat sends telemetry every 30 seconds to a PHP/CodeIgniter backend, which stores it in MySQL. A React frontend fetches data and displays real-time graphs for EPS, ADCS, Payload, and System metrics.
 
-**Stack:** PHP (CodeIgniter), MySQL, React (functional components + hooks), PHPUnit, Jest/Cypress
+This repository is **one React interface over several data sources**, not a backend with a frontend
+attached. The same page draws the same satellite whether the numbers come from the satellite's own
+broker, from a mission replayed out of its archive, or from a recording bundled with a static build
+that has no backend at all.
+
+The PHP/CodeIgniter backend and MySQL are **gone** — deleted, not deprecated. So is the cloud leg on
+the satellite's side. No cloud service is deployed and none is planned.
+
+**Stack:** React 19, Redux Toolkit (store kept, RTK Query removed with the backend it wrapped),
+Rsbuild, ECharts, Leaflet, three.js via react-three-fiber, mqtt.js, Jest. (Cypress went
+with the backend it stubbed; see ROADMAP.) A Python ground
+receiver will join it for the USB-Heltec case.
+
+## The rules that are easy to undo
+
+**The satellite defines the contract.** `src/features/telemetry/types.ts` mirrors
+`cubesat-sim/src/cubesat/dhs/schema.py` and that project's documented MQTT payloads. When the two
+disagree, this repository is wrong. A shape invented here would leave the emulated source faithful
+to something that does not exist.
+
+**Null means withheld, and it is never a zero.** `yaw` is null until the magnetometer is calibrated
+because the BNO055 reports a *constant* below that; `uv_index` is null until the SEN0501 board
+revision is known because two revisions read one register with formulas that disagree by a factor of
+forty. `?? 0` anywhere in a decoder or a widget undoes all of it.
+
+**The source is chosen by the bundler, never at runtime.** `#active-source` is an alias resolved in
+`rsbuild.config.ts` to `active.live.ts` or `active.replay.ts`; the module not chosen is never
+imported. Do not replace this with `if (demo)` — both halves would then ship, and a widget could
+come to depend on which one is running.
+
+**Widgets take plain props and know nothing about transport.** Data is fetched in exactly one place,
+`Dashboard.tsx`. A widget that reaches for the source directly has broken the property the whole
+data layer exists to hold.
+
+**Attitude bypasses Redux.** It arrives at 2 Hz and drives one imperative three.js scene, so it goes
+into a ref and the scene interpolates on its own animation frame. A dispatch per sample would
+re-render the tree for a value only the WebGL scene consumes.
+
+**Withhold rather than fabricate, here too.** Three panels used to show values the satellite does
+not measure: a battery current and wattage derived from a field no sensor produces, four
+per-subsystem temperatures where there are three thermometers, and an RSSI/SNR/latency link budget
+that Meshtastic never reports. They were removed, not dashed out. If a value is not in
+`cubesat-sim`'s schema or payloads, it does not exist — do not add a row for it.
+
+**Say when something is not telemetry.** The orbital view is computed in the browser from the clock
+(`features/orbit/simulate.ts`) and labelled `(sim)`; the mission log is built from transitions this
+page witnessed (`features/events/observed.ts`) and says so when empty, because the satellite keeps
+no events table.
+
+## Testing
+
+`src/test-source.ts` installs a fake source; tests need neither a broker nor a server. Fixtures in
+`src/test-fixtures.ts` are taken from `cubesat-sim`'s documented payloads rather than invented, so a
+test that passes against them would pass against the satellite.
+
+```bash
+cd client && yarn test && yarn eslint:check && yarn prettier:check
+```
+
+Both builds are checked in CI, because the alias swap means a break in the module that is not
+aliased in is invisible from the other build.
 
 ---
 
@@ -30,7 +97,7 @@ You are the AI Team Lead. You coordinate agents but do not write production code
 1. **Detailed Task Decomposition:**
    - Break each feature into granular micro-tasks (5-20 tasks per feature)
    - Each task should be completable in 1-2 hours
-   - Create clear, actionable titles (e.g., "Create MySQL migration for cubesat_data table")
+   - Create clear, actionable titles (e.g., "Add a mission picker to the timeline")
    - Add brief description with acceptance criteria and technical notes
    
 2. **Card Creation:**
@@ -84,157 +151,47 @@ Todo → In Progress → Testing → Done
 
 ## Team Agents
 
-| Agent | Code Location | Instructions                       |
-|-------|--------------|------------------------------------|
-| **Backend Agent** | `/server` | `/.claude/agents/backend_agent.md` |
-| **Frontend Agent** | `/client` | `/.claude/agents/frontend_agent.md`        |
-| **QA Agent** | `/server/tests`, `/client/src/tests` | `/.claude/agents/qa_agent.md`              |
-| **Doc Agent** | `/docs`, `README.md` | `/.claude/agents/doc_agent.md`             |
+| Agent | Code Location | Instructions |
+|-------|--------------|--------------|
+| **Frontend Agent** | `/client` | `/.claude/agents/frontend_agent.md` |
+| **QA Agent** | `/client/src` | `/.claude/agents/qa_agent.md` |
+| **Doc Agent** | `/docs`, `README.md` | `/.claude/agents/doc_agent.md` |
 
-Agents must read their instruction file before starting. Each agent reports completion to Team Lead.
-
----
-
-## Project Phases
-
-Work through these in order — only proceed when QA passes:
-
-1. **Feature 1 – Backend API** (`/requirements/feature_1.md`)
-   - `POST /api/cubesat/data` and `GET /api/cubesat/data/latest`
-   - CodeIgniter project in `/server`, MySQL migration for `cubesat_data` table
-
-2. **Feature 2 – Frontend Dashboard** (`/requirements/feature_2.md`)
-   - React app in `/client`, graphs for EPS/ADCS/Payload/System, polling every 30s
-
-3. **Feature 3 – QA and Testing** (`/requirements/feature_3.md`)
-   - PHPUnit for backend, Jest/Cypress for frontend, integration tests
-
-4. **Feature 4 – Documentation** (`/requirements/feature_4.md`)
-   - API docs, Mermaid architecture diagrams, JSON payload examples
+The Backend Agent is gone with the backend. When the USB-Heltec receiver
+([`docs/dashboard-plan.md`](docs/dashboard-plan.md), Stage 8) is built it will need one again — in
+Python, against the same SQLite schema as the satellite's recorder, not a new one.
 
 ---
 
-## Expected Commands (once code exists)
+## Commands
 
-**Backend (`/server`):**
 ```bash
-composer install
-php spark migrate          # run DB migrations
-php spark serve            # start dev server
-./vendor/bin/phpunit       # run all PHP tests
-./vendor/bin/phpunit tests/CubeSatControllerTest.php  # single test file
+cd client
+yarn install
+yarn dev                          # http://localhost:3000, live source
+PUBLIC_SOURCE=replay yarn dev     # the bundled recording, no backend
+yarn test                         # jest
+yarn eslint:check
+yarn prettier:check
+yarn build                        # PUBLIC_SOURCE=live by default
+PUBLIC_SOURCE=replay yarn build   # the public demo
 ```
 
-**Frontend (`/client`):**
-```bash
-npm install
-npm start                  # dev server
-npm test                   # Jest unit tests
-npm run test -- --testPathPattern=Dashboard  # single test
-npx cypress open           # Cypress E2E tests
-```
+There is no `composer`, no `php spark`, no `docker compose`, and no database to migrate. The
+satellite owns the database; this repository reads it through the dashboard service's read-only
+REST, or replays a file.
 
 ---
 
-## Docker Compose Setup
+## Where the work stands
 
-**MySQL Database for Development and Testing**
+[`docs/dashboard-plan.md`](docs/dashboard-plan.md) is the tracker. Stages 3 and 4 are done: the
+contract, the source layer, the widget rewrite, and the removal of PHP. What is left is Stage 5 (the
+Python dashboard service, which lives in `cubesat-sim`), Stage 6 (the mission timeline), Stage 7
+(exporting a real mission to replace the placeholder recording) and Stage 8 (the USB receiver).
 
-The project uses Docker Compose to run MySQL database locally. This ensures consistent database environment for Backend and QA agents.
-
-### Prerequisites
-- Docker Desktop installed and running
-- Docker Compose v2+ available
-
-### Quick Start
-
-**1. Start MySQL container:**
-```bash
-docker compose up -d
-```
-
-**2. Verify MySQL is running:**
-```bash
-docker compose ps
-```
-
-**3. Access MySQL (optional):**
-```bash
-docker compose exec cubesat mysql -uroot -prootpassword cubesat_groundstation
-```
-
-**4. Stop and remove containers:**
-```bash
-docker compose down
-```
-
-**5. Stop and remove with data cleanup:**
-```bash
-docker compose down -v
-```
-
-### Database Connection Details
-
-When MySQL container is running, use these credentials in your `.env` files:
-
-```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=cubesat_groundstation
-DB_USERNAME=cubesat_user
-DB_PASSWORD=cubesat_password
-DB_ROOT_PASSWORD=rootpassword
-```
-
-### Agent Usage
-
-**Backend Agent:**
-- Start MySQL before running migrations: `docker compose up -d`
-- Configure CodeIgniter database settings to use container
-- Run migrations: `php spark migrate`
-- Stop after work: `docker compose down`
-
-**QA Agent:**
-- Use same MySQL container for tests
-- Tests should use test database or fixtures
-- Can reset database between test runs
-- Check logs: `docker compose logs cubesat`
-
-### Container Management
-
-**View logs:**
-```bash
-docker compose logs -f cubesat
-```
-
-**Restart container:**
-```bash
-docker compose restart cubesat
-```
-
-**Check container status:**
-```bash
-docker compose ps
-docker compose exec cubesat mysqladmin -uroot -prootpassword ping
-```
-
-### Data Persistence
-
-MySQL data is stored in Docker volume `cubesat`. This persists between container restarts.
-
-To completely reset database:
-```bash
-docker compose down -v
-docker compose up -d
-cd server && php spark migrate
-```
-
-### Important Notes
-- MySQL runs on port 3306 (mapped to host)
-- Database `cubesat_groundstation` is created automatically
-- User `cubesat_user` has full access to the database
-- Root password is for admin access only
-- Volume `cubesat` ensures data persists between restarts
-- Container starts automatically with `restart: always`
-
----
+**The bundled recording is a placeholder.** `client/scripts/make-placeholder-recording.mjs` generates
+it, and it is meant to be thrown away: the demo is supposed to replay a real walk exported from the
+satellite. Nothing has run on the Raspberry Pi yet, so there is nothing to bundle. It does reproduce
+the awkward parts on purpose — a withheld `yaw` for the first third, `uv_index` null throughout, a
+fix that drops and leaves the coordinates stale — because those are what the widgets have to handle.

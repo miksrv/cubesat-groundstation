@@ -43,9 +43,20 @@ jobs:
         run: yarn test
         working-directory: client
 
-      - name: Build UI
+      - name: Build (satellite)
         run: |
           export dateNow=$(date +"%Y-%m-%dT%H:%M")
           echo "export const update = '$dateNow'" > update.ts
           yarn build
+        working-directory: client
+        env:
+          PUBLIC_SOURCE: live
+
+      - name: Build (public demo)
+        # Built as well as the live one on purpose: the data source is swapped by
+        # a bundler alias, so a break in the module that is not aliased in is
+        # invisible from the other build.
+        env:
+          PUBLIC_SOURCE: replay
+        run: yarn build
         working-directory: client
