@@ -3,19 +3,21 @@ import React, { Suspense } from 'react'
 import { OrbitControls, Stars } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 
-import type { TelemetryRecord } from '../../features/telemetry/types'
+import type { AttitudeUpdate } from '../../features/telemetry/source'
+import type { Vector3 } from '../../features/telemetry/types'
 
 import CubeSatModel from './CubeSatModel'
 
 interface Props {
-    latest: TelemetryRecord | null
+    attitudeRef: React.MutableRefObject<AttitudeUpdate | null>
+    accel: Vector3 | null
 }
 
 // Canvas lives inside this component (not the other way around) so the whole
 // chunk mounts as one unit once loaded — see the OrbitGroundTrack widget for
 // why mounting Canvas eagerly with a lazy child behind Suspense causes WebGL
 // context loss under React.StrictMode in development.
-const Satellite3DScene: React.FC<Props> = ({ latest }) => (
+const Satellite3DScene: React.FC<Props> = ({ attitudeRef, accel }) => (
     <Canvas
         camera={{ position: [1.6, 1.1, 2.4], fov: 40 }}
         gl={{ powerPreference: 'default' }}
@@ -33,7 +35,10 @@ const Satellite3DScene: React.FC<Props> = ({ latest }) => (
                 factor={1.5}
                 fade
             />
-            <CubeSatModel latest={latest} />
+            <CubeSatModel
+                attitudeRef={attitudeRef}
+                accel={accel}
+            />
             <OrbitControls
                 enableZoom
                 enablePan={false}
