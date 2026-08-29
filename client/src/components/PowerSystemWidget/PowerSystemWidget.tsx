@@ -1,7 +1,7 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { TelemetryRecord } from '../../features/telemetry/types'
+import type { EpsStatus, LiveState } from '../../features/telemetry/types'
 import { getEpsStatus } from '../../utils/subsystemStatus'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
@@ -9,7 +9,7 @@ import StatusBadge from '../common/StatusBadge/StatusBadge'
 import styles from './PowerSystemWidget.module.scss'
 
 interface Props {
-    latest: TelemetryRecord | null
+    eps: EpsStatus | null
     isLoading: boolean
 }
 
@@ -20,14 +20,32 @@ const barColorByStatus: Record<'OK' | 'WARN' | 'CRITICAL' | 'UNKNOWN', string> =
     UNKNOWN: 'var(--text-color-secondary)'
 }
 
-const PowerSystemWidget: React.FC<Props> = React.memo(({ latest, isLoading }) => {
-    const showSkeleton = isLoading && !latest
-    const status = getEpsStatus(latest)
+const EMPTY: LiveState = {
+    host: null,
+    obc: null,
+    eps: null,
+    adcs: null,
+    payload: null,
+    science: null,
+    dhs: null,
+    comms: null,
+    heartbeats: {}
+}
 
-    const batteryLevel = latest?.battery ?? null
-    const consumptionMa = latest?.battery_current != null ? latest.battery_current * 1000 : null
-    const consumptionW =
-        latest?.battery_current != null && latest?.voltage != null ? latest.battery_current * latest.voltage : null
+/**
+ * Current and wattage used to be shown here, derived from a `battery_current`
+ * field. **There is no current sensor on this satellite.** The MAX17048 is a
+ * fuel gauge: it reports state of charge, voltage, and a rate of change in
+ * percent per hour. Multiplying a number the hardware never measured by the
+ * voltage produced a wattage that looked like a measurement and was not one, so
+ * both rows are gone and `charge_rate` — which the gauge really does report —
+ * is here instead.
+ */
+const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, isLoading }) => {
+    const showSkeleton = isLoading && !eps
+    const status = getEpsStatus({ ...EMPTY, eps })
+    const batteryLevel = eps?.batteryPercent ?? null
+    const rate = eps?.chargeRate ?? null
 
     return (
         <Container
@@ -39,44 +57,46 @@ const PowerSystemWidget: React.FC<Props> = React.memo(({ latest, isLoading }) =>
                 <div className={styles.body}>
                     <StatRow
                         label='Battery Voltage'
-                        value={latest?.voltage != null ? `${latest.voltage.toFixed(2)} V` : '—'}
+                        value={eps?.voltage != null ? `${eps.voltage.toFixed(3)} V` : '—'}
                         mono
-                    />
-                    <StatRow
-                        label='Consumption (mA)'
-                        value={consumptionMa != null ? `${consumptionMa.toFixed(0)} mA` : '—'}
-                        mono
-                    />
-                    <StatRow
-                        label='Consumption (W)'
-                        value={consumptionW != null ? `${consumptionW.toFixed(2)} W` : '—'}
-                        mono
-                    />
-                    <StatRow
-                        label='Power Source'
-                        value={latest?.external_power ? 'External' : 'Battery Only'}
-                        accent={latest?.external_power ? 'main' : 'default'}
                     />
                     <StatRow
                         label='Battery Level'
-                        value={batteryLevel != null ? `${batteryLevel.toFixed(1)}%` : '—'}
+                        value={batteryLevel != null ? `${batteryLevel.toFixed(1)} %` : '—'}
                         mono
-                        accent={status === 'CRITICAL' ? 'red' : status === 'WARN' ? 'orange' : 'green'}
+                        accent={status.status === 'CRITICAL' ? 'red' : status.status === 'WARN' ? 'orange' : 'green'}
+                    />
+                    {/*
+                      Signed percent per hour from the gauge's CRATE register. It is
+                      what tells "plugged in and charging" from "plugged in and still
+                      going down" without waiting for the charge reading to move —
+                      which is why the satellite's own power policy reads it.
+                    */}
+                    <StatRow
+                        label='Charge Rate'
+                        value={rate != null ? `${rate > 0 ? '+' : ''}${rate.toFixed(2)} %/h` : '—'}
+                        mono
+                        accent={rate != null && rate < 0 ? 'orange' : 'default'}
+                    />
+                    <StatRow
+                        label='Power Source'
+                        value={eps?.externalPower === true ? 'Mains' : eps?.externalPower === false ? 'Battery' : '—'}
+                        accent={eps?.externalPower === true ? 'main' : 'default'}
                     />
                     <div className={styles.barTrack}>
                         <div
                             className={styles.barFill}
                             style={{
                                 width: `${Math.min(100, Math.max(0, batteryLevel ?? 0))}%`,
-                                background: barColorByStatus[status]
+                                background: barColorByStatus[status.status]
                             }}
                         />
                     </div>
                     <div className={styles.footer}>
-                        <span className={styles.footerLabel}>Power Status</span>
+                        <span className={styles.footerLabel}>{status.detail}</span>
                         <StatusBadge
-                            status={status}
-                            label={status === 'OK' ? 'NOMINAL' : undefined}
+                            status={status.status}
+                            label={status.status === 'OK' ? 'NOMINAL' : undefined}
                         />
                     </div>
                 </div>

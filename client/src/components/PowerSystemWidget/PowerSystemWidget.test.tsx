@@ -1,4 +1,4 @@
-import { mockTelemetryRecord } from '../../test-fixtures'
+import { mockEps } from '../../test-fixtures'
 import { render, screen } from '../../test-utils'
 
 import PowerSystemWidget from './PowerSystemWidget'
@@ -6,43 +6,50 @@ import PowerSystemWidget from './PowerSystemWidget'
 import '@testing-library/jest-dom'
 
 describe('PowerSystemWidget', () => {
-    it('renders battery level and voltage', () => {
+    it('renders battery level, voltage and charge rate', () => {
         render(
             <PowerSystemWidget
-                latest={mockTelemetryRecord}
+                eps={mockEps}
                 isLoading={false}
             />
         )
-        expect(screen.getByText('82.0%')).toBeInTheDocument()
-        expect(screen.getByText('8.14 V')).toBeInTheDocument()
+        // Twice: the row and the status footer, which says the same number as
+        // its reason.
+        expect(screen.getAllByText('87.5 %').length).toBeGreaterThan(0)
+        expect(screen.getByText('4.123 V')).toBeInTheDocument()
+        // Signed percent per hour from the gauge's CRATE register: negative is
+        // draining. It replaced a current and a wattage that were derived from a
+        // field no sensor on this satellite produces.
+        expect(screen.getByText('-0.21 %/h')).toBeInTheDocument()
     })
 
-    it('renders consumption in mA and W derived from battery_current', () => {
+    it('shows the power source the satellite reported', () => {
         render(
             <PowerSystemWidget
-                latest={mockTelemetryRecord}
+                eps={{ ...mockEps, externalPower: true }}
                 isLoading={false}
             />
         )
-        // battery_current = 0.63 A, voltage = 8.14 V
-        expect(screen.getByText('630 mA')).toBeInTheDocument()
-        expect(screen.getByText('5.13 W')).toBeInTheDocument()
+        expect(screen.getByText('Mains')).toBeInTheDocument()
     })
 
-    it('shows external power source when external_power=1', () => {
+    it('is not alarmed by a low battery that is plugged in and charging', () => {
+        // On mains there is no power emergency: the satellite suppresses its own
+        // power-driven descents while external power is present and the charge
+        // rate is not still falling, and the dashboard must not contradict it.
         render(
             <PowerSystemWidget
-                latest={mockTelemetryRecord}
+                eps={{ ...mockEps, batteryPercent: 8, externalPower: true, chargeRate: 4.2 }}
                 isLoading={false}
             />
         )
-        expect(screen.getByText('External')).toBeInTheDocument()
+        expect(screen.getByText(/on mains/)).toBeInTheDocument()
     })
 
     it('shows skeleton when loading with no data', () => {
         const { container } = render(
             <PowerSystemWidget
-                latest={null}
+                eps={null}
                 isLoading={true}
             />
         )
