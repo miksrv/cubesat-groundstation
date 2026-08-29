@@ -1,7 +1,7 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import { useGetWeatherQuery } from '../../features/telemetry/telemetryAPI'
+import { useWeather } from '../../features/weather/useWeather'
 
 import styles from './WeatherWidget.module.scss'
 
@@ -78,7 +78,7 @@ const formatUpdatedAt = (isoDate: string): string =>
     new Date(isoDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
 const WeatherWidget: React.FC = () => {
-    const { data, isLoading, isError } = useGetWeatherQuery(undefined, { pollingInterval: 600000 })
+    const { data, isLoading, isUnreachable } = useWeather()
 
     const icon = data ? getConditionIcon(data.weatherId) : '🌡️'
     const condition = data ? getConditionLabel(data.weatherId) : ''
@@ -89,7 +89,15 @@ const WeatherWidget: React.FC = () => {
             className={styles.panel}
         >
             {isLoading && !data && <Skeleton style={{ height: '80px', width: '100%' }} />}
-            {isError && !data && <div className={styles.error}>Weather unavailable</div>}
+            {/*
+              This panel is the one thing here that is not the satellite, and it
+              cannot work where the satellite usually is: EXPO is its own access
+              point with no uplink and FLIGHT has no network at all. Saying so
+              beats a spinner that never resolves.
+            */}
+            {isUnreachable && !data && (
+                <div className={styles.error}>No internet on this profile — weather unavailable</div>
+            )}
             {data && (
                 <div className={styles.body}>
                     <div className={styles.headline}>
