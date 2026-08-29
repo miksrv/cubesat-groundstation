@@ -2,7 +2,8 @@ import React, { Suspense } from 'react'
 
 import { Canvas } from '@react-three/fiber'
 
-import type { OrbitState, TelemetryRecord } from '../../features/telemetry/types'
+import type { OrbitState } from '../../features/orbit/simulate'
+import type { TelemetryRecord } from '../../features/telemetry/types'
 
 import EarthScene from './EarthScene'
 

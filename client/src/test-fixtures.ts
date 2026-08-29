@@ -1,51 +1,166 @@
-import type { TelemetryRecord } from './features/telemetry/types'
+/**
+ * Fixtures shaped like what the satellite really publishes.
+ *
+ * Values are taken from the payload examples in `cubesat-sim/README.md` rather
+ * than invented, so a test that passes against these is a test that would pass
+ * against the satellite. Note what that means in practice: `yaw` is present
+ * only because `calibStatus.mag` is 3, `uvIndex` is null because the SEN0501
+ * board revision is unknown, and the position is a real fix rather than the
+ * tidy zeros this receiver reports when it has none.
+ */
 
+import type {
+    AdcsStatus,
+    CommsStatus,
+    DhsStatus,
+    EpsStatus,
+    HostStatus,
+    LiveState,
+    ObcStatus,
+    PayloadStatus,
+    ScienceData,
+    TelemetryRecord
+} from './features/telemetry/types'
+
+const AT = 1741863600.0
+
+export const mockObc: ObcStatus = {
+    timestamp: AT,
+    status: 'NOMINAL',
+    profile: 'FLIGHT',
+    cadenceScale: 1.0,
+    persistence: 'mission_db',
+    missionLabel: 'walk to work'
+}
+
+export const mockEps: EpsStatus = {
+    timestamp: AT,
+    batteryPercent: 87.5,
+    voltage: 4.123,
+    externalPower: false,
+    chargeRate: -0.208
+}
+
+export const mockAdcs: AdcsStatus = {
+    timestamp: AT,
+    roll: 1.23,
+    pitch: -0.45,
+    yaw: 178.9,
+    quaternion: { w: 0.999, x: 0.01, y: 0.02, z: 0.03 },
+    calibStatus: { sys: 3, gyro: 3, accel: 3, mag: 3 },
+    imuTemp: 34.5,
+    accel: { x: 0.01, y: 0.02, z: 0.99 },
+    gyro: { x: 0.1, y: -0.2, z: 0.05 },
+    gnss: { lat: 55.7558, lon: 37.6173, alt: 156.2, speed: 0.4, fix: true, satellites: 23 }
+}
+
+export const mockScience: ScienceData = {
+    timestamp: AT,
+    temperature: 23.4,
+    humidity: 45.2,
+    pressure: 1013.0,
+    light: 412.0,
+    // Withheld until the board revision is known — see the file docstring.
+    uvIndex: null,
+    uvRaw: 14
+}
+
+export const mockPayload: PayloadStatus = {
+    timestamp: AT,
+    sensor: { device: 'SEN0501', present: true, readings: 148, lastRead: AT - 5 },
+    camera: { device: 'Camera Module V2', present: true },
+    storage: { freeMb: 21493.7, minFreeMb: 512.0, blocked: false },
+    timelapse: { active: false, intervalSec: null, frames: 0, reason: null },
+    missionId: '42',
+    photoDir: '/var/lib/cubesat/photos/42'
+}
+
+export const mockDhs: DhsStatus = {
+    timestamp: AT,
+    recording: true,
+    database: '/var/lib/cubesat/comms.db',
+    mission: { id: 42, label: 'walk to work', startedAt: '2026-08-24T07:00:00Z', rows: 120 },
+    rows: 1440,
+    dbSizeBytes: 2_400_000,
+    lastWrite: AT,
+    retentionDays: 30,
+    attitude: { written: 3600, buffered: 0, minIntervalSec: 1.0 },
+    photos: { unfiledBytes: 0, freeMb: 21493.7, minFreeMb: 512.0 }
+}
+
+export const mockComms: CommsStatus = {
+    timestamp: AT,
+    radio: { present: true, node: '!698204b0', region: 'US' },
+    loraEnabled: true,
+    loraListening: true,
+    lastUplink: AT - 200
+}
+
+export const mockHost: HostStatus = {
+    timestamp: AT,
+    profile: 'FLIGHT',
+    profileRequested: 'FLIGHT',
+    network: { mode: 'off', ssid: null, clients: null },
+    units: { 'cubesat@adcs.service': 'active', 'telegram-bot.service': 'inactive' },
+    governor: 'powersave',
+    errors: [],
+    ttlExpiresAt: AT + 36_000
+}
+
+/** A satellite reporting on every topic. */
+export const mockLiveState: LiveState = {
+    host: mockHost,
+    obc: mockObc,
+    eps: mockEps,
+    adcs: mockAdcs,
+    payload: mockPayload,
+    science: mockScience,
+    dhs: mockDhs,
+    comms: mockComms,
+    heartbeats: { obc: AT, eps: AT, adcs: AT, payload: AT, dhs: AT, comms: AT }
+}
+
+/** Nothing has arrived yet — the state a page is in the instant it connects. */
+export const emptyLiveState: LiveState = {
+    host: null,
+    obc: null,
+    eps: null,
+    adcs: null,
+    payload: null,
+    science: null,
+    dhs: null,
+    comms: null,
+    heartbeats: {}
+}
+
+/** One row of `telemetry`, as the archive hands it over. */
 export const mockTelemetryRecord: TelemetryRecord = {
     id: 1,
-    timestamp: '2024-01-01T12:00:00Z',
-    battery: 82,
-    voltage: 8.14,
-    external_power: 1,
-    battery_current: 0.63,
-    roll: 2.31,
-    pitch: -1.24,
-    yaw: 5.67,
-    imu_temp: 27.4,
-    accel_x: 0.01,
-    accel_y: -0.02,
-    accel_z: 0.0,
-    gyro_x: 0.1,
-    gyro_y: -0.1,
-    gyro_z: 0.0,
-    temperature: 23,
-    humidity: 50,
-    pressure: 1000,
-    camera_status: 'READY',
-    image_count: 1284,
-    image_resolution: '1280x720',
-    sensor_status: 'NOMINAL',
-    science_mode: false,
-    payload_power_watts: 1.23,
-    cpu_percent: 34,
-    ram_percent: 52,
-    swap_percent: 10,
-    disk_percent: 41,
-    uptime_seconds: 187562,
-    cpu_temperature: 55,
-    boot_count: 7,
-    obc_temperature: 28.4,
-    eps_temperature: 26.7,
-    battery_temperature: 21.3,
-    payload_temperature: 23.1,
-    rssi: -63,
-    snr: 17,
-    uplink_bps: 9600,
-    downlink_bps: 9600,
-    latency_ms: 127,
-    packet_loss_pct: 0.2,
-    obc_state: 'NOMINAL',
-    latitude: 51.79,
-    longitude: 55.1,
-    altitude: 512.4,
-    speed_kms: 7.61
+    timestamp: '2026-08-24T07:12:03Z',
+    missionId: 42,
+    profile: 'FLIGHT',
+    obcState: 'NOMINAL',
+    battery: 87.5,
+    voltage: 4.123,
+    externalPower: false,
+    roll: 1.23,
+    pitch: -0.45,
+    yaw: 178.9,
+    quaternion: { w: 0.999, x: 0.01, y: 0.02, z: 0.03 },
+    calibStatus: { sys: 3, gyro: 3, accel: 3, mag: 3 },
+    imuTemp: 34.5,
+    accel: { x: 0.01, y: 0.02, z: 0.99 },
+    gyro: { x: 0.1, y: -0.2, z: 0.05 },
+    gnss: { lat: 55.7558, lon: 37.6173, alt: 156.2, speed: 0.4, fix: true, satellites: 23 },
+    temperature: 23.4,
+    humidity: 45.2,
+    pressure: 1013.0,
+    light: 412.0,
+    uvIndex: null,
+    cpuPercent: 34,
+    ramPercent: 52,
+    swapPercent: 10,
+    diskPercent: 41,
+    uptimeSeconds: 187562,
+    cpuTemperature: 55
 }

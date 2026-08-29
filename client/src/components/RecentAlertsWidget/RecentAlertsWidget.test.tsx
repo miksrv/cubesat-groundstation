@@ -1,35 +1,16 @@
-import type { MissionEvent } from '../../features/telemetry/types'
+import type { ObservedEvent } from '../../features/events/observed'
 import { render, screen } from '../../test-utils'
 
 import RecentAlertsWidget from './RecentAlertsWidget'
 
 import '@testing-library/jest-dom'
 
-const mockEvents: MissionEvent[] = [
-    {
-        id: 1,
-        timestamp: new Date().toISOString(),
-        type: 'info',
-        severity: 'info',
-        message: 'Ground station link established',
-        meta: null
-    },
-    {
-        id: 2,
-        timestamp: new Date().toISOString(),
-        type: 'alert',
-        severity: 'warning',
-        message: 'Low Battery Warning',
-        meta: null
-    },
-    {
-        id: 3,
-        timestamp: new Date().toISOString(),
-        type: 'alert',
-        severity: 'critical',
-        message: 'Communication Lost',
-        meta: null
-    }
+const now = Date.now() / 1000
+
+const mockEvents: ObservedEvent[] = [
+    { id: '1-1', at: now, severity: 'info', message: 'radio transmitting' },
+    { id: '2-1', at: now, severity: 'warning', message: 'card full - captures refused' },
+    { id: '3-1', at: now, severity: 'critical', message: 'mission state SAFE -> CRITICAL' }
 ]
 
 describe('RecentAlertsWidget', () => {
@@ -40,9 +21,9 @@ describe('RecentAlertsWidget', () => {
                 isLoading={false}
             />
         )
-        expect(screen.getByText('Low Battery Warning')).toBeInTheDocument()
-        expect(screen.getByText('Communication Lost')).toBeInTheDocument()
-        expect(screen.queryByText('Ground station link established')).not.toBeInTheDocument()
+        expect(screen.getByText('card full - captures refused')).toBeInTheDocument()
+        expect(screen.getByText('mission state SAFE -> CRITICAL')).toBeInTheDocument()
+        expect(screen.queryByText('radio transmitting')).not.toBeInTheDocument()
     })
 
     it('shows an empty state when there are no alerts', () => {

@@ -1,24 +1,19 @@
-import { useGetWeatherQuery } from '../../features/telemetry/telemetryAPI'
+import { useWeather } from '../../features/weather/useWeather'
 import { render, screen } from '../../test-utils'
 
 import WeatherWidget from './WeatherWidget'
 
 import '@testing-library/jest-dom'
 
-jest.mock('../../features/telemetry/telemetryAPI', () => ({
-    useGetWeatherQuery: jest.fn(),
-    telemetryApi: {
-        reducerPath: 'telemetryApi',
-        reducer: (state = {}) => state,
-        middleware: () => (next: (action: unknown) => unknown) => (action: unknown) => next(action)
-    }
+jest.mock('../../features/weather/useWeather', () => ({
+    useWeather: jest.fn()
 }))
 
-const mockUseGetWeatherQuery = useGetWeatherQuery as jest.Mock
+const mockUseWeather = useWeather as jest.Mock
 
 describe('WeatherWidget', () => {
     it('renders temperature and condition', () => {
-        mockUseGetWeatherQuery.mockReturnValue({
+        mockUseWeather.mockReturnValue({
             data: {
                 temperature: 16.57,
                 feelsLike: 15.5,
@@ -40,7 +35,7 @@ describe('WeatherWidget', () => {
                 isStale: false
             },
             isLoading: false,
-            isError: false
+            isUnreachable: false
         })
         render(<WeatherWidget />)
         expect(screen.getByText('17°C')).toBeInTheDocument()
@@ -49,13 +44,13 @@ describe('WeatherWidget', () => {
     })
 
     it('shows a fallback message when the weather service errors', () => {
-        mockUseGetWeatherQuery.mockReturnValue({ data: null, isLoading: false, isError: true })
+        mockUseWeather.mockReturnValue({ data: null, isLoading: false, isUnreachable: true })
         render(<WeatherWidget />)
-        expect(screen.getByText('Weather unavailable')).toBeInTheDocument()
+        expect(screen.getByText('No internet on this profile — weather unavailable')).toBeInTheDocument()
     })
 
     it('shows skeleton while loading with no data', () => {
-        mockUseGetWeatherQuery.mockReturnValue({ data: null, isLoading: true, isError: false })
+        mockUseWeather.mockReturnValue({ data: null, isLoading: true, isUnreachable: false })
         const { container } = render(<WeatherWidget />)
         expect(container.querySelector('[data-testid="skeleton"]')).toBeInTheDocument()
     })

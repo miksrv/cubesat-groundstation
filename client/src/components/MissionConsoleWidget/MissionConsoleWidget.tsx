@@ -1,44 +1,77 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Container } from 'simple-react-ui-kit'
 
-import { useSendCommandMutation } from '../../features/telemetry/telemetryAPI'
-import type { CommandName, TelemetryRecord } from '../../features/telemetry/types'
+import type { Command, LiveState, Profile, TelemetryRecord } from '../../features/telemetry/types'
+import { getSource } from '../../features/telemetry/useSource'
 
 import styles from './MissionConsoleWidget.module.scss'
 
 interface Props {
+    live: LiveState
+    /** For uptime and the host metrics, which only DHS records. */
     latest: TelemetryRecord | null
 }
 
+/**
+ * The satellite's own vocabulary, typed out.
+ *
+ * The previous console offered `reboot obc` and `reset adcs`, which the
+ * satellite has never implemented — a console that accepts a command and does
+ * nothing teaches the operator something false about the thing they are
+ * operating. Everything below is a real command on `cubesat/command`, and
+ * `poweroff` is absent because the vocabulary has no such thing: `CRITICAL` is
+ * the only thing permitted to power the host down.
+ */
 const HELP_TEXT = [
     'Available commands:',
-    '  status                 — show current satellite status',
-    '  enable science          — enable science mode',
-    '  disable science         — disable science mode',
-    '  reboot obc              — reboot the on-board computer',
-    '  reset adcs               — reset attitude control',
-    '  safe mode               — enter safe mode',
-    '  clear                   — clear the console',
-    '  help                    — show this message'
+    '  status                  - what the satellite is reporting right now',
+    '  profile <name>          - HOSTED | DEMO | EXPO | FLIGHT | DIAG | MAINTENANCE',
+    '  science start|stop      - enter or leave SCIENCE',
+    '  safe                    - request SAFE',
+    '  recover                 - leave SAFE once the fault is gone',
+    '  photo                   - take one photograph',
+    '  timelapse start|stop    - start or stop a timelapse',
+    '  telemetry               - ask COMMS to republish its whole cache',
+    '  clear                   - clear the console',
+    '  help                    - show this message'
 ]
 
-const COMMAND_MAP: Record<string, CommandName> = {
-    'enable science': 'ENABLE_SCIENCE_MODE',
-    'enable science mode': 'ENABLE_SCIENCE_MODE',
-    'disable science': 'DISABLE_SCIENCE_MODE',
-    'disable science mode': 'DISABLE_SCIENCE_MODE',
-    'reboot obc': 'REBOOT_OBC',
-    'reset adcs': 'RESET_ADCS',
-    'safe mode': 'SAFE_MODE'
+const PROFILES: Profile[] = ['HOSTED', 'DEMO', 'EXPO', 'FLIGHT', 'DIAG', 'MAINTENANCE']
+
+/** One typed line to one command, or null when it is not one. */
+const parse = (line: string): Command | null | 'bad-profile' => {
+    const [head, tail] = [line.split(/\s+/)[0], line.split(/\s+/).slice(1).join(' ')]
+    switch (head) {
+        case 'profile': {
+            const name = tail.toUpperCase() as Profile
+            return PROFILES.includes(name) ? { command: 'set_profile', params: { profile: name } } : 'bad-profile'
+        }
+        case 'science':
+            return tail === 'stop' ? { command: 'science_stop' } : { command: 'science_start' }
+        case 'safe':
+            return { command: 'safe_mode' }
+        case 'recover':
+            return { command: 'recover' }
+        case 'photo':
+            return { command: 'take_photo' }
+        case 'timelapse':
+            return tail === 'stop'
+                ? { command: 'stop_timelapse' }
+                : { command: 'start_timelapse', params: { interval_sec: 30 } }
+        case 'telemetry':
+            return { command: 'get_telemetry' }
+        default:
+            return null
+    }
 }
 
-const MissionConsoleWidget: React.FC<Props> = ({ latest }) => {
+const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
     const [lines, setLines] = useState<string[]>([
         'CubeSat Mission Console v1.0',
         'Type "help" for a list of commands.'
     ])
     const [input, setInput] = useState('')
-    const [sendCommand] = useSendCommandMutation()
+    const source = getSource()
     const bodyRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -52,16 +85,21 @@ const MissionConsoleWidget: React.FC<Props> = ({ latest }) => {
     }
 
     const runStatus = () => {
-        if (!latest) {
-            print('No telemetry data available.')
+        if (!live.obc) {
+            print('Nothing has been published yet.')
             return
         }
+        // No "all systems nominal" line. The satellite has a state machine and
+        // it is the authority on how it is doing; a console that announced
+        // health on its own would be contradicting it about itself.
         print([
             'Satellite Status:',
-            `  Battery: ${latest.voltage?.toFixed(2) ?? '—'} V (${latest.battery?.toFixed(0) ?? '—'}%)`,
-            `  Mode: ${latest.obc_state ?? 'UNKNOWN'}`,
-            `  Uptime: ${latest.uptime_seconds != null ? Math.floor(latest.uptime_seconds / 86400) : '—'}d`,
-            'All systems nominal'
+            `  Mission state: ${live.obc.status}`,
+            `  Profile:       ${live.host?.profile ?? live.obc.profile ?? 'unknown'}`,
+            `  Battery:       ${live.eps?.voltage?.toFixed(3) ?? '-'} V (${live.eps?.batteryPercent?.toFixed(0) ?? '-'}%)`,
+            `  Recording:     ${live.dhs?.recording ? `mission ${live.dhs.mission?.id ?? '?'}` : 'no'}`,
+            `  Radio:         ${live.comms ? (live.comms.loraEnabled ? 'transmitting' : live.comms.loraListening ? 'listening only' : 'off') : '-'}`,
+            `  Uptime:        ${latest?.uptimeSeconds != null ? `${Math.floor(latest.uptimeSeconds / 3600)}h` : '-'}`
         ])
     }
 
@@ -89,17 +127,21 @@ const MissionConsoleWidget: React.FC<Props> = ({ latest }) => {
             return
         }
 
-        const mapped = COMMAND_MAP[cmd]
-        if (!mapped) {
+        const parsed = parse(cmd)
+        if (parsed === 'bad-profile') {
+            print(`Unknown profile. One of: ${PROFILES.join(', ')}`)
+            return
+        }
+        if (parsed == null) {
             print(`Unknown command: "${raw}". Type "help" for a list of commands.`)
             return
         }
 
         try {
-            const result = await sendCommand(mapped).unwrap()
-            print(result.message)
-        } catch {
-            print('Command failed.')
+            await source.send(parsed)
+            print(`${parsed.command} published to cubesat/command`)
+        } catch (error) {
+            print(error instanceof Error ? error.message : 'Command failed.')
         }
     }
 

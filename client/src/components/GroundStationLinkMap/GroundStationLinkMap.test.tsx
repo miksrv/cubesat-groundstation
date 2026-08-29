@@ -1,4 +1,4 @@
-import { mockTelemetryRecord } from '../../test-fixtures'
+import { mockAdcs, mockComms } from '../../test-fixtures'
 import { render, screen } from '../../test-utils'
 
 import GroundStationLinkMap from './GroundStationLinkMap'
@@ -17,7 +17,8 @@ describe('GroundStationLinkMap', () => {
     it('renders the panel title', () => {
         render(
             <GroundStationLinkMap
-                latest={mockTelemetryRecord}
+                adcs={mockAdcs}
+                comms={mockComms}
                 isLoading={false}
             />
         )
@@ -27,7 +28,8 @@ describe('GroundStationLinkMap', () => {
     it('shows skeleton when isLoading=true and latest is null', () => {
         const { container } = render(
             <GroundStationLinkMap
-                latest={null}
+                adcs={null}
+                comms={null}
                 isLoading={true}
             />
         )
@@ -37,20 +39,27 @@ describe('GroundStationLinkMap', () => {
     it('displays comms link stats from the latest record', () => {
         render(
             <GroundStationLinkMap
-                latest={mockTelemetryRecord}
+                adcs={mockAdcs}
+                comms={mockComms}
                 isLoading={false}
             />
         )
-        expect(screen.getByText('RSSI')).toBeInTheDocument()
-        expect(screen.getByText('-63 dBm')).toBeInTheDocument()
-        expect(screen.getByText('SNR')).toBeInTheDocument()
-        expect(screen.getByText('17.0 dB')).toBeInTheDocument()
+        // RSSI, SNR, latency and packet loss are gone. None of them is telemetry
+        // on this satellite: the radio is a Heltec running Meshtastic, which does
+        // its own framing and retries and reports none of it back over the serial
+        // link. What COMMS publishes is whether the node answered and whether it
+        // may transmit — so that is what the panel shows.
+        expect(screen.getByText('answered')).toBeInTheDocument()
+        expect(screen.getByText('!698204b0')).toBeInTheDocument()
+        expect(screen.getByText('Transmitting')).toBeInTheDocument()
+        expect(screen.getByText('Listening')).toBeInTheDocument()
     })
 
     it('renders the map container and ground station marker', () => {
         render(
             <GroundStationLinkMap
-                latest={mockTelemetryRecord}
+                adcs={mockAdcs}
+                comms={mockComms}
                 isLoading={false}
             />
         )
@@ -61,7 +70,8 @@ describe('GroundStationLinkMap', () => {
     it('does not show skeleton when data is available even if loading', () => {
         const { container } = render(
             <GroundStationLinkMap
-                latest={mockTelemetryRecord}
+                adcs={mockAdcs}
+                comms={mockComms}
                 isLoading={true}
             />
         )

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Container } from 'simple-react-ui-kit'
 
+import type { LiveState } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
 
 import styles from './MqttBusMonitorWidget.module.scss'
@@ -9,20 +10,31 @@ interface NodeDef {
     label: string
     y: number
     color: string
+    /** Whether this publisher has actually been heard from. */
+    heard: (live: LiveState) => boolean
 }
 
+/**
+ * The bus, as it really is.
+ *
+ * These are the services on the satellite and the topics they publish, and a
+ * node is lit only when something has arrived from it — so the diagram says
+ * what is on the air rather than decorating the page with a fixed picture. The
+ * old right-hand column named a `CLOUD` node: there is no cloud, and the
+ * ground station is this page.
+ */
 const LEFT_NODES: NodeDef[] = [
-    { label: 'EPS', y: 40, color: chartColors.blue[0] },
-    { label: 'PAYLOAD', y: 84, color: chartColors.blue[0] },
-    { label: 'ADCS', y: 128, color: chartColors.green[0] },
-    { label: 'SENSORS', y: 172, color: chartColors.amber[0] }
+    { label: 'EPS', y: 40, color: chartColors.blue[0], heard: (l) => l.eps != null },
+    { label: 'PAYLOAD', y: 84, color: chartColors.blue[0], heard: (l) => l.payload != null },
+    { label: 'ADCS', y: 128, color: chartColors.green[0], heard: (l) => l.adcs != null },
+    { label: 'DHS', y: 172, color: chartColors.amber[0], heard: (l) => l.dhs != null }
 ]
 
 const RIGHT_NODES: NodeDef[] = [
-    { label: 'TELEMETRY', y: 40, color: chartColors.green[0] },
-    { label: 'GROUND STATION', y: 84, color: chartColors.blue[0] },
-    { label: 'CLOUD', y: 128, color: chartColors.amber[0] },
-    { label: 'COMMANDS', y: 172, color: chartColors.red[0] }
+    { label: 'OBC', y: 40, color: chartColors.green[0], heard: (l) => l.obc != null },
+    { label: 'HOSTD', y: 84, color: chartColors.blue[0], heard: (l) => l.host != null },
+    { label: 'COMMS', y: 128, color: chartColors.amber[0], heard: (l) => l.comms != null },
+    { label: 'DASHBOARD', y: 172, color: chartColors.red[0], heard: () => true }
 ]
 
 const HUB_X = 220
@@ -94,7 +106,11 @@ const CubeIcon: React.FC = () => (
     </g>
 )
 
-const MqttBusMonitorWidget: React.FC = React.memo(() => (
+interface Props {
+    live: LiveState
+}
+
+const MqttBusMonitorWidget: React.FC<Props> = React.memo(({ live }) => (
     <Container
         title='MQTT Bus Monitor'
         className={styles.panel}
@@ -114,7 +130,11 @@ const MqttBusMonitorWidget: React.FC = React.memo(() => (
                         hubEdgeY(i, LEFT_NODES.length)
                     )}
                     className={styles.pulseLine}
-                    style={{ stroke: node.color, animationDelay: `${i * 0.3}s` }}
+                    style={{
+                        stroke: node.color,
+                        animationDelay: `${i * 0.3}s`,
+                        opacity: node.heard(live) ? 1 : 0.25
+                    }}
                 />
             ))}
             {RIGHT_NODES.map((node, i) => (

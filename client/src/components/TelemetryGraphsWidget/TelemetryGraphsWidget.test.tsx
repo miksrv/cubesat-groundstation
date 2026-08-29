@@ -29,7 +29,10 @@ describe('TelemetryGraphsWidget', () => {
         )
         expect(screen.getByText('Battery Voltage')).toBeInTheDocument()
         expect(screen.getByText('Temperature')).toBeInTheDocument()
-        expect(screen.getByText('RSSI')).toBeInTheDocument()
+        // RSSI is gone: nothing on this satellite measures signal strength as
+        // telemetry. Battery charge is a real series and the one an operator
+        // watches on a walk.
+        expect(screen.getByText('Battery')).toBeInTheDocument()
         expect(screen.getByText('CPU Usage')).toBeInTheDocument()
     })
 

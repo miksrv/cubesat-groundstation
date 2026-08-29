@@ -199,6 +199,6 @@ export const valueFormatters = {
     voltage: (v: number | null) => (v != null ? `${v.toFixed(2)}V` : '—'),
     pressure: (v: number | null) => (v != null ? `${v.toFixed(1)} hPa` : '—'),
     degrees: (v: number | null) => (v != null ? `${v.toFixed(1)}°` : '—'),
-    rssi: (v: number | null) => (v != null ? `${v.toFixed(0)} dBm` : '—'),
+    battery: (v: number | null) => (v != null ? `${v.toFixed(1)} %` : '—'),
     generic: (v: number | null) => (v != null ? v.toFixed(2) : '—')
 }

@@ -1,13 +1,19 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { TelemetryRecord } from '../../features/telemetry/types'
+import type { LiveState, TelemetryRecord } from '../../features/telemetry/types'
 import { getObcStatus } from '../../utils/subsystemStatus'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
 
 import styles from './OBCSystemWidget.module.scss'
 
 interface Props {
+    live: LiveState
+    /**
+     * The newest recorded row. CPU, RAM and disk are not on any status topic —
+     * only DHS records them — so these numbers are up to one DHS cadence old
+     * (30 s in NOMINAL) and absent entirely while no mission is being recorded.
+     */
     latest: TelemetryRecord | null
     isLoading: boolean
 }
@@ -37,9 +43,15 @@ const UsageBar: React.FC<{ label: string; percent: number | null }> = ({ label, 
     </div>
 )
 
-const OBCSystemWidget: React.FC<Props> = React.memo(({ latest, isLoading }) => {
-    const showSkeleton = isLoading && !latest
-    const status = getObcStatus(latest)
+/**
+ * "Boot count" used to sit at the bottom of this widget. Nothing on the
+ * satellite counts boots, so the row is gone rather than dashed out — the
+ * profile and the mission state are what actually say what the computer is
+ * doing, and they were not shown at all.
+ */
+const OBCSystemWidget: React.FC<Props> = React.memo(({ live, latest, isLoading }) => {
+    const showSkeleton = isLoading && !live.obc
+    const status = getObcStatus(live, latest)
 
     return (
         <Container
@@ -51,29 +63,33 @@ const OBCSystemWidget: React.FC<Props> = React.memo(({ latest, isLoading }) => {
                 <div className={styles.body}>
                     <UsageBar
                         label='CPU Usage'
-                        percent={latest?.cpu_percent ?? null}
+                        percent={latest?.cpuPercent ?? null}
                     />
                     <UsageBar
                         label='RAM Usage'
-                        percent={latest?.ram_percent ?? null}
+                        percent={latest?.ramPercent ?? null}
                     />
                     <UsageBar
                         label='Storage Usage'
-                        percent={latest?.disk_percent ?? null}
+                        percent={latest?.diskPercent ?? null}
                     />
                     <div className={styles.metaRow}>
                         <span className={styles.metaLabel}>Uptime</span>
-                        <span className={styles.metaValue}>{formatUptime(latest?.uptime_seconds)}</span>
+                        <span className={styles.metaValue}>{formatUptime(latest?.uptimeSeconds)}</span>
                     </div>
                     <div className={styles.metaRow}>
-                        <span className={styles.metaLabel}>Boot Count</span>
-                        <span className={styles.metaValue}>{latest?.boot_count ?? '—'}</span>
+                        <span className={styles.metaLabel}>Mission state</span>
+                        <span className={styles.metaValue}>{live.obc?.status ?? '—'}</span>
+                    </div>
+                    <div className={styles.metaRow}>
+                        <span className={styles.metaLabel}>Profile</span>
+                        <span className={styles.metaValue}>{live.host?.profile ?? live.obc?.profile ?? '—'}</span>
                     </div>
                     <div className={styles.footer}>
-                        <span className={styles.footerLabel}>Health</span>
+                        <span className={styles.footerLabel}>{status.detail}</span>
                         <StatusBadge
-                            status={status}
-                            label={status === 'OK' ? 'NOMINAL' : undefined}
+                            status={status.status}
+                            label={status.status === 'OK' ? 'NOMINAL' : undefined}
                         />
                     </div>
                 </div>

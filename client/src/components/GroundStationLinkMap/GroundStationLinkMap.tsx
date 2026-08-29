@@ -3,14 +3,15 @@ import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMa
 import L from 'leaflet'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { TelemetryRecord } from '../../features/telemetry/types'
+import type { AdcsStatus, CommsStatus } from '../../features/telemetry/types'
 import StatRow from '../common/StatRow/StatRow'
 
 import 'leaflet/dist/leaflet.css'
 import styles from './GroundStationLinkMap.module.scss'
 
 interface Props {
-    latest: TelemetryRecord | null
+    adcs: AdcsStatus | null
+    comms: CommsStatus | null
     isLoading: boolean
 }
 
@@ -115,12 +116,20 @@ const splitAtAntimeridian = (points: Array<[number, number]>): Array<Array<[numb
     return segments.filter((segment) => segment.length > 1)
 }
 
-const GroundStationLinkMap: React.FC<Props> = React.memo(({ latest, isLoading }) => {
-    const showSkeleton = isLoading && !latest
+const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, isLoading }) => {
+    const showSkeleton = isLoading && !adcs
 
-    const currentLat = latest?.latitude ?? 0
-    const currentLng = latest?.longitude ?? 0
-    const currentAlt = latest?.altitude ?? 0
+    /*
+      Only a real fix goes on the map. The GNSS sub-object always carries the
+      *last known* position and never blocks the poll loop, so with no signal it
+      holds stale coordinates and `fix: false` — drawing those would put the
+      satellite somewhere it is not. And 0,0 is a real place in the Gulf of
+      Guinea, which is exactly what this receiver reports when it has nothing.
+    */
+    const hasFix = adcs?.gnss.fix === true
+    const currentLat = hasFix ? (adcs?.gnss.lat ?? 0) : 0
+    const currentLng = hasFix ? (adcs?.gnss.lon ?? 0) : 0
+    const currentAlt = hasFix ? (adcs?.gnss.alt ?? 0) : 0
 
     const linkSegments = useMemo(() => {
         if (currentLat === 0 && currentLng === 0) {
@@ -222,34 +231,54 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ latest, isLoading })
             </div>
 
             <div className={styles.info}>
+                {/*
+                  RSSI, SNR, latency, packet loss and a bitrate used to be here.
+                  **None of them is telemetry on this satellite.** The radio is a
+                  Heltec running Meshtastic, which does the framing, retries and
+                  encryption itself and reports none of that back over the serial
+                  link; SNR exists only on a message that has already arrived.
+                  What COMMS does publish is whether the node answered, whether it
+                  may transmit, whether it is still listening, and when an uplink
+                  last landed — so that is what is shown.
+                */}
                 <div className={styles.coords}>
                     <div className={styles.coord}>
-                        <span>RSSI</span>
-                        <b>{latest?.rssi != null ? `${latest.rssi} dBm` : '—'}</b>
+                        <span>Radio</span>
+                        <b>{comms?.radio ? (comms.radio.present ? 'answered' : 'silent') : '—'}</b>
                     </div>
                     <div className={styles.coord}>
-                        <span>SNR</span>
-                        <b>{latest?.snr != null ? `${latest.snr.toFixed(1)} dB` : '—'}</b>
+                        <span>Node</span>
+                        <b>{comms?.radio?.node ?? '—'}</b>
                     </div>
                     <div className={styles.coord}>
-                        <span>Latency</span>
-                        <b>{latest?.latency_ms != null ? `${latest.latency_ms} ms` : '—'}</b>
+                        <span>Region</span>
+                        <b>{comms?.radio?.region ?? '—'}</b>
                     </div>
                     <div className={styles.coord}>
-                        <span>Packet Loss</span>
-                        <b>{latest?.packet_loss_pct != null ? `${latest.packet_loss_pct.toFixed(1)}%` : '—'}</b>
+                        <span>Last uplink</span>
+                        <b>
+                            {comms?.lastUplink != null
+                                ? new Date(comms.lastUplink * 1000).toLocaleTimeString(undefined, { hour12: false })
+                                : 'none'}
+                        </b>
                     </div>
                 </div>
                 <div className={styles.bottomRow}>
                     <div className={styles.uplinkDownlink}>
+                        {/*
+                          Quiet and deaf are different states, and this is the only
+                          place the difference is visible: a silenced transmitter
+                          that still listens is the way back into a satellite in
+                          SAFE, not a fault.
+                        */}
                         <StatRow
-                            label='Uplink'
-                            value={latest?.uplink_bps != null ? `${latest.uplink_bps} bps` : '—'}
+                            label='Transmitting'
+                            value={comms ? (comms.loraEnabled ? 'yes' : 'no') : '—'}
                             mono
                         />
                         <StatRow
-                            label='Downlink'
-                            value={latest?.downlink_bps != null ? `${latest.downlink_bps} bps` : '—'}
+                            label='Listening'
+                            value={comms ? (comms.loraListening ? 'yes' : 'no') : '—'}
                             mono
                         />
                     </div>

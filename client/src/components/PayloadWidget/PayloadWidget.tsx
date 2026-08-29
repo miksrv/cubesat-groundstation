@@ -1,7 +1,7 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { TelemetryRecord } from '../../features/telemetry/types'
+import type { LiveState, PayloadStatus, ScienceData } from '../../features/telemetry/types'
 import { getPayloadStatus } from '../../utils/subsystemStatus'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
@@ -9,13 +9,39 @@ import StatusBadge from '../common/StatusBadge/StatusBadge'
 import styles from './PayloadWidget.module.scss'
 
 interface Props {
-    latest: TelemetryRecord | null
+    payload: PayloadStatus | null
+    science: ScienceData | null
     isLoading: boolean
 }
 
-const PayloadWidget: React.FC<Props> = React.memo(({ latest, isLoading }) => {
-    const showSkeleton = isLoading && !latest
-    const status = getPayloadStatus(latest)
+const EMPTY: LiveState = {
+    host: null,
+    obc: null,
+    eps: null,
+    adcs: null,
+    payload: null,
+    science: null,
+    dhs: null,
+    comms: null,
+    heartbeats: {}
+}
+
+/**
+ * `present` here is not a label the satellite chose — it is the result of an
+ * actual transaction with the device, which is what separates "the sensor
+ * answered" from "the process started". That distinction is the whole reason
+ * `payload_status` exists as a topic, and it is worth showing as such.
+ *
+ * The old rows for image count, resolution and payload wattage are gone: the
+ * satellite counts frames of a running timelapse, not images ever taken, and
+ * nothing measures the payload's power draw. What it does report — and what
+ * actually explains a satellite that stopped taking pictures — is free space
+ * and the reason a timelapse ended.
+ */
+const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, isLoading }) => {
+    const showSkeleton = isLoading && !payload
+    const status = getPayloadStatus({ ...EMPTY, payload })
+    const timelapse = payload?.timelapse ?? null
 
     return (
         <Container
@@ -26,39 +52,59 @@ const PayloadWidget: React.FC<Props> = React.memo(({ latest, isLoading }) => {
             {!showSkeleton && (
                 <div className={styles.body}>
                     <StatRow
-                        label='Camera Status'
-                        value={latest?.camera_status ?? '—'}
-                        accent='main'
+                        label='Camera'
+                        value={payload?.camera ? (payload.camera.present ? 'answered' : 'silent') : '—'}
+                        accent={payload?.camera?.present ? 'green' : payload?.camera ? 'orange' : 'default'}
                     />
                     <StatRow
-                        label='Image Count'
-                        value={latest?.image_count ?? '—'}
+                        label='Environment sensor'
+                        value={payload?.sensor ? (payload.sensor.present ? 'answered' : 'silent') : '—'}
+                        accent={payload?.sensor?.present ? 'green' : payload?.sensor ? 'orange' : 'default'}
+                    />
+                    <StatRow
+                        label='Light'
+                        value={science?.light != null ? `${science.light.toFixed(0)} lx` : '—'}
                         mono
                     />
+                    {/*
+                      Null until the SEN0501 board revision is known: two revisions
+                      read one raw register with formulas that disagree by a factor
+                      of forty, so the satellite publishes the raw count and
+                      withholds the index. Say which, rather than showing a dash.
+                    */}
                     <StatRow
-                        label='Image Resolution'
-                        value={latest?.image_resolution ?? '—'}
+                        label='UV index'
+                        value={
+                            science?.uvIndex != null
+                                ? science.uvIndex.toFixed(2)
+                                : science?.uvRaw != null
+                                  ? `withheld — raw ${science.uvRaw}`
+                                  : '—'
+                        }
+                        mono={science?.uvIndex != null}
+                    />
+                    <StatRow
+                        label='Timelapse'
+                        value={
+                            timelapse == null
+                                ? '—'
+                                : timelapse.active
+                                  ? `running, ${timelapse.frames} frames`
+                                  : (timelapse.reason ?? 'idle')
+                        }
+                        accent={timelapse?.active ? 'green' : 'default'}
+                    />
+                    <StatRow
+                        label='Card free'
+                        value={payload?.storage?.freeMb != null ? `${payload.storage.freeMb.toFixed(0)} MB` : '—'}
                         mono
-                    />
-                    <StatRow
-                        label='Sensor Status'
-                        value={latest?.sensor_status ?? '—'}
-                    />
-                    <StatRow
-                        label='Science Mode'
-                        value={latest?.science_mode ? 'Enabled' : 'Disabled'}
-                        accent={latest?.science_mode ? 'green' : 'default'}
-                    />
-                    <StatRow
-                        label='Payload Power'
-                        value={latest?.payload_power_watts != null ? `${latest.payload_power_watts.toFixed(2)} W` : '—'}
-                        mono
+                        accent={payload?.storage?.blocked ? 'red' : 'default'}
                     />
                     <div className={styles.footer}>
-                        <span className={styles.footerLabel}>Payload Status</span>
+                        <span className={styles.footerLabel}>{status.detail}</span>
                         <StatusBadge
-                            status={status}
-                            label={status === 'OK' ? 'NOMINAL' : undefined}
+                            status={status.status}
+                            label={status.status === 'OK' ? 'NOMINAL' : undefined}
                         />
                     </div>
                 </div>

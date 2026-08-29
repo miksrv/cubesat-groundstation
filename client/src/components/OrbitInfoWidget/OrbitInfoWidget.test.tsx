@@ -1,29 +1,32 @@
-import type { OrbitState } from '../../features/telemetry/types'
+import type { OrbitState } from '../../features/orbit/simulate'
 import { render, screen } from '../../test-utils'
 
 import OrbitInfoWidget from './OrbitInfoWidget'
 
 import '@testing-library/jest-dom'
 
+/** Simulated: this satellite has no orbit. See features/orbit/simulate.ts. */
 const mockOrbit: OrbitState = {
-    orbit_type: 'LEO',
-    altitude_km: 506.4,
-    inclination_deg: 97.45,
-    period_min: 94.62,
-    raan_deg: 123.54,
-    aop_deg: 87.12,
-    true_anomaly_deg: 45.32,
+    simulated: true,
+    orbitType: 'LEO (simulated)',
+    altitudeKm: 506.4,
+    inclinationDeg: 97.45,
+    periodMin: 94.62,
+    raanDeg: 123.54,
+    aopDeg: 87.12,
+    trueAnomalyDeg: 45.32,
+    latDeg: 12.3,
+    lonDeg: -45.6,
     eclipse: false,
-    beta_angle_deg: 32.1,
-    orbit_number: 245,
-    ground_station: { name: 'ORENBURG, RUSSIA', lat: 51.7727, lon: 55.0988 },
-    next_pass_seconds: 454
+    orbitNumber: 245,
+    nextPassSeconds: 454,
+    groundStation: { name: 'Moscow', lat: 55.7558, lon: 37.6173 }
 }
 
 describe('OrbitInfoWidget', () => {
     it('renders orbital elements from orbit state', () => {
         render(<OrbitInfoWidget orbit={mockOrbit} />)
-        expect(screen.getByText('LEO')).toBeInTheDocument()
+        expect(screen.getByText('LEO (simulated)')).toBeInTheDocument()
         expect(screen.getByText('506.4 km')).toBeInTheDocument()
         expect(screen.getByText('97.45°')).toBeInTheDocument()
         expect(screen.getByText('94.62 min')).toBeInTheDocument()

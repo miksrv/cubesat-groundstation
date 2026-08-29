@@ -5,7 +5,8 @@ import { Line, OrbitControls, Stars, useTexture } from '@react-three/drei'
 
 import earthDayUrl from '../../assets/earth/earth_day.jpg'
 import earthNightUrl from '../../assets/earth/earth_night.png'
-import type { OrbitState, TelemetryRecord } from '../../features/telemetry/types'
+import type { OrbitState } from '../../features/orbit/simulate'
+import type { TelemetryRecord } from '../../features/telemetry/types'
 import { createEarthMaterial } from '../../three/earthMaterial'
 import { latLonToVector3 } from '../../three/geo'
 
@@ -66,8 +67,8 @@ const fitOrbitalPlaneRing = (
 
 /** Fallback ring built from the independently-simulated /orbit elements, used only when there isn't enough real ground-track data yet to fit a plane. */
 const fallbackOrbitRing = (orbit: OrbitState | null, radius: number, segments = 128): THREE.Vector3[] => {
-    const inclinationRad = ((orbit?.inclination_deg ?? 51.6) * Math.PI) / 180
-    const raanRad = ((orbit?.raan_deg ?? 0) * Math.PI) / 180
+    const inclinationRad = ((orbit?.inclinationDeg ?? 51.6) * Math.PI) / 180
+    const raanRad = ((orbit?.raanDeg ?? 0) * Math.PI) / 180
 
     const raw: THREE.Vector3[] = []
     for (let i = 0; i <= segments; i++) {
@@ -88,19 +89,19 @@ interface OrbitRingProps {
 
 const OrbitRing: React.FC<OrbitRingProps> = ({ orbit, latest, history }) => {
     const points = useMemo(() => {
-        const altitudeKm = latest?.altitude ?? orbit?.altitude_km ?? 500
+        const altitudeKm = latest?.gnss.alt ?? orbit?.altitudeKm ?? 500
         const radius = EARTH_RADIUS * (1 + altitudeKm / EARTH_REAL_RADIUS_KM)
 
         // Fit the ring through the actual ground track (oldest vs. newest valid
         // fix gives the widest, most stable angular baseline) so it always
         // matches the real satellite position/inclination instead of the
         // independently-simulated /orbit elements.
-        const validFixes = history.filter((r) => r.latitude != null && r.longitude != null)
+        const validFixes = history.filter((r) => r.gnss.lat != null && r.gnss.lon != null)
         if (validFixes.length >= 2) {
             const first = validFixes[0]
             const last = validFixes[validFixes.length - 1]
-            const unitP1 = latLonToVector3(first.latitude!, first.longitude!, 1)
-            const unitP2 = latLonToVector3(last.latitude!, last.longitude!, 1)
+            const unitP1 = latLonToVector3(first.gnss.lat!, first.gnss.lon!, 1)
+            const unitP2 = latLonToVector3(last.gnss.lat!, last.gnss.lon!, 1)
             const fitted = fitOrbitalPlaneRing(unitP1, unitP2, radius)
             if (fitted) {
                 return fitted
@@ -108,7 +109,7 @@ const OrbitRing: React.FC<OrbitRingProps> = ({ orbit, latest, history }) => {
         }
 
         return fallbackOrbitRing(orbit, radius)
-    }, [orbit, latest?.altitude, history])
+    }, [orbit, latest?.gnss.alt, history])
 
     return (
         <Line
@@ -125,9 +126,9 @@ const GroundTrack: React.FC<{ history: TelemetryRecord[] }> = ({ history }) => {
     const points = useMemo(() => {
         const radius = EARTH_RADIUS * 1.015
         return history
-            .filter((r) => r.latitude != null && r.longitude != null)
+            .filter((r) => r.gnss.lat != null && r.gnss.lon != null)
             .slice(-60)
-            .map((r) => latLonToVector3(r.latitude!, r.longitude!, radius))
+            .map((r) => latLonToVector3(r.gnss.lat!, r.gnss.lon!, radius))
     }, [history])
 
     if (points.length < 2) {
@@ -144,10 +145,10 @@ const GroundTrack: React.FC<{ history: TelemetryRecord[] }> = ({ history }) => {
 }
 
 const SatelliteMarker: React.FC<{ latest: TelemetryRecord | null }> = ({ latest }) => {
-    if (latest?.latitude == null || latest?.longitude == null) {
+    if (latest?.gnss.lat == null || latest?.gnss.lon == null) {
         return null
     }
-    const position = latLonToVector3(latest.latitude, latest.longitude, EARTH_RADIUS * 1.02)
+    const position = latLonToVector3(latest.gnss.lat, latest.gnss.lon, EARTH_RADIUS * 1.02)
 
     return (
         <mesh position={position}>

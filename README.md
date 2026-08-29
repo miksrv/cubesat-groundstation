@@ -1,324 +1,204 @@
 # CubeSat Ground Station
 
-CubeSat Ground Station is the cloud-side counterpart to **[CubeSat Sim](https://github.com/miksrv/cubesat-sim)**, a
-working flight-software stack running on real Raspberry Pi hardware. The CubeSat's onboard COMMS service reports
-telemetry from its OBC, EPS, ADCS, and Payload subsystems over HTTP; this repository ingests those packets, persists
-them in MySQL, and serves them to a React dashboard that visualizes mission state, subsystem health, and orbit
-tracking in near real time.
+The ground segment of **[CubeSat Sim](https://github.com/miksrv/cubesat-sim)** — a working CubeSat
+model built on real hardware, running independent Python services on a Raspberry Pi.
+
+This repository is **one React interface over several data sources**. The same page draws the same
+satellite whether the numbers arrive from the satellite's own broker, from a mission replayed out of
+its archive, or from a recording bundled with a static build that has no backend at all.
 
 ![CubeSat Ground Station](docs/cover.jpg)
 
-The two repositories form a single system: [CubeSat Sim](https://github.com/miksrv/cubesat-sim) is the satellite
-side (or its physical hardware analogue), and `cubesat-groundstation` is the mission-control side. Neither is
-useful in isolation for demonstrating end-to-end telemetry flow — this repo can run against simulated data on its
-own, but is designed to receive live packets from the companion project.
-
-**Project board:** [GitHub Projects #8](https://github.com/users/miksrv/projects/8/) ·
-**Companion project:** [CubeSat Sim](https://github.com/miksrv/cubesat-sim)
+**Architecture:** [`docs/dashboard-architecture.md`](docs/dashboard-architecture.md) — what the four
+cases are and why the boundary between the two repositories falls where it does.
+**Plan:** [`docs/dashboard-plan.md`](docs/dashboard-plan.md) — the order of work and what is left.
 
 ---
 
 ## Table of Contents
 
-- [Integration with CubeSat Sim](#integration-with-cubesat-sim)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
-- [API Reference](#api-reference)
+- [The four cases](#the-four-cases)
+- [How the source is chosen](#how-the-source-is-chosen)
+- [The contract](#the-contract)
+- [What the satellite does not measure](#what-the-satellite-does-not-measure)
+- [Project structure](#project-structure)
+- [Quick start](#quick-start)
 - [Testing](#testing)
-- [Documentation](#documentation)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
+- [Deployment](#deployment)
+- [What used to be here](#what-used-to-be-here)
 - [License](#license)
 
 ---
 
-## Integration with CubeSat Sim
+## The four cases
 
-[CubeSat Sim](https://github.com/miksrv/cubesat-sim) runs five independent services (OBC, EPS, ADCS, Payload,
-COMMS) communicating over a local MQTT broker on the satellite hardware. The COMMS service is the only one that
-talks to the outside world: every 30 seconds it assembles a packet from the other subsystems' cached telemetry plus
-its own system-health metrics, and — when its `api_enabled` flag is on and connectivity is confirmed — POSTs that
-packet to this ground station's `POST /api/cubesat/telemetry` endpoint.
+| # | Case | Runs on | Data from |
+|---|---|---|---|
+| 1 | Live dashboard in `DEMO` / `EXPO` | the satellite | its MQTT bus and SQLite |
+| 2 | Mission archive: load a mission, play its timeline | the satellite | its SQLite |
+| 3 | Public demo, always reachable | ordinary static hosting | itself — no backend at all |
+| 4 | Ground receiver: a Heltec V4 on USB *(later)* | a laptop | a serial link and its own SQLite |
 
-This ground station is intentionally the passive side of that link:
+They differ only in where the numbers come from. **The UI must not be able to tell which** — that is
+the whole architecture, and everything below follows from it.
 
-- It never initiates contact with the CubeSat. All data arrives via inbound HTTP POST from COMMS.
-- The telemetry schema mirrors the CubeSat's internal packet structure (`eps`, `adcs`, `payload`, `system`, `obc`,
-  `gps` groups) so packets can be stored with minimal transformation — see
-  [Message Payloads](https://github.com/miksrv/cubesat-sim#message-payloads) in the CubeSat Sim README for the
-  wire format COMMS produces.
-- CubeSat Sim's COMMS service also polls this ground station for queued ground commands. That contract
-  (`GET /api/cubesat/commands/pending` or equivalent) is not implemented on this side yet; the `commands` API
-  currently only stores simulated commands issued from this dashboard (see
-  [API Reference](#api-reference)) and does not yet dispatch them back to real hardware.
-- Everything in this repository also works standalone against seeded or synthetic telemetry, which is how the
-  frontend is developed and tested without a physical CubeSat attached.
+## How the source is chosen
 
----
-
-## Architecture
-
-```
-┌────────────────────┐        ┌────────────────────┐        ┌────────────────────┐
-│    CubeSat Sim     │        │   Ground Station   │        │   Ground Station   │
-│   (cubesat-sim)    │        │      Backend       │        │      Frontend      │
-│                    │        │                    │        │                    │
-│   COMMS service    │ HTTP  ►│ PHP CodeIgniter 4  │ HTTP  ►│  React + Three.js  │
-│  (SQLite cache +   │        │      + MySQL       │        │     dashboard      │
-│  MQTT internally)  │        │      REST API      │        │  Widgets + charts  │
-└────────────────────┘        └────────────────────┘        └────────────────────┘
-```
-
-COMMS POSTs a telemetry packet every 30 seconds; the frontend polls the backend on the same interval.
-
-### Data flow
-
-1. CubeSat Sim's OBC, EPS, ADCS, and Payload subsystems publish status over local MQTT.
-2. COMMS aggregates the latest reading from each subsystem plus system-health metrics into a single packet.
-3. Every 30 seconds, COMMS POSTs that packet to `POST /api/cubesat/telemetry` on this backend.
-4. The backend validates and stores the packet in MySQL, then exposes it through `latest`, `history`, and `range`
-   read endpoints, alongside separately tracked mission events, orbit state, and simulated commands.
-5. The frontend polls the backend every 30 seconds and renders it as a widget-based mission-control dashboard,
-   including a 3D orbit and ground-track globe.
-
----
-
-## Tech Stack
-
-### Backend (`/server`)
-- PHP 8.2+ with CodeIgniter 4.7
-- MySQL 8.0
-- PHPUnit 10 for testing
-- RESTful JSON API under `Api\*Controller` classes
-
-### Frontend (`/client`)
-- **Build tool:** Rsbuild (with the Sass plugin)
-- **Framework:** React 19, TypeScript
-- **State management:** Redux Toolkit with RTK Query
-- **2D charts:** Apache ECharts
-- **3D rendering:** three.js, @react-three/fiber, @react-three/drei — used for the orbit and ground-track globe
-- **Maps:** Leaflet / react-leaflet for the ground-station link map
-- **UI kit:** simple-react-ui-kit, with a SASS-based dark theme
-- **Testing:** Jest, React Testing Library, Cypress
-
----
-
-## Project Structure
-
-```
-cubesat-groundstation/
-├── server/                        # Backend (CodeIgniter 4)
-│   ├── app/
-│   │   ├── Controllers/Api/       # TelemetryController, EventsController,
-│   │   │                          # CommandsController, OrbitController
-│   │   ├── Models/                 # Database models
-│   │   ├── Database/                # Migrations
-│   │   └── Config/Routes.php        # API route definitions
-│   ├── docs/api.md                  # Backend API notes
-│   └── tests/                        # PHPUnit tests
-│
-├── client/                        # Frontend (React + Rsbuild)
-│   └── src/
-│       ├── app/                     # Redux store
-│       ├── features/telemetry/      # RTK Query API slice, types
-│       ├── components/              # Mission-control widgets (see below)
-│       ├── three/                   # Shared three.js material/scene helpers
-│       ├── styles/                  # SASS design system
-│       └── assets/earth/            # Day/night Earth textures for the globe
-│
-├── docker/                        # Docker configuration
-│   ├── mysql/                       # MySQL init scripts
-│   └── README.md                    # Docker setup guide
-│
-├── docs/
-│   └── CubeSat_Groundstation.postman_collection.json  # Importable API request collection
-│
-├── requirements/                  # Feature specifications (feature_1.md – feature_7.md)
-├── .claude/agents/                 # AI agent instructions
-├── docker-compose.yml              # MySQL container definition
-├── ROADMAP.md                      # Project roadmap and feature history
-└── CLAUDE.md                       # AI team-lead instructions for this repo
-```
-
-The dashboard's widget set (under `client/src/components/`) includes `MissionStatusBar`, `Satellite3DView`,
-`OrbitGroundTrack`, `GroundStationLinkMap`, `PowerSystemWidget`, `ThermalSystemWidget`, `ADCSWidget`,
-`OBCSystemWidget`, `PayloadWidget`, `MissionEventsWidget`, `MissionConsoleWidget`, `QuickCommandsWidget`,
-`TelemetryGraphsWidget`, `LiveTelemetryStreamWidget`, `MqttBusMonitorWidget`, `RecentAlertsWidget`,
-`SubsystemStatusWidget`, `OrbitInfoWidget`, and `WeatherWidget` — see
-[requirements/feature_7.md](requirements/feature_7.md) for the design this layout implements.
-
-![Mission control dashboard](docs/interface.jpg)
-
----
-
-## Quick Start
-
-### Prerequisites
-- PHP 8.2+ with Composer
-- MySQL 8.0 **or** Docker (recommended)
-- Node.js 18+ with [Yarn 4](https://yarnpkg.com/getting-started/install) (the client is pinned to `yarn@4.9.2` via
-  Corepack, not npm)
-- Git
-
-### 1. Clone the repository
+By the bundler, at build time:
 
 ```bash
-git clone https://github.com/miksrv/cubesat-groundstation.git
-cd cubesat-groundstation
+yarn build                         # PUBLIC_SOURCE defaults to live — the satellite
+PUBLIC_SOURCE=replay yarn build    # the public demo: a recorded mission, no backend
 ```
 
-### 2. Start MySQL (Docker, recommended)
+`#active-source` is an alias resolved in `rsbuild.config.ts` to either `active.live.ts` or
+`active.replay.ts`. The module that is not chosen is never imported and never bundled, so the static
+demo carries no MQTT client and the satellite's build carries no recording. A runtime `if (demo)`
+would ship both — and, worse, would let a widget depend on which one is running.
 
-```bash
-docker compose up -d
-docker compose ps
-docker compose logs cubesat
+| Variable | Default | What it does |
+|---|---|---|
+| `PUBLIC_SOURCE` | `live` | `live` or `replay` |
+| `PUBLIC_BROKER_URL` | `ws://<this host>:9001` | mosquitto's WebSocket listener |
+| `PUBLIC_API_BASE` | `/api` | the dashboard service's read-only REST |
+
+**The browser talks to the broker directly.** mosquitto carries a WebSocket listener and the
+satellite's `cubesat-dashboard` service serves this page; there is no MQTT-to-WebSocket bridge to
+write, test or keep in step with the topic list. Subscribing also replays every retained message, so
+a page that has just been opened knows the profile, the battery and the mission before a poll would
+have finished. What a browser may publish is an allowlist on the broker's side — `cubesat/command`
+and nothing else.
+
+## The contract
+
+`src/features/telemetry/types.ts`, and **the satellite defines it**: every shape there is a column
+of `telemetry` or `attitude`, a row of `missions`, or a documented MQTT payload. The authority is
+`cubesat-sim` — `src/cubesat/dhs/schema.py` and its README. When the two disagree, this repository
+is wrong.
+
+That direction is deliberate: a shape invented here would leave the emulated source faithful to
+something that does not exist.
+
+**Null means withheld, and it is never a zero.** The satellite refuses to publish a value it cannot
+justify — `yaw` is null until the magnetometer is calibrated, because the BNO055 reports a *constant*
+below that rather than a poor estimate; `uv_index` is null until the SEN0501 board revision is known,
+because two revisions read one register with formulas that disagree by a factor of forty. Render a
+null as absent. Substituting 0 re-introduces exactly the confident wrong number the satellite went
+out of its way not to send.
+
+## What the satellite does not measure
+
+Three things this dashboard used to show were removed rather than left dashed out, because a row
+that is always empty is a promise that something will fill it:
+
+- **Battery current and wattage.** There is no current sensor. The MAX17048 is a fuel gauge: state
+  of charge, voltage, and a rate of change in percent per hour. The gauge's real `charge_rate` is
+  shown instead — it is what tells "plugged in and charging" from "plugged in and still going down".
+- **Four per-subsystem temperatures.** There are three thermometers and none is on a subsystem
+  board: the SoC die, the BNO055 die, and the air.
+- **RSSI, SNR, latency, packet loss, bitrate.** The radio is a Heltec running stock Meshtastic,
+  which handles framing, retries and encryption itself and reports none of it back over the serial
+  link. What COMMS publishes is whether the node answered, whether it may transmit, whether it is
+  still listening, and when an uplink last landed.
+
+Two more things are computed here rather than fetched, and are labelled as such wherever they
+appear:
+
+- **The orbit is a simulation** (`src/features/orbit/simulate.ts`). The satellite sits on a desk,
+  goes to a science fair and rides to work in a backpack; it has no orbit and never will. The
+  parameters are the ISS's, rounded — a real orbit rather than numbers chosen to look plausible.
+  The *real* position comes from the GNSS receiver, and only from rows where `fix` is true.
+- **The mission log is what this page witnessed** (`src/features/events/observed.ts`). The satellite
+  keeps no events table. The log starts empty on every load and says so, because nothing recorded
+  what came before.
+
+## Project structure
+
+```
+client/
+├── src/
+│   ├── features/
+│   │   ├── telemetry/
+│   │   │   ├── types.ts            # the contract — from the satellite's schema
+│   │   │   ├── decode.ts           # wire (snake_case, nulls) -> domain, once
+│   │   │   ├── source.ts           # the interface every source implements
+│   │   │   ├── useSource.ts        # the hooks; attitude goes into a ref
+│   │   │   ├── recordings/         # the bundled mission the demo replays
+│   │   │   └── sources/
+│   │   │       ├── live.ts         # MQTT over WebSockets + REST for the archive
+│   │   │       ├── replay.ts       # a recording, no backend of any kind
+│   │   │       ├── active.live.ts  # the two halves of the build-time swap
+│   │   │       └── active.replay.ts
+│   │   ├── orbit/                  # the simulation, said out loud
+│   │   ├── events/                 # the log built from observed transitions
+│   │   └── weather/                # the one thing here that is not the satellite
+│   ├── components/                 # widgets: plain props, no idea where data came from
+│   └── utils/subsystemStatus.ts    # health, derived from what is actually published
+└── scripts/                        # the placeholder recording generator
 ```
 
-**Database credentials:**
-- Host: `localhost:3306`
-- Database: `cubesat_groundstation`
-- User: `cubesat_user`
-- Password: `cubesat_password`
-
-### 3. Backend setup
-
-```bash
-cd server
-composer install
-cp env .env
-
-# Configure database credentials in .env (use the Docker values above), then:
-php spark migrate
-php spark serve
-# API available at http://localhost:8080
-```
-
-### 4. Frontend setup
+## Quick start
 
 ```bash
 cd client
 yarn install
-
-# The dev-server API proxy is configured in rsbuild.config.ts, not via .env.
-# It defaults to a remote demo API — point it at http://localhost:8080 for
-# local backend development.
-
-yarn dev
-# Dashboard available at http://localhost:3000
+yarn dev                       # http://localhost:3000
 ```
 
-### Running tests
+With no satellite on the network the live source simply finds no broker: the page renders, the
+panels say what they do not know, and nothing hangs. To see it full of data without a satellite:
 
 ```bash
-# Backend
-cd server
-./vendor/bin/phpunit
-
-# Frontend
-cd client
-yarn test
+PUBLIC_SOURCE=replay yarn dev
 ```
 
-> Cypress E2E specs exist under `client/cypress/e2e/`, but the `cypress` package is not installed yet
-> (`yarn add -D cypress` first) — see [ROADMAP.md](ROADMAP.md), Feature 5.
+Against a real satellite on the LAN:
 
----
-
-## API Reference
-
-| Method | Endpoint | Controller | Description |
-|--------|----------|------------|-------------|
-| `POST` | `/api/cubesat/telemetry` | `TelemetryController::store` | Store a telemetry packet |
-| `GET` | `/api/cubesat/telemetry/latest` | `TelemetryController::latest` | Latest telemetry record |
-| `GET` | `/api/cubesat/telemetry/history` | `TelemetryController::history` | Last N telemetry records |
-| `GET` | `/api/cubesat/telemetry/range` | `TelemetryController::range` | Records within a time range |
-| `GET` | `/api/cubesat/events` | `EventsController::index` | Mission event log (state transitions, commands, deployments) |
-| `POST` | `/api/cubesat/commands` | `CommandsController::store` | Submit a simulated ground command |
-| `GET` | `/api/cubesat/orbit` | `OrbitController::index` | Current orbit state for the ground-track globe |
-
-**Example telemetry payload:**
-
-```json
-{
-  "timestamp": "2026-07-30T12:00:00Z",
-  "eps": { "battery": 82.1, "voltage": 8.14, "external_power": 1 },
-  "adcs": {
-    "roll": 2.31, "pitch": -1.24, "yaw": 5.67, "imu_temp": 27.4,
-    "accel_g": { "x": 0.01, "y": -0.02, "z": 0.0 },
-    "gyro_dps": { "x": 0.1, "y": -0.1, "z": 0.0 }
-  },
-  "payload": { "temperature": 23.0, "humidity": 50.0, "pressure": 1000.0 },
-  "system": { "cpu_percent": 34.0, "ram_percent": 52.0, "disk_percent": 41.0 },
-  "obc_state": "NOMINAL",
-  "gps": { "latitude": 55.7961, "longitude": 49.1087, "altitude": 512.4 }
-}
+```bash
+PUBLIC_BROKER_URL=ws://cubesat.local:9001 yarn dev
 ```
-
-This mirrors the packet structure COMMS assembles in
-[CubeSat Sim](https://github.com/miksrv/cubesat-sim#message-payloads). See
-[requirements/feature_7.md](requirements/feature_7.md) for the full additive API contract, including the thermal,
-comms, and payload fields added alongside the mission-control redesign.
-
-See the [Postman collection](docs/CubeSat_Groundstation.postman_collection.json) for ready-to-run request examples.
-
----
 
 ## Testing
 
-- **Backend:** PHPUnit, run against the Docker MySQL instance
-- **Frontend:** Jest and React Testing Library for component tests; Cypress specs are written but not yet wired
-  into CI (see [ROADMAP.md](ROADMAP.md), Feature 5)
-- **Target coverage:** Backend 80%, Frontend 75% (tracked, not yet enforced in CI)
+```bash
+cd client
+yarn test              # jest
+yarn eslint:check
+yarn prettier:check
+```
 
----
+Tests need neither a broker nor a server. `src/test-source.ts` installs a fake implementation of
+the source interface, pushes state by hand, and the widgets are asserted on what they drew — which
+is the cheapest possible proof that the abstraction holds.
 
-## Documentation
+## Deployment
 
-- [server/docs/api.md](server/docs/api.md) — backend API notes
-- [Postman collection](docs/CubeSat_Groundstation.postman_collection.json) — ready-to-import API requests
-- [ROADMAP.md](ROADMAP.md) — feature history, task status, and technical notes per feature
-- [requirements/](requirements/) — feature specifications, `feature_1.md` through `feature_7.md`
-- [CubeSat Sim](https://github.com/miksrv/cubesat-sim) — the flight-software stack this ground station receives
-  telemetry from
+**The public demo** is built with `PUBLIC_SOURCE=replay` and mirrored to ordinary hosting by
+`.github/workflows/deploy.yml`. It must work with no rewrite rules, which holds while there is no
+`react-router`; if addressable mission URLs are ever wanted, hash routing is the only option that
+keeps it true.
 
-> Dedicated architecture and deployment guides under `docs/` are planned (see [ROADMAP.md](ROADMAP.md), Feature 6)
-> but not written yet — this README, `server/docs/api.md`, and the Postman collection are the current source of
-> truth.
+**The satellite's copy** is not deployed from here. `client/dist`, built with `PUBLIC_SOURCE=live`,
+is copied onto the Pi and served by the `cubesat-dashboard` service from `CUBESAT_DASHBOARD_ROOT`.
+Building React on a Pi 4 costs minutes and a `node_modules` tree on the SD card to produce a few
+megabytes of static files, so the artefact travels rather than the source.
 
----
+## What used to be here
 
-## Roadmap
+A PHP/CodeIgniter 4 backend and a MySQL database. The satellite POSTed telemetry to it every 30
+seconds and this React client read it back.
 
-Full history and per-feature task tracking live in [ROADMAP.md](ROADMAP.md). At a glance:
+That leg is gone, in both repositories. No cloud service was ever deployed and none is planned:
+`downlink.api` and the `CloudApi` code have been removed from the satellite too. The consequence is
+worth stating plainly — **telemetry now lives only on the satellite's card**, and the mission export
+endpoint is what gets a copy off it. That same export is what the public demo replays.
 
-- **Feature 1 — Backend API:** complete
-- **Feature 2 — Frontend dashboard:** complete
-- **Feature 3 — Refactoring:** complete
-- **Feature 4 — Refactoring UI:** complete
-- **Feature 5 — QA and testing:** not started
-- **Feature 6 — Documentation:** not started
-- **Feature 7 — Mission Control dashboard redesign:** in progress — widget-based layout, mission events, simulated
-  commands, and the 3D orbit/ground-track globe (see [requirements/feature_7.md](requirements/feature_7.md))
-
----
-
-## Contributing
-
-This project uses an AI-driven development workflow with specialized agents, coordinated through GitHub Projects
-cards rather than issues:
-
-- **Backend Agent** — PHP/CodeIgniter development (`/server`)
-- **Frontend Agent** — React/TypeScript development (`/client`)
-- **QA Agent** — testing and quality assurance (`/server/tests`, `/client/src/tests`)
-- **Doc Agent** — documentation (`/docs`, `README.md`)
-
-See [CLAUDE.md](CLAUDE.md) for the full team workflow and card-status conventions.
-
----
+⚠️ The recording currently bundled with the demo is a **placeholder**, generated by
+`client/scripts/make-placeholder-recording.mjs`. It reproduces the awkward parts of real telemetry
+on purpose — a withheld heading, a null UV index, a fix that drops and leaves the coordinates stale
+— but nothing has run on the Raspberry Pi yet, so there is no real export to bundle. Replace it with
+the first one.
 
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+See [LICENSE](LICENSE).

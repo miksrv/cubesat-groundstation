@@ -1,29 +1,14 @@
-import {
-    useGetEventsQuery,
-    useGetHistoryQuery,
-    useGetLatestQuery,
-    useGetOrbitQuery,
-    useGetWeatherQuery,
-    useSendCommandMutation
-} from '../../features/telemetry/telemetryAPI'
-import { render, screen } from '../../test-utils'
+import { mockLiveState } from '../../test-fixtures'
+import type { FakeSource } from '../../test-source'
+import { installFakeSource } from '../../test-source'
+import { render, screen, waitFor } from '../../test-utils'
 
 import Dashboard from './Dashboard'
 
 import '@testing-library/jest-dom'
 
-jest.mock('../../features/telemetry/telemetryAPI', () => ({
-    useGetLatestQuery: jest.fn(() => ({ data: null, isLoading: false, isError: false })),
-    useGetHistoryQuery: jest.fn(() => ({ data: null, isLoading: false })),
-    useGetOrbitQuery: jest.fn(() => ({ data: null, isLoading: false })),
-    useGetEventsQuery: jest.fn(() => ({ data: null, isLoading: false })),
-    useGetWeatherQuery: jest.fn(() => ({ data: null, isLoading: false, isError: false })),
-    useSendCommandMutation: jest.fn(() => [jest.fn(), { isLoading: false }]),
-    telemetryApi: {
-        reducerPath: 'telemetryApi',
-        reducer: (state = {}) => state,
-        middleware: () => (next: (action: unknown) => unknown) => (action: unknown) => next(action)
-    }
+jest.mock('../../features/weather/useWeather', () => ({
+    useWeather: jest.fn(() => ({ data: null, isLoading: false, isUnreachable: false }))
 }))
 
 jest.mock('echarts', () => ({
@@ -40,28 +25,18 @@ global.ResizeObserver = jest.fn(() => ({
     disconnect: jest.fn()
 }))
 
-const mockUseGetLatestQuery = useGetLatestQuery as jest.Mock
-const mockUseGetHistoryQuery = useGetHistoryQuery as jest.Mock
-const mockUseGetOrbitQuery = useGetOrbitQuery as jest.Mock
-const mockUseGetEventsQuery = useGetEventsQuery as jest.Mock
-const mockUseGetWeatherQuery = useGetWeatherQuery as jest.Mock
-const mockUseSendCommandMutation = useSendCommandMutation as jest.Mock
-
 describe('Dashboard', () => {
+    let source: FakeSource
+
     beforeEach(() => {
-        mockUseGetLatestQuery.mockReturnValue({ data: null, isLoading: false, isError: false })
-        mockUseGetHistoryQuery.mockReturnValue({ data: null, isLoading: false })
-        mockUseGetOrbitQuery.mockReturnValue({ data: null, isLoading: false })
-        mockUseGetEventsQuery.mockReturnValue({ data: null, isLoading: false })
-        mockUseGetWeatherQuery.mockReturnValue({ data: null, isLoading: false, isError: false })
-        mockUseSendCommandMutation.mockReturnValue([jest.fn(), { isLoading: false }])
+        source = installFakeSource()
     })
 
     it('renders all panel titles', () => {
         render(<Dashboard />)
         expect(screen.getByText(/Subsystem Status/)).toBeInTheDocument()
         expect(screen.getByText('Electrical Power System')).toBeInTheDocument()
-        expect(screen.getByText(/Thermal System/)).toBeInTheDocument()
+        expect(screen.getByText(/Temperatures/)).toBeInTheDocument()
         expect(screen.getAllByText(/^ADCS$/).length).toBeGreaterThan(1)
         expect(screen.getByText('On-Board Computer')).toBeInTheDocument()
         expect(screen.getAllByText(/^Payload$/).length).toBeGreaterThan(0)
@@ -79,9 +54,23 @@ describe('Dashboard', () => {
         expect(screen.getByText(/Weather/)).toBeInTheDocument()
     })
 
-    it('shows error banner when useGetLatestQuery returns isError: true', () => {
-        mockUseGetLatestQuery.mockReturnValue({ data: null, isLoading: false, isError: true })
+    it('draws what the source pushes, with no polling involved', async () => {
+        // The live view is a subscription, not a fetch: on the satellite this is
+        // the broker replaying its retained messages the moment the page
+        // connects, so a freshly opened tab knows the state without waiting.
         render(<Dashboard />)
-        expect(screen.getByText(/Unable to reach API/)).toBeInTheDocument()
+        source.emit(mockLiveState)
+        await waitFor(() => expect(screen.getAllByText('NOMINAL').length).toBeGreaterThan(0))
+    })
+
+    it('keeps the live view when the recorded history is unreachable', async () => {
+        // Two channels of different kinds. Losing the archive costs the charts
+        // and the host metrics; it must not blank a dashboard that is otherwise
+        // still correct.
+        source.archiveError = new Error('archive down')
+        render(<Dashboard />)
+        source.emit(mockLiveState)
+        await waitFor(() => expect(screen.getByText(/recorded history is unreachable/)).toBeInTheDocument())
+        expect(screen.getAllByText('NOMINAL').length).toBeGreaterThan(0)
     })
 })

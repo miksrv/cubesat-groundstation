@@ -4,11 +4,20 @@ import * as THREE from 'three'
 import { Line, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 
-import type { TelemetryRecord } from '../../features/telemetry/types'
+import type { AttitudeUpdate } from '../../features/telemetry/source'
+import type { Vector3 } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
 
 interface Props {
-    latest: TelemetryRecord | null
+    /**
+     * The latest attitude sample, read on the animation frame rather than passed
+     * as state. Orientation arrives at 2 Hz live and 1 Hz from a recording; a
+     * React render per sample would re-render this whole tree for a value only
+     * the WebGL scene consumes, and the scene has to interpolate anyway.
+     */
+    attitudeRef: React.MutableRefObject<AttitudeUpdate | null>
+    /** g, for the measured-acceleration arrow. Changes slowly enough for props. */
+    accel: Vector3 | null
 }
 
 // Body-frame axis roles (LVLH-style convention for an earth-observation CubeSat)
@@ -124,20 +133,19 @@ const AxisTripod: React.FC = () => {
     )
 }
 
-const AccelVector: React.FC<{ latest: TelemetryRecord | null }> = ({ latest }) => {
-    const accel =
-        latest?.accel_x != null && latest?.accel_y != null && latest?.accel_z != null
-            ? new THREE.Vector3(latest.accel_x, latest.accel_y, latest.accel_z)
-            : null
+const AccelVector: React.FC<{ accel: Vector3 | null }> = ({ accel }) => {
+    const vector =
+        accel?.x != null && accel?.y != null && accel?.z != null ? new THREE.Vector3(accel.x, accel.y, accel.z) : null
 
-    if (!accel || accel.lengthSq() < 1e-8) {
+    if (!vector || vector.lengthSq() < 1e-8) {
         return null
     }
 
-    // Mock accelerometer readings are tiny fractions of a g, far too small to
-    // scale by magnitude and still be visible — show direction only, at a
-    // fixed length (shorter than the body axes so it doesn't crowd them out).
-    const end = accel
+    // Direction only, at a fixed length. On a satellite sitting on a desk this
+    // is one g straight down and on a walk it is one g plus a little noise, so
+    // scaling by magnitude would draw the same arrow every time — what is worth
+    // seeing is where "down" is relative to the body.
+    const end = vector
         .clone()
         .normalize()
         .multiplyScalar(AXIS_LEN * 0.6)
@@ -163,33 +171,31 @@ const AccelVector: React.FC<{ latest: TelemetryRecord | null }> = ({ latest }) =
     )
 }
 
-const CubeSatModel: React.FC<Props> = ({ latest }) => {
+const CubeSatModel: React.FC<Props> = ({ attitudeRef, accel }) => {
     const groupRef = useRef<THREE.Group>(null)
-    const targetQuat = useRef(new THREE.Quaternion())
-
-    const target = useMemo(() => {
-        const euler = new THREE.Euler(
-            THREE.MathUtils.degToRad(latest?.roll ?? 0),
-            THREE.MathUtils.degToRad(latest?.pitch ?? 0),
-            THREE.MathUtils.degToRad(latest?.yaw ?? 0),
-            'XYZ'
-        )
-        return new THREE.Quaternion().setFromEuler(euler)
-    }, [latest?.roll, latest?.pitch, latest?.yaw])
+    const target = useRef(new THREE.Quaternion())
 
     useFrame((_, delta) => {
-        if (!groupRef.current) {
+        const sample = attitudeRef.current
+        if (!groupRef.current || !sample) {
             return
         }
-        targetQuat.current.copy(target)
-        groupRef.current.quaternion.slerp(targetQuat.current, Math.min(1, delta * 3))
+        // three.js orders a quaternion (x, y, z, w); the BNO055 publishes
+        // (w, x, y, z). Written out rather than spread, because the two
+        // conventions differ by exactly one silent rotation.
+        target.current.set(sample.x, sample.y, sample.z, sample.w)
+        // Slerp toward it rather than snap. The satellite cannot sample faster —
+        // the I2C bus is clamped to 10 kHz and four processes share it — so the
+        // smoothness between samples is the viewer's job, and interpolating
+        // quaternions is most of why the satellite publishes them at all.
+        groupRef.current.quaternion.slerp(target.current, Math.min(1, delta * 4))
     })
 
     return (
         <group ref={groupRef}>
             <Body />
             <AxisTripod />
-            <AccelVector latest={latest} />
+            <AccelVector accel={accel} />
         </group>
     )
 }

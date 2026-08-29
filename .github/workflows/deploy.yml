@@ -1,114 +1,40 @@
+# Deploys the public demo.
+#
+# The FTP target is ordinary shared hosting, which is exactly the case that has
+# no backend at all — so the build is PUBLIC_SOURCE=replay: a recorded mission
+# bundled with the page and replayed in a loop. The bundler swaps the data
+# source at build time (see client/rsbuild.config.ts), so this artefact carries
+# no MQTT client and reaches nothing.
+#
+# The satellite's own build is not deployed from here. It is served by the
+# `cubesat-dashboard` service in cubesat-sim from CUBESAT_DASHBOARD_ROOT, and
+# arrives on the Pi as `client/dist` built with PUBLIC_SOURCE=live.
+#
+# There used to be an `api-deploy` job that shipped a PHP/CodeIgniter backend to
+# the same host. That backend is gone: no cloud service is deployed and none is
+# planned — see docs/dashboard-architecture.md.
+
 name: Deploy
 
+# Auto-deploy is temporarily disabled (manual trigger only).
+# To re-enable, restore:
+#   push:
+#     branches:
+#       - main
+#     paths:
+#       - 'client/**'
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ============================================
-  # Job 0: Detect Changes
-  # ============================================
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      server: ${{ steps.filter.outputs.server }}
-      client: ${{ steps.filter.outputs.client }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            server:
-              - 'server/**'
-            client:
-              - 'client/**'
-
-  # ============================================
-  # Job 1: API Deploy
-  # ============================================
-  api-deploy:
-    name: API Deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: changes
-    if: needs.changes.outputs.server == 'true'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.2
-          extensions: mbstring, intl, curl, dom
-          coverage: none
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-        working-directory: server
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('server/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
-      - name: Install dependencies
-        run: composer install --no-dev --no-progress --prefer-dist --optimize-autoloader
-        working-directory: server
-
-      - name: Install LFTP
-        run: sudo apt install lftp
-
-      - name: Configure LFTP
-        run: mkdir ~/.lftp && echo "set ssl:verify-certificate false;" >> ~/.lftp/rc
-
-      - name: Load Secrets
-        run: echo "machine ${{ secrets.FTP_HOSTNAME }} login ${{ secrets.FTP_USERNAME }} password ${{ secrets.FTP_PASSWORD }}" > ~/.netrc
-
-      - name: Upload API
-        run: |
-          lftp -e "mkdir -f server" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "put -O /server .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "put -O /server env" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "put -O /server spark" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "rm -r /server/app" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "rm -r /server/vendor" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "mirror --parallel=100 -R app /server/app" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "mirror --parallel=100 -R vendor /server/vendor" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "mirror --parallel=100 -R public /server/public" ${{ secrets.FTP_HOSTNAME }}
-          lftp -e "mirror --parallel=100 -R writable /server/writable" ${{ secrets.FTP_HOSTNAME }}
-        working-directory: server
-
-      - name: Set permissions
-        run: |
-          lftp -e "chmod 755 /server/spark" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "chmod -R 755 /server/writable" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "chmod -R 755 /server/writable/cache" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "chmod -R 755 /server/writable/logs" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "chmod -R 755 /server/writable/session" ${{ secrets.FTP_HOSTNAME }} || true
-          lftp -e "chmod -R 755 /server/writable/uploads" ${{ secrets.FTP_HOSTNAME }} || true
-        continue-on-error: true
-
-  # ============================================
-  # Job 2: UI Deploy
-  # ============================================
   ui-deploy:
     name: UI Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: changes
-    if: needs.changes.outputs.client == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -125,6 +51,10 @@ jobs:
         run: yarn install --immutable
 
       - name: Build UI
+        # replay: this host has no backend, and the demo is meant to show a real
+        # recorded mission rather than a generator's idea of one.
+        env:
+          PUBLIC_SOURCE: replay
         run: |
           export dateNow=$(date +"%Y-%m-%dT%H:%M")
           echo "export const update = '$dateNow'" > update.ts
@@ -148,4 +78,3 @@ jobs:
           lftp -e "rm .htaccess" ${{ secrets.FTP_HOSTNAME }} || true
           lftp -e "mirror --parallel=100 -R dist /" ${{ secrets.FTP_HOSTNAME }}
         working-directory: client
-

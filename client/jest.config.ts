@@ -5,6 +5,9 @@ const config: Config = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['@testing-library/jest-dom'],
   moduleNameMapper: {
+    // The build-time source swap. Tests always take the live half and then
+    // install a fake over it — see src/test-source.ts.
+    '^#active-source$': '<rootDir>/src/features/telemetry/sources/active.live.ts',
     '\\.module\\.scss$': 'identity-obj-proxy',
     '\\.scss$': 'identity-obj-proxy',
     '^simple-react-ui-kit$': '<rootDir>/src/__mocks__/simple-react-ui-kit.tsx',

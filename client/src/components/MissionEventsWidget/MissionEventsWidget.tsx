@@ -1,12 +1,12 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { EventSeverity, MissionEvent } from '../../features/telemetry/types'
+import type { EventSeverity, ObservedEvent } from '../../features/events/observed'
 
 import styles from './MissionEventsWidget.module.scss'
 
 interface Props {
-    events: MissionEvent[]
+    events: ObservedEvent[]
     isLoading: boolean
 }
 
@@ -17,8 +17,12 @@ const severityClass: Record<EventSeverity, string> = {
     critical: 'severityCritical'
 }
 
-const formatTime = (timestamp: string): string =>
-    new Date(timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+const formatTime = (epochSeconds: number): string =>
+    new Date(epochSeconds * 1000).toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    })
 
 const MissionEventsWidget: React.FC<Props> = React.memo(({ events, isLoading }) => {
     const showSkeleton = isLoading && events.length === 0
@@ -36,12 +40,20 @@ const MissionEventsWidget: React.FC<Props> = React.memo(({ events, isLoading }) 
                             key={event.id}
                             className={styles.item}
                         >
-                            <span className={styles.time}>{formatTime(event.timestamp)}</span>
+                            <span className={styles.time}>{formatTime(event.at)}</span>
                             <span className={`${styles.dot} ${styles[severityClass[event.severity]]}`} />
                             <span className={styles.message}>{event.message}</span>
                         </li>
                     ))}
-                    {events.length === 0 && <li className={styles.empty}>No events yet</li>}
+                    {/*
+                        The satellite keeps no events table: this log is built from
+                        what the page itself has witnessed since it was opened, so
+                        empty is the normal state right after a reload rather than a
+                        claim that nothing has happened. Say so.
+                    */}
+                    {events.length === 0 && (
+                        <li className={styles.empty}>Nothing observed since this page was opened</li>
+                    )}
                 </ul>
             )}
         </Container>

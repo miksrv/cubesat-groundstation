@@ -17,17 +17,23 @@ interface StreamLine {
     message: string
 }
 
+/**
+ * A row of `telemetry`, printed. The old version had a `Comms RSSI` line —
+ * nothing on this satellite measures signal strength as telemetry, so it is
+ * gone rather than dashed out; what the radio does report is on the link panel.
+ */
 const buildLines = (r: TelemetryRecord): StreamLine[] => {
     const t = new Date(r.timestamp).toLocaleTimeString(undefined, { hour12: false })
     const rows: Array<[string, string | number | null | undefined]> = [
-        ['EPS Battery Voltage', r.voltage != null ? `${r.voltage.toFixed(2)} V` : null],
+        ['EPS Battery Voltage', r.voltage != null ? `${r.voltage.toFixed(3)} V` : null],
         ['EPS Battery Level', r.battery != null ? `${r.battery.toFixed(1)}%` : null],
         ['ADCS Roll', r.roll != null ? `${r.roll.toFixed(2)}°` : null],
         ['ADCS Pitch', r.pitch != null ? `${r.pitch.toFixed(2)}°` : null],
-        ['OBC CPU Usage', r.cpu_percent != null ? `${r.cpu_percent.toFixed(1)}%` : null],
-        ['OBC RAM Usage', r.ram_percent != null ? `${r.ram_percent.toFixed(1)}%` : null],
-        ['Comms RSSI', r.rssi != null ? `${r.rssi} dBm` : null],
-        ['Packet ID', r.id]
+        ['ADCS Fix', r.gnss.fix === true ? `${r.gnss.satellites ?? 0} satellites` : 'none'],
+        ['OBC CPU Usage', r.cpuPercent != null ? `${r.cpuPercent.toFixed(1)}%` : null],
+        ['OBC RAM Usage', r.ramPercent != null ? `${r.ramPercent.toFixed(1)}%` : null],
+        ['OBC State', r.obcState],
+        ['Row ID', r.id]
     ]
     return rows
         .filter(([, value]) => value != null)
