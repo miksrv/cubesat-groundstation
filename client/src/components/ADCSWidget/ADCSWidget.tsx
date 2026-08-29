@@ -1,7 +1,7 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { TelemetryRecord } from '../../features/telemetry/types'
+import type { AdcsStatus } from '../../features/telemetry/types'
 import { getAdcsStatus } from '../../utils/subsystemStatus'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
@@ -9,16 +9,27 @@ import StatusBadge from '../common/StatusBadge/StatusBadge'
 import styles from './ADCSWidget.module.scss'
 
 interface Props {
-    latest: TelemetryRecord | null
+    adcs: AdcsStatus | null
     isLoading: boolean
 }
 
 const fmtDeg = (v: number | null | undefined): string => (v != null ? `${v.toFixed(2)}°` : '—')
 const fmtRate = (v: number | null | undefined): string => (v != null ? `${v.toFixed(2)}°/s` : '—')
 
-const ADCSWidget: React.FC<Props> = React.memo(({ latest, isLoading }) => {
-    const showSkeleton = isLoading && !latest
-    const status = getAdcsStatus(latest)
+const ADCSWidget: React.FC<Props> = React.memo(({ adcs, isLoading }) => {
+    const showSkeleton = isLoading && !adcs
+    const status = getAdcsStatus({
+        host: null,
+        obc: null,
+        eps: null,
+        adcs,
+        payload: null,
+        science: null,
+        dhs: null,
+        comms: null,
+        heartbeats: {}
+    })
+    const mag = adcs?.calibStatus?.mag ?? null
 
     return (
         <Container
@@ -30,39 +41,61 @@ const ADCSWidget: React.FC<Props> = React.memo(({ latest, isLoading }) => {
                 <div className={styles.body}>
                     <StatRow
                         label='Roll'
-                        value={fmtDeg(latest?.roll)}
+                        value={fmtDeg(adcs?.roll)}
                         mono
                     />
                     <StatRow
                         label='Pitch'
-                        value={fmtDeg(latest?.pitch)}
+                        value={fmtDeg(adcs?.pitch)}
                         mono
                     />
+                    {/*
+                      Yaw is null until the magnetometer reaches calibration 3, and
+                      that is worth explaining rather than dashing out: below it the
+                      BNO055 reports a *constant*, so the satellite withholds the
+                      value instead of publishing confident nonsense. A bare "—"
+                      here reads as a broken sensor, which is the wrong story.
+                    */}
                     <StatRow
                         label='Yaw'
-                        value={fmtDeg(latest?.yaw)}
+                        value={adcs?.yaw != null ? fmtDeg(adcs.yaw) : 'withheld — magnetometer'}
+                        mono={adcs?.yaw != null}
+                    />
+                    <StatRow
+                        label='Magnetometer calib'
+                        value={mag != null ? `${mag}/3` : '—'}
                         mono
+                        accent={mag != null && mag < 3 ? 'orange' : 'default'}
                     />
                     <StatRow
                         label='Angular Rate X'
-                        value={fmtRate(latest?.gyro_x)}
+                        value={fmtRate(adcs?.gyro.x)}
                         mono
                     />
                     <StatRow
                         label='Angular Rate Y'
-                        value={fmtRate(latest?.gyro_y)}
+                        value={fmtRate(adcs?.gyro.y)}
                         mono
                     />
                     <StatRow
                         label='Angular Rate Z'
-                        value={fmtRate(latest?.gyro_z)}
+                        value={fmtRate(adcs?.gyro.z)}
                         mono
                     />
+                    <StatRow
+                        label='GNSS'
+                        value={
+                            adcs?.gnss.fix === true
+                                ? `fix, ${adcs.gnss.satellites ?? 0} satellites`
+                                : 'no fix — position is the last known one'
+                        }
+                        accent={adcs?.gnss.fix === true ? 'default' : 'orange'}
+                    />
                     <div className={styles.footer}>
-                        <span className={styles.footerLabel}>ADCS Status</span>
+                        <span className={styles.footerLabel}>{status.detail}</span>
                         <StatusBadge
-                            status={status}
-                            label={status === 'OK' ? 'NOMINAL' : undefined}
+                            status={status.status}
+                            label={status.status === 'OK' ? 'NOMINAL' : undefined}
                         />
                     </div>
                 </div>
