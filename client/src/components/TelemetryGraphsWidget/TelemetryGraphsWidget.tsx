@@ -108,8 +108,12 @@ const TelemetryGraphsWidget: React.FC<Props> = React.memo(({ history, isLoading 
         () => ({
             voltage: recent.map((r) => [new Date(r.timestamp), r.voltage ?? 0] as [Date, number]),
             temperature: recent.map((r) => [new Date(r.timestamp), r.temperature ?? 0] as [Date, number]),
-            rssi: recent.map((r) => [new Date(r.timestamp), r.rssi ?? 0] as [Date, number]),
-            cpu: recent.map((r) => [new Date(r.timestamp), r.cpu_percent ?? 0] as [Date, number])
+            // RSSI used to be charted here. Nothing on this satellite measures
+            // signal strength as telemetry — Meshtastic reports SNR on a message
+            // that has already arrived, and nothing else. Battery charge is a real
+            // series and the one an operator actually watches on a walk.
+            battery: recent.map((r) => [new Date(r.timestamp), r.battery ?? 0] as [Date, number]),
+            cpu: recent.map((r) => [new Date(r.timestamp), r.cpuPercent ?? 0] as [Date, number])
         }),
         [recent]
     )
@@ -135,10 +139,10 @@ const TelemetryGraphsWidget: React.FC<Props> = React.memo(({ history, isLoading 
                         valueFormatter={valueFormatters.temperature}
                     />
                     <MiniChart
-                        title='RSSI'
+                        title='Battery'
                         color={chartColors.green[0]}
-                        data={series.rssi}
-                        valueFormatter={valueFormatters.rssi}
+                        data={series.battery}
+                        valueFormatter={valueFormatters.battery}
                     />
                     <MiniChart
                         title='CPU Usage'

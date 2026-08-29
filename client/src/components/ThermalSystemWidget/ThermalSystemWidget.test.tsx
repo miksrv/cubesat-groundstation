@@ -1,4 +1,4 @@
-import { mockTelemetryRecord } from '../../test-fixtures'
+import { mockAdcs, mockScience, mockTelemetryRecord } from '../../test-fixtures'
 import { render, screen } from '../../test-utils'
 
 import ThermalSystemWidget from './ThermalSystemWidget'
@@ -6,24 +6,29 @@ import ThermalSystemWidget from './ThermalSystemWidget'
 import '@testing-library/jest-dom'
 
 describe('ThermalSystemWidget', () => {
-    it('renders each subsystem temperature and the computed max', () => {
+    it('renders the three temperatures this satellite actually measures', () => {
+        // The SoC die, the IMU die and the air. There are no per-subsystem
+        // thermometers on the boards, so the old OBC/EPS/battery/payload rows
+        // were four plausible numbers with nothing behind them.
         render(
             <ThermalSystemWidget
                 latest={mockTelemetryRecord}
+                adcs={mockAdcs}
+                science={mockScience}
                 isLoading={false}
             />
         )
-        expect(screen.getByText('26.7°C')).toBeInTheDocument() // EPS
-        expect(screen.getByText('21.3°C')).toBeInTheDocument() // Battery
-        expect(screen.getByText('23.1°C')).toBeInTheDocument() // Payload
-        // Max of the four is 28.4 — appears twice (OBC row + Max row)
-        expect(screen.getAllByText('28.4°C')).toHaveLength(2)
+        expect(screen.getByText('55.0°C')).toBeInTheDocument()
+        expect(screen.getByText('34.5°C')).toBeInTheDocument()
+        expect(screen.getByText('23.4°C')).toBeInTheDocument()
     })
 
     it('shows skeleton when loading with no data', () => {
         const { container } = render(
             <ThermalSystemWidget
                 latest={null}
+                adcs={null}
+                science={null}
                 isLoading={true}
             />
         )
