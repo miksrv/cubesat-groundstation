@@ -1,17 +1,17 @@
 import React, { useMemo } from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { MissionEvent } from '../../features/telemetry/types'
+import type { ObservedEvent } from '../../features/events/observed'
 
 import styles from './RecentAlertsWidget.module.scss'
 
 interface Props {
-    events: MissionEvent[]
+    events: ObservedEvent[]
     isLoading: boolean
 }
 
-const formatRelative = (timestamp: string): string => {
-    const diffMs = Date.now() - new Date(timestamp).getTime()
+const formatRelative = (epochSeconds: number): string => {
+    const diffMs = Date.now() - epochSeconds * 1000
     const minutes = Math.floor(diffMs / 60000)
     if (minutes < 1) {
         return 'just now'
@@ -45,7 +45,7 @@ const RecentAlertsWidget: React.FC<Props> = React.memo(({ events, isLoading }) =
                         >
                             <span className={styles.icon}>{alert.severity === 'critical' ? '⛔' : '⚠'}</span>
                             <span className={styles.message}>{alert.message}</span>
-                            <span className={styles.time}>{formatRelative(alert.timestamp)}</span>
+                            <span className={styles.time}>{formatRelative(alert.at)}</span>
                         </li>
                     ))}
                     {alerts.length === 0 && <li className={styles.empty}>No active alerts</li>}
