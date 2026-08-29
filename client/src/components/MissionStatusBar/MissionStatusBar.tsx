@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import { Badge } from 'simple-react-ui-kit'
 
-import type { OrbitState, TelemetryRecord } from '../../features/telemetry/types'
+import type { OrbitState } from '../../features/orbit/simulate'
+import type { LiveState, TelemetryRecord } from '../../features/telemetry/types'
 import { getMissionStatus } from '../../utils/subsystemStatus'
 
 import styles from './MissionStatusBar.module.scss'
 
 interface Props {
+    live: LiveState
+    /** For uptime, which only DHS records. */
     latest: TelemetryRecord | null
+    /** Simulated — the satellite has no orbit. See features/orbit/simulate.ts. */
     orbit: OrbitState | null
     isLoading: boolean
     isError: boolean
@@ -63,7 +67,7 @@ const obcBadgeClass = (state: string): string => {
     }
 }
 
-const MissionStatusBar: React.FC<Props> = ({ latest, orbit, isLoading, isError }) => {
+const MissionStatusBar: React.FC<Props> = ({ live, latest, orbit, isLoading, isError }) => {
     const [utcClock, setUtcClock] = useState('')
     const [nextPassSeconds, setNextPassSeconds] = useState<number | null>(null)
 
@@ -75,8 +79,8 @@ const MissionStatusBar: React.FC<Props> = ({ latest, orbit, isLoading, isError }
     }, [])
 
     useEffect(() => {
-        setNextPassSeconds(orbit?.next_pass_seconds ?? null)
-    }, [orbit?.next_pass_seconds])
+        setNextPassSeconds(orbit?.nextPassSeconds ?? null)
+    }, [orbit?.nextPassSeconds])
 
     useEffect(() => {
         if (nextPassSeconds == null) {
@@ -88,8 +92,8 @@ const MissionStatusBar: React.FC<Props> = ({ latest, orbit, isLoading, isError }
         return () => clearInterval(interval)
     }, [nextPassSeconds != null])
 
-    const obcState = latest?.obc_state ?? 'UNKNOWN'
-    const missionStatus = getMissionStatus(latest)
+    const obcState = live.obc?.status ?? 'UNKNOWN'
+    const missionStatus = getMissionStatus(live)
     const utcTime = utcClock.split(' ').slice(-2).join(' ')
 
     return (
@@ -141,14 +145,17 @@ const MissionStatusBar: React.FC<Props> = ({ latest, orbit, isLoading, isError }
                 <div className={`${styles.stat} ${styles.hideMobile}`}>
                     <span className={styles.statLabel}>Mission Time</span>
                     <span className={`${styles.statValue} ${styles.mono}`}>
-                        {formatMissionTime(latest?.uptime_seconds)}
+                        {formatMissionTime(latest?.uptimeSeconds)}
                     </span>
                 </div>
 
                 <div className={`${styles.stat} ${styles.hideMobile}`}>
-                    <span className={styles.statLabel}>Orbit</span>
+                    {/* Simulated. This satellite rides to work in a backpack —
+                        the orbital view is a teaching aid and is labelled as one
+                        wherever it appears. */}
+                    <span className={styles.statLabel}>Orbit (sim)</span>
                     <span className={`${styles.statValue} ${styles.mono}`}>
-                        {orbit ? `#${orbit.orbit_number}` : '—'}
+                        {orbit ? `#${orbit.orbitNumber}` : '—'}
                     </span>
                 </div>
 
@@ -162,7 +169,7 @@ const MissionStatusBar: React.FC<Props> = ({ latest, orbit, isLoading, isError }
 
                 <div className={`${styles.stat} ${styles.hideMobile}`}>
                     <span className={styles.statLabel}>Ground Station</span>
-                    <span className={styles.statValue}>{orbit?.ground_station.name ?? '—'}</span>
+                    <span className={styles.statValue}>{orbit?.groundStation.name ?? '—'}</span>
                 </div>
 
                 <div className={`${styles.stat} ${styles.hideMobile}`}>

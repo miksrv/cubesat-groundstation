@@ -1,27 +1,18 @@
-import type { MissionEvent } from '../../features/telemetry/types'
+import type { ObservedEvent } from '../../features/events/observed'
 import { render, screen } from '../../test-utils'
 
 import MissionEventsWidget from './MissionEventsWidget'
 
 import '@testing-library/jest-dom'
 
-const mockEvents: MissionEvent[] = [
-    {
-        id: 1,
-        timestamp: '2026-01-01T12:00:00Z',
-        type: 'deployment',
-        severity: 'success',
-        message: 'Deployment sequence started',
-        meta: null
-    },
-    {
-        id: 2,
-        timestamp: '2026-01-01T12:01:00Z',
-        type: 'state_transition',
-        severity: 'info',
-        message: 'OBC state changed: BOOT → NOMINAL',
-        meta: null
-    }
+/**
+ * What the page witnessed, not what a backend stored. The satellite keeps no
+ * events table — this log is built from state transitions seen since the tab
+ * was opened.
+ */
+const mockEvents: ObservedEvent[] = [
+    { id: '1-1', at: 1767268800, severity: 'success', message: 'mission 42 opened' },
+    { id: '2-1', at: 1767268860, severity: 'info', message: 'mission state BOOT -> NOMINAL' }
 ]
 
 describe('MissionEventsWidget', () => {
@@ -32,8 +23,8 @@ describe('MissionEventsWidget', () => {
                 isLoading={false}
             />
         )
-        expect(screen.getByText('Deployment sequence started')).toBeInTheDocument()
-        expect(screen.getByText('OBC state changed: BOOT → NOMINAL')).toBeInTheDocument()
+        expect(screen.getByText('mission 42 opened')).toBeInTheDocument()
+        expect(screen.getByText('mission state BOOT -> NOMINAL')).toBeInTheDocument()
     })
 
     it('shows an empty state when there are no events', () => {
@@ -43,7 +34,7 @@ describe('MissionEventsWidget', () => {
                 isLoading={false}
             />
         )
-        expect(screen.getByText('No events yet')).toBeInTheDocument()
+        expect(screen.getByText('Nothing observed since this page was opened')).toBeInTheDocument()
     })
 
     it('shows skeleton when loading with no events', () => {
