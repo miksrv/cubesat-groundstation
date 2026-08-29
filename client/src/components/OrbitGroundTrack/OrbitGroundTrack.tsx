@@ -1,7 +1,8 @@
 import React, { lazy, Suspense } from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { OrbitState, TelemetryRecord } from '../../features/telemetry/types'
+import type { OrbitState } from '../../features/orbit/simulate'
+import type { TelemetryRecord } from '../../features/telemetry/types'
 
 import styles from './OrbitGroundTrack.module.scss'
 
@@ -44,19 +45,23 @@ const OrbitGroundTrack: React.FC<Props> = React.memo(({ latest, history, orbit, 
                         <div className={styles.coords}>
                             <div className={styles.coord}>
                                 <span>LAT</span>
-                                <b>{fmtDeg(latest?.latitude)}</b>
+                                <b>{fmtDeg(latest?.gnss.lat)}</b>
                             </div>
                             <div className={styles.coord}>
                                 <span>LON</span>
-                                <b>{fmtDeg(latest?.longitude)}</b>
+                                <b>{fmtDeg(latest?.gnss.lon)}</b>
                             </div>
                             <div className={styles.coord}>
                                 <span>ALT</span>
-                                <b>{latest?.altitude != null ? `${latest.altitude.toFixed(1)} km` : '—'}</b>
+                                <b>{latest?.gnss.alt != null ? `${latest.gnss.alt.toFixed(1)} km` : '—'}</b>
                             </div>
                             <div className={styles.coord}>
                                 <span>SPEED</span>
-                                <b>{latest?.speed_kms != null ? `${latest.speed_kms.toFixed(2)} km/s` : '—'}</b>
+                                {/* Metres per second, from the receiver. The register
+                                     holds knots and the driver converts, so nothing here
+                                     ever sees them — and this satellite walks rather than
+                                     orbits, so km/s was three orders of magnitude out. */}
+                                <b>{latest?.gnss.speed != null ? `${latest.gnss.speed.toFixed(2)} m/s` : '—'}</b>
                             </div>
                         </div>
                         <div className={styles.coords}>
@@ -67,8 +72,12 @@ const OrbitGroundTrack: React.FC<Props> = React.memo(({ latest, history, orbit, 
                                 </b>
                             </div>
                             <div className={styles.coord}>
-                                <span>Beta Angle</span>
-                                <b>{orbit?.beta_angle_deg != null ? `${orbit.beta_angle_deg.toFixed(1)}°` : '—'}</b>
+                                {/* The simulation propagates a circular orbit from the
+                                    clock and nothing more; a beta angle would be
+                                    precision about a fiction. True anomaly is what it
+                                    actually computes. */}
+                                <span>True anomaly (sim)</span>
+                                <b>{orbit ? `${orbit.trueAnomalyDeg.toFixed(1)}°` : '—'}</b>
                             </div>
                         </div>
                         <div className={styles.legend}>

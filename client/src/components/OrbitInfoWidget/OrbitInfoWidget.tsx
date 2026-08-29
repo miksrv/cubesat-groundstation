@@ -1,7 +1,7 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { OrbitState } from '../../features/telemetry/types'
+import type { OrbitState } from '../../features/orbit/simulate'
 import StatRow from '../common/StatRow/StatRow'
 
 import styles from './OrbitInfoWidget.module.scss'
@@ -20,36 +20,36 @@ const OrbitInfoWidget: React.FC<Props> = React.memo(({ orbit }) => (
             <div className={styles.body}>
                 <StatRow
                     label='Orbit Type'
-                    value={orbit.orbit_type}
+                    value={orbit.orbitType}
                 />
                 <StatRow
                     label='Altitude'
-                    value={`${orbit.altitude_km.toFixed(1)} km`}
+                    value={`${orbit.altitudeKm.toFixed(1)} km`}
                     mono
                 />
                 <StatRow
                     label='Inclination'
-                    value={`${orbit.inclination_deg.toFixed(2)}°`}
+                    value={`${orbit.inclinationDeg.toFixed(2)}°`}
                     mono
                 />
                 <StatRow
                     label='Period'
-                    value={`${orbit.period_min.toFixed(2)} min`}
+                    value={`${orbit.periodMin.toFixed(2)} min`}
                     mono
                 />
                 <StatRow
                     label='RAAN'
-                    value={`${orbit.raan_deg.toFixed(2)}°`}
+                    value={`${orbit.raanDeg.toFixed(2)}°`}
                     mono
                 />
                 <StatRow
                     label='AOP'
-                    value={`${orbit.aop_deg.toFixed(2)}°`}
+                    value={`${orbit.aopDeg.toFixed(2)}°`}
                     mono
                 />
                 <StatRow
                     label='True Anomaly'
-                    value={`${orbit.true_anomaly_deg.toFixed(2)}°`}
+                    value={`${orbit.trueAnomalyDeg.toFixed(2)}°`}
                     mono
                 />
             </div>

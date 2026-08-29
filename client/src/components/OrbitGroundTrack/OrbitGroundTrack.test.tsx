@@ -1,4 +1,4 @@
-import type { OrbitState } from '../../features/telemetry/types'
+import type { OrbitState } from '../../features/orbit/simulate'
 import { mockTelemetryRecord } from '../../test-fixtures'
 import { render, screen } from '../../test-utils'
 
@@ -7,18 +7,20 @@ import OrbitGroundTrack from './OrbitGroundTrack'
 import '@testing-library/jest-dom'
 
 const mockOrbit: OrbitState = {
-    orbit_type: 'LEO',
-    altitude_km: 506,
-    inclination_deg: 97.45,
-    period_min: 94.6,
-    raan_deg: 100,
-    aop_deg: 80,
-    true_anomaly_deg: 45,
+    simulated: true,
+    orbitType: 'LEO (simulated)',
+    altitudeKm: 506,
+    inclinationDeg: 97.45,
+    periodMin: 94.6,
+    raanDeg: 100,
+    aopDeg: 80,
+    trueAnomalyDeg: 45,
     eclipse: true,
-    beta_angle_deg: 32.1,
-    orbit_number: 245,
-    ground_station: { name: 'ORENBURG, RUSSIA', lat: 51.7727, lon: 55.0988 },
-    next_pass_seconds: 454
+    latDeg: 12.3,
+    lonDeg: -45.6,
+    orbitNumber: 245,
+    groundStation: { name: 'ORENBURG, RUSSIA', lat: 51.7727, lon: 55.0988 },
+    nextPassSeconds: 454
 }
 
 describe('OrbitGroundTrack', () => {
@@ -35,7 +37,7 @@ describe('OrbitGroundTrack', () => {
         expect(await screen.findByTestId('r3f-canvas')).toBeInTheDocument()
     })
 
-    it('renders eclipse and beta angle from orbit state', async () => {
+    it('renders the eclipse flag and the simulated true anomaly', async () => {
         render(
             <OrbitGroundTrack
                 latest={mockTelemetryRecord}
@@ -46,7 +48,9 @@ describe('OrbitGroundTrack', () => {
         )
         await screen.findByTestId('r3f-canvas')
         expect(screen.getByText('YES')).toBeInTheDocument()
-        expect(screen.getByText('32.1°')).toBeInTheDocument()
+        // The simulation propagates a circular orbit from the clock and nothing
+        // more; a beta angle would be precision about a fiction.
+        expect(screen.getByText('45.0°')).toBeInTheDocument()
     })
 
     it('shows skeleton when loading with no data', () => {
