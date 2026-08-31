@@ -1,16 +1,23 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { AdcsStatus, ScienceData, TelemetryRecord } from '../../features/telemetry/types'
+import { chartColors } from '../../styles/chartColors'
 import type { StatusLevel } from '../../utils/subsystemStatus'
+import Sparkline from '../common/Sparkline/Sparkline'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
 
 import styles from './ThermalSystemWidget.module.scss'
 
+/** The window the SoC-temperature sparkline draws — same as Telemetry Graphs. */
+const SPARK_ROWS = 50
+
 interface Props {
     /** The newest recorded row — the Pi's own SoC temperature lives only there. */
     latest: TelemetryRecord | null
+    /** Recorded rows, newest first, for the SoC-temperature trend. */
+    history: TelemetryRecord[]
     adcs: AdcsStatus | null
     science: ScienceData | null
     isLoading: boolean
@@ -28,7 +35,7 @@ const getThermalStatus = (cpu: number | null): StatusLevel => {
         return 'UNKNOWN'
     }
     if (cpu > 80) {
-        return 'CRITICAL'
+        return 'FAIL'
     }
     if (cpu > 70) {
         return 'WARN'
@@ -43,10 +50,18 @@ const getThermalStatus = (cpu: number | null): StatusLevel => {
  * BNO055 reports its, and the SEN0501 measures the air. Rows for the others
  * were four plausible numbers with nothing behind them.
  */
-const ThermalSystemWidget: React.FC<Props> = React.memo(({ latest, adcs, science, isLoading }) => {
+const ThermalSystemWidget: React.FC<Props> = React.memo(({ latest, history, adcs, science, isLoading }) => {
     const showSkeleton = isLoading && !latest && !adcs && !science
     const cpu = latest?.cpuTemperature ?? null
     const status = getThermalStatus(cpu)
+    const cpuTrend = useMemo(
+        () =>
+            history
+                .slice(0, SPARK_ROWS)
+                .reverse()
+                .map((row) => row.cpuTemperature),
+        [history]
+    )
 
     return (
         <Container
@@ -60,7 +75,7 @@ const ThermalSystemWidget: React.FC<Props> = React.memo(({ latest, adcs, science
                         label='CPU (SoC die)'
                         value={fmt(cpu)}
                         mono
-                        accent={status === 'CRITICAL' ? 'red' : status === 'WARN' ? 'orange' : 'default'}
+                        accent={status === 'FAIL' ? 'red' : status === 'WARN' ? 'orange' : 'default'}
                     />
                     <StatRow
                         label='IMU (BNO055 die)'
@@ -81,6 +96,13 @@ const ThermalSystemWidget: React.FC<Props> = React.memo(({ latest, adcs, science
                         label='Pressure'
                         value={science?.pressure != null ? `${science.pressure.toFixed(1)} hPa` : '—'}
                         mono
+                    />
+                    {/* Cyan, deliberately not orange or red: in this card those
+                        are the WARN/FAIL accents, and a trend line wearing a
+                        status colour would read as an alarm that is not there. */}
+                    <Sparkline
+                        values={cpuTrend}
+                        color={chartColors.cyan[0]}
                     />
                     <div className={styles.footer}>
                         <span className={styles.footerLabel}>

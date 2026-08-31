@@ -16,7 +16,9 @@ interface Props {
 interface MiniChartProps {
     title: string
     color: string
-    data: Array<[Date, number]>
+    /** Chronological, and honestly gappy: a null is a reading the satellite
+     *  withheld, drawn as a break in the line rather than a dive to zero. */
+    data: Array<[Date, number | null]>
     valueFormatter: (v: number | null) => string
 }
 
@@ -102,18 +104,24 @@ MiniChart.displayName = 'MiniChart'
 const TelemetryGraphsWidget: React.FC<Props> = React.memo(({ history, isLoading }) => {
     const showSkeleton = isLoading && history.length === 0
 
-    const recent = useMemo(() => history.slice(-50), [history])
+    // The source hands history newest-first; the charts want the newest 50 in
+    // chronological order. `slice(-50)` here once charted the *oldest* rows of
+    // the window while claiming to be live.
+    const recent = useMemo(() => history.slice(0, 50).reverse(), [history])
 
     const series = useMemo(
         () => ({
-            voltage: recent.map((r) => [new Date(r.timestamp), r.voltage ?? 0] as [Date, number]),
-            temperature: recent.map((r) => [new Date(r.timestamp), r.temperature ?? 0] as [Date, number]),
+            // Nulls stay nulls: `?? 0` would draw a withheld reading as a dive
+            // to zero — a battery "at 0 %" that was never measured. ECharts
+            // breaks the line at a null, which is what a gap in the data is.
+            voltage: recent.map((r) => [new Date(r.timestamp), r.voltage] as [Date, number | null]),
+            temperature: recent.map((r) => [new Date(r.timestamp), r.temperature] as [Date, number | null]),
             // RSSI used to be charted here. Nothing on this satellite measures
             // signal strength as telemetry — Meshtastic reports SNR on a message
             // that has already arrived, and nothing else. Battery charge is a real
             // series and the one an operator actually watches on a walk.
-            battery: recent.map((r) => [new Date(r.timestamp), r.battery ?? 0] as [Date, number]),
-            cpu: recent.map((r) => [new Date(r.timestamp), r.cpuPercent ?? 0] as [Date, number])
+            battery: recent.map((r) => [new Date(r.timestamp), r.battery] as [Date, number | null]),
+            cpu: recent.map((r) => [new Date(r.timestamp), r.cpuPercent] as [Date, number | null])
         }),
         [recent]
     )

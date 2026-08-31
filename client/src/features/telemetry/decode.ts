@@ -99,6 +99,7 @@ export const missionState = (value: unknown): MissionState | null =>
 
 // ── the status topics ───────────────────────────────────────────────────────
 
+/** A list of service names, or null for anything that is not one — a payload
  *  missing the field entirely (an older satellite) must read as "unknown",
  *  never as "nothing is watched", which would render every subsystem OFF. */
 const serviceList = (value: unknown): string[] | null =>

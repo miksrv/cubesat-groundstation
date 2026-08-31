@@ -12,6 +12,7 @@ describe('ThermalSystemWidget', () => {
         // were four plausible numbers with nothing behind them.
         render(
             <ThermalSystemWidget
+                history={[]}
                 latest={mockTelemetryRecord}
                 adcs={mockAdcs}
                 science={mockScience}
@@ -26,6 +27,7 @@ describe('ThermalSystemWidget', () => {
     it('shows skeleton when loading with no data', () => {
         const { container } = render(
             <ThermalSystemWidget
+                history={[]}
                 latest={null}
                 adcs={null}
                 science={null}
