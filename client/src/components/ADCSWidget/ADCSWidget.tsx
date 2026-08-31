@@ -82,14 +82,28 @@ const ADCSWidget: React.FC<Props> = React.memo(({ adcs, isLoading }) => {
                         value={fmtRate(adcs?.gyro.z)}
                         mono
                     />
+                    {/* "last known" carries the honesty in two words: the
+                        coordinates below are real, just not current. */}
                     <StatRow
                         label='GNSS'
                         value={
                             adcs?.gnss.fix === true
                                 ? `fix, ${adcs.gnss.satellites ?? 0} satellites`
-                                : 'no fix — position is the last known one'
+                                : 'no fix — last known'
                         }
                         accent={adcs?.gnss.fix === true ? 'default' : 'orange'}
+                    />
+                    {/* The last known position, like everything in the gnss
+                        block — the row above says whether it is current. */}
+                    <StatRow
+                        label='Latitude'
+                        value={adcs?.gnss.lat != null ? `${adcs.gnss.lat.toFixed(5)}°` : '—'}
+                        mono
+                    />
+                    <StatRow
+                        label='Longitude'
+                        value={adcs?.gnss.lon != null ? `${adcs.gnss.lon.toFixed(5)}°` : '—'}
+                        mono
                     />
                     <div className={styles.footer}>
                         <span className={styles.footerLabel}>{status.detail}</span>

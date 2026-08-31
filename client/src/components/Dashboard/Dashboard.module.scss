@@ -46,6 +46,19 @@
     }
 }
 
+/* The replay drops the link-bound widgets, so its rows hold fewer columns */
+.rowTopReplay {
+    grid-template-columns: 1fr 1.8fr 1fr;
+
+    @include breakpoint-tablet {
+        grid-template-columns: 1fr 1fr;
+    }
+    @include breakpoint-mobile {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
 /* Per-subsystem compact widgets */
 .rowSubsystems {
     display: grid;
@@ -73,14 +86,34 @@
     }
 }
 
-/* Live telemetry stream + orbit info (narrowest) + MQTT bus monitor */
+/* Live telemetry stream + MQTT bus monitor + orbit info (narrowest, last).
+   The last column matches .rowRadio's below, so Orbit Info and the Flight
+   Recorder share one edge. */
 .rowStream {
     display: grid;
-    grid-template-columns: 1.4fr 0.6fr 1fr;
+    grid-template-columns: 1.4fr 1fr 0.8fr;
     gap: 12px;
 
     @include breakpoint-tablet {
         grid-template-columns: 1fr 1fr;
+    }
+    @include breakpoint-mobile {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+/* The radio session log with the flight recorder beside it. Grid items
+   stretch, so the two cards keep one height whichever is taller. The columns
+   sum like .rowStream's (2.4 = 1.4 + 1), so the recorder is exactly as wide
+   as Orbit Info above it. */
+.rowRadio {
+    display: grid;
+    grid-template-columns: 2.4fr 0.8fr;
+    gap: 12px;
+
+    @include breakpoint-tablet {
+        grid-template-columns: 1fr;
     }
     @include breakpoint-mobile {
         grid-template-columns: 1fr;
@@ -104,4 +137,11 @@
     flex-direction: column;
     gap: 12px;
     min-width: 0;
+}
+
+/* One widget left in the row while the replay hides its live-bound neighbours.
+   Last in the file so it wins over .rowGraphs and .rowStream at equal
+   specificity. */
+.rowSolo {
+    grid-template-columns: 1fr;
 }

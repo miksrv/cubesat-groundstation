@@ -7,10 +7,6 @@ import Dashboard from './Dashboard'
 
 import '@testing-library/jest-dom'
 
-jest.mock('../../features/weather/useWeather', () => ({
-    useWeather: jest.fn(() => ({ data: null, isLoading: false, isUnreachable: false }))
-}))
-
 jest.mock('echarts', () => ({
     init: jest.fn(() => ({
         setOption: jest.fn(),
@@ -40,6 +36,7 @@ describe('Dashboard', () => {
         expect(screen.getAllByText(/^ADCS$/).length).toBeGreaterThan(1)
         expect(screen.getByText('On-Board Computer')).toBeInTheDocument()
         expect(screen.getAllByText(/^Payload$/).length).toBeGreaterThan(0)
+        expect(screen.getByText('Flight Recorder')).toBeInTheDocument()
         expect(screen.getByText(/Telemetry Graphs/)).toBeInTheDocument()
         expect(screen.getAllByText(/Ground Station Link/).length).toBeGreaterThan(0)
         expect(screen.getByText(/Orbit & Ground Track/)).toBeInTheDocument()
@@ -51,7 +48,9 @@ describe('Dashboard', () => {
         expect(screen.getByText(/Recent Alerts/)).toBeInTheDocument()
         expect(screen.getByText('3D Satellite View')).toBeInTheDocument()
         expect(screen.getByText(/Orbit Info/)).toBeInTheDocument()
-        expect(screen.getByText(/Weather/)).toBeInTheDocument()
+        // WeatherWidget is hidden, not deleted: it was filler for an empty
+        // slot, and the Flight Recorder that took its place is telemetry.
+        expect(screen.queryByText(/Weather/)).not.toBeInTheDocument()
     })
 
     it('draws what the source pushes, with no polling involved', async () => {
@@ -61,6 +60,17 @@ describe('Dashboard', () => {
         render(<Dashboard />)
         source.emit(mockLiveState)
         await waitFor(() => expect(screen.getAllByText('NOMINAL').length).toBeGreaterThan(0))
+    })
+
+    it("surfaces HOSTD's own errors, which used to reach nobody but the journal", async () => {
+        render(<Dashboard />)
+        source.emit({
+            ...mockLiveState,
+            host: { ...mockLiveState.host!, errors: ['unit cubesat@adcs.service failed to start'] }
+        })
+        await waitFor(() =>
+            expect(screen.getByText(/HOSTD: unit cubesat@adcs\.service failed to start/)).toBeInTheDocument()
+        )
     })
 
     it('keeps the live view when the recorded history is unreachable', async () => {

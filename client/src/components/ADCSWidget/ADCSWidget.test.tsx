@@ -32,6 +32,17 @@ describe('ADCSWidget', () => {
         expect(screen.getByText('1/3')).toBeInTheDocument()
     })
 
+    it('renders the coordinates themselves, not only whether they are current', () => {
+        render(
+            <ADCSWidget
+                adcs={mockAdcs}
+                isLoading={false}
+            />
+        )
+        expect(screen.getByText('55.75580°')).toBeInTheDocument()
+        expect(screen.getByText('37.61730°')).toBeInTheDocument()
+    })
+
     it('says the position is stale when there is no fix', () => {
         render(
             <ADCSWidget
@@ -39,7 +50,7 @@ describe('ADCSWidget', () => {
                 isLoading={false}
             />
         )
-        expect(screen.getByText(/last known one/)).toBeInTheDocument()
+        expect(screen.getByText('no fix — last known')).toBeInTheDocument()
     })
 
     it('shows skeleton when loading with no data', () => {
