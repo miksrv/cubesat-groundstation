@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Container } from 'simple-react-ui-kit'
 
-import type { Command, LiveState, Profile, TelemetryRecord } from '../../features/telemetry/types'
+import type { Command, LiveState, Profile, TelemetryRecord, TelemetrySnapshot } from '../../features/telemetry/types'
 import { getSource } from '../../features/telemetry/useSource'
 
 import styles from './MissionConsoleWidget.module.scss'
@@ -37,6 +37,42 @@ const HELP_TEXT = [
 ]
 
 const PROFILES: Profile[] = ['HOSTED', 'DEMO', 'EXPO', 'FLIGHT', 'DIAG', 'MAINTENANCE']
+
+/**
+ * COMMS' answer to `telemetry`, rendered. Nulls stay dashes: the bundle is
+ * COMMS' cache of what it has *heard*, and a block it has heard nothing on
+ * arrives empty rather than zeroed.
+ */
+const snapshotLines = (snapshot: TelemetrySnapshot): string[] => {
+    const lines = [
+        `COMMS telemetry cache${snapshot.requestId != null ? ` (request ${snapshot.requestId})` : ''}:`,
+        `  State:     ${snapshot.obcState ?? '-'}, profile ${snapshot.profile ?? '-'}, mission ${snapshot.missionId ?? '-'}`,
+        `  Battery:   ${snapshot.eps?.voltage?.toFixed(3) ?? '-'} V (${snapshot.eps?.batteryPercent?.toFixed(0) ?? '-'}%)`
+    ]
+    if (snapshot.adcs) {
+        const { gnss } = snapshot.adcs
+        lines.push(
+            gnss.fix === true
+                ? `  Position:  ${gnss.lat?.toFixed(5) ?? '-'}, ${gnss.lon?.toFixed(5) ?? '-'} (${gnss.satellites ?? '-'} sats)`
+                : '  Position:  no fix - last known position withheld here'
+        )
+    }
+    if (snapshot.science) {
+        lines.push(
+            `  Science:   ${snapshot.science.temperature?.toFixed(1) ?? '-'} degC, ` +
+                `${snapshot.science.humidity?.toFixed(0) ?? '-'}% RH, ` +
+                `${snapshot.science.pressure?.toFixed(0) ?? '-'} hPa`
+        )
+    }
+    if (snapshot.system) {
+        lines.push(
+            `  System:    cpu ${snapshot.system.cpuPercent?.toFixed(0) ?? '-'}%, ` +
+                `ram ${snapshot.system.ramPercent?.toFixed(0) ?? '-'}%, ` +
+                `disk ${snapshot.system.diskPercent?.toFixed(0) ?? '-'}%`
+        )
+    }
+    return lines
+}
 
 /** One typed line to one command, or null when it is not one. */
 const parse = (line: string): Command | null | 'bad-profile' => {
@@ -83,6 +119,16 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
     const print = (text: string | string[]) => {
         setLines((prev) => [...prev, ...(Array.isArray(text) ? text : [text])])
     }
+
+    // The `telemetry` command used to be write-only: the answer lands on
+    // `cubesat/comms/data`, which nothing subscribed to, so the console
+    // published a question and never heard the reply. Any snapshot is printed,
+    // asked for here or not — this terminal is where the channel is watched.
+    useEffect(
+        () => getSource().subscribeSnapshots((snapshot) => print(snapshotLines(snapshot))),
+
+        []
+    )
 
     const runStatus = () => {
         if (!live.obc) {

@@ -1,0 +1,137 @@
+@use '../../styles/mixins' as *;
+
+.bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 20px;
+    background: var(--container-background-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.7rem;
+    flex-wrap: wrap;
+
+    @include breakpoint-mobile {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+}
+
+.active {
+    border-bottom-color: rgba(0, 184, 217, 0.35);
+}
+
+.hint {
+    color: var(--text-color-secondary);
+    letter-spacing: 0.04em;
+    flex: 1;
+}
+
+.error {
+    color: var(--color-red);
+    flex: 1;
+}
+
+.button {
+    background: var(--button-default-background);
+    color: var(--button-default-color);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 5px 10px;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--button-default-background-hover);
+    }
+}
+
+.live {
+    color: var(--color-main);
+    border-color: rgba(0, 184, 217, 0.35);
+}
+
+.replayBadge {
+    background: var(--color-main);
+    color: var(--color-contrast);
+    border-radius: var(--border-radius);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 3px 7px;
+}
+
+.missionId {
+    font-family: var(--font-family-mono);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.missionMeta {
+    color: var(--text-color-secondary);
+    font-family: var(--font-family-mono);
+    font-size: 0.64rem;
+}
+
+.picker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.missionRow {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: var(--button-default-background);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    color: var(--button-default-color);
+    padding: 6px 10px;
+    cursor: pointer;
+    text-align: left;
+
+    &:hover {
+        background: var(--button-default-background-hover);
+    }
+
+    @include breakpoint-mobile {
+        flex-direction: column;
+        gap: 2px;
+    }
+}
+
+.transport {
+    background: var(--button-default-background);
+    color: var(--button-default-color);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    font-size: 0.7rem;
+    padding: 4px 9px;
+    cursor: pointer;
+    line-height: 1;
+
+    &:hover {
+        background: var(--button-default-background-hover);
+    }
+}
+
+.scrubber {
+    flex: 1;
+    min-width: 120px;
+    accent-color: var(--color-main);
+}
+
+.clock,
+.clockUtc {
+    font-family: var(--font-family-mono);
+    white-space: nowrap;
+}
+
+.clockUtc {
+    color: var(--text-color-secondary);
+    font-size: 0.64rem;
+}

@@ -1,3 +1,5 @@
+import { act } from 'react'
+
 import { mockLiveState, mockTelemetryRecord } from '../../test-fixtures'
 import type { FakeSource } from '../../test-source'
 import { installFakeSource } from '../../test-source'
@@ -42,6 +44,40 @@ describe('MissionConsoleWidget', () => {
         )
         runCommand('status')
         expect(await screen.findByText('Satellite Status:')).toBeInTheDocument()
+    })
+
+    it('prints the answer to "telemetry", which lands on cubesat/comms/data', async () => {
+        // The command used to be write-only: the console published get_telemetry
+        // and nothing subscribed to the topic the answer arrives on.
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        act(() => {
+            source.emitSnapshot({
+                timestamp: 1741863600,
+                requestId: 'req-7',
+                obcState: 'NOMINAL',
+                profile: 'DEMO',
+                missionId: 42,
+                eps: mockLiveState.eps,
+                adcs: mockLiveState.adcs,
+                science: mockLiveState.science,
+                system: {
+                    cpuPercent: 34,
+                    ramPercent: 52,
+                    swapPercent: 10,
+                    diskPercent: 41,
+                    uptimeSeconds: 187562,
+                    cpuTemperature: 55
+                }
+            })
+        })
+        expect(await screen.findByText(/COMMS telemetry cache \(request req-7\)/)).toBeInTheDocument()
+        expect(screen.getByText(/4\.123 V \(88%\)/)).toBeInTheDocument()
+        expect(screen.getByText(/cpu 34%, ram 52%, disk 41%/)).toBeInTheDocument()
     })
 
     it('clears the console on the "clear" command', () => {
