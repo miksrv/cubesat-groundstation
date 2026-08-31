@@ -6,6 +6,7 @@
     "scripts": {
         "build": "rsbuild build",
         "dev": "rsbuild dev --open",
+        "demo": "PUBLIC_SOURCE=replay rsbuild dev --open",
         "preview": "rsbuild preview",
         "test": "jest",
         "eslint:check": "eslint",

@@ -21,12 +21,15 @@ Two documents carry the reasoning, and this file only tracks state:
 | 2 | mosquitto's WebSocket listener and the browser ACL | `cubesat-sim` | ✅ |
 | 3 | **The contract and the data-source layer** | here | ✅ |
 | 4 | **Delete PHP** | here | ✅ |
-| 5 | The `cubesat.dashboard` service — static files and read-only REST | `cubesat-sim` | ☐ |
-| 6 | The mission timeline: play, scrub, one clock for map and attitude | here | ☐ |
-| 7 | Export a real mission; replace the placeholder recording | both | ☐ |
+| 5 | The `cubesat.dashboard` service — static files and read-only REST | `cubesat-sim` | ✅ |
+| 6 | The mission timeline: play, scrub, one clock for map and attitude | here | ☐ built, awaiting a hands-on run |
+| 7 | Export a real mission; replace the placeholder recording | both | ☐ next |
 | 8 | The USB Meshtastic receiver | here | ☐ later |
 
-Stage 5 is next, and it lands in the other repository.
+Stage 5 landed 2026-08-25 and passed its bench checks on the satellite on 2026-08-28 (V8/V9 in
+`cubesat-sim/ROADMAP.md`). Stage 6 is implemented and deployed; it stays unticked until the
+timeline has been stepped through by hand. Stage 7 is next — and it now has one more requirement,
+see 2026-08-29 below.
 
 ---
 
@@ -59,6 +62,91 @@ dashed out — a row that is always empty is a promise something will fill it.
 **Two things are computed here and labelled as such**: the orbital view, which is a simulation
 because this satellite rides to work in a backpack, and the mission log, which is built from
 transitions the page witnessed because the satellite keeps no events table.
+
+---
+
+## Widgets pass — 2026-08-29
+
+A day on the widgets, driven by data the bus did not yet carry — the satellite side of each item is
+in `cubesat-sim` (see its ROADMAP, same date). All of it is uncommitted in both repositories and
+not yet deployed to the Pi.
+
+- **Subsystem Status** is two columns again, with the *why* as a row tooltip, and renders OBC's own
+  health verdict from the new `obc_status.subsystems` field: OK / WARN / **FAIL** (the profile
+  expects the service and OBC declared it lost — overrides whatever its stale retained status
+  claims) / **OFF** (the profile never started it — grey, because a red light on correct behaviour
+  would be a lie). UNKNOWN survives only as "no evidence yet". The old CRITICAL level is renamed
+  FAIL everywhere (Power, Thermal).
+- **MQTT Bus Monitor**: the hub cube is labelled `CubeSat` (OBC is one of the services on the bus,
+  drawn as one); services the profile never started are drawn grey and still — a pulsing line out
+  of a stopped unit would be the diagram inventing traffic; the not-heard-yet dimming now applies
+  to the right column too.
+- **Radio Link Log** — a new widget on its own grid row: the radio's session log, live from
+  `cubesat/comms/radio` (the same events DHS records into `radio_log`). Time, direction, kind or
+  sender, RSSI/SNR/hops, bytes, the line verbatim; nulls render as dashes, a transmission that
+  never left is a red row rather than a hidden one. Fed by a new `subscribeRadio` channel and a
+  `radio` capability on the source interface.
+- **The recording format grew a `radio` array** (the shape of `radio_log` rows), so the static demo
+  shows the table too: the placeholder generator writes plausible traffic — a beacon per minute in
+  the real `CSAT …` line format, two queries with their 10 s acks, one failed transmit — and
+  `ReplaySource` replays it in step with the playhead, restarting with each loop. A recording
+  without radio rows declares the capability absent rather than delivering an empty table.
+- **Consequence for Stage 7:** the mission export must carry the mission's `radio_log` rows;
+  `loadRecording` already accepts them, so the change is on the satellite's `/api/missions/<id>`
+  side.
+
+## Camera widget — 2026-08-30
+
+- **Onboard Camera** — a new widget in the right stack: the newest image the satellite can show,
+  from whichever channel has one. An on-demand `take_photo` arrives with its pixels on
+  `cubesat/payload/photo` and renders instantly; a timelapse frame arrives as metadata and is
+  fetched from the mission's directory over the existing `/api/photos/<mission>/<name>`; a page
+  opened between captures asks `/api/missions/<id>/photos` once for the newest file. Resolution
+  lives in a `useCameraShot` hook and two new source methods (`listPhotos`, `photoUrl`); the widget
+  renders a `CameraShot` and cannot tell the channels apart. The empty state is a drawn placeholder
+  and says *why* it is empty — no photograph yet, or a recording that carries no photographs
+  (`capabilities.photos`, false on the replay build) — and a URL that 404s (retention deletes a
+  mission's photos with the mission) falls back to it rather than a broken-image glyph. An unfiled
+  frame (no mission open) honestly renders nothing fetchable: the satellite serves only filed
+  photos.
+- **A decoder bug died on the way**: the satellite says `kind: "timelapse"` and `decodePhoto`
+  expected `timelapse_frame`, a name of this repo's own invention — every frame was silently
+  dropped. The wire is the satellite's vocabulary. `decodePhoto` also now carries `file` (what the
+  photo endpoint wants) and the echoed sidecar `overlay` instead of two fields the satellite never
+  published.
+- **Satellite side, same date** (`cubesat-sim`): the camera is given back after
+  `camera.idle_close_sec` of no captures — an open Picamera2 runs its ISP loops continuously, which
+  is SoC heat for nothing in DEMO/EXPO where the DEPLOY probe used to leave the sensor streaming
+  until the profile changed. Exposure of the first cold capture is its bench check V11.
+
+## Data-coverage pass — 2026-08-30
+
+A full audit of what the satellite publishes against what the page renders, then the fixes. Three
+display bugs died: the telemetry graphs charted the *oldest* 50 rows of a newest-first window and
+drew withheld readings as dives to zero (`?? 0` — the exact thing the satellite's null discipline
+exists to prevent); `dhs_status.radio {written, buffered}` was silently ignored by the decoder, so
+"the card stopped accepting radio-log writes" never reached the ground while the identical
+`attitude.buffered` signal did; and GNSS altitude was labelled **km** while the receiver reports
+metres — a 116 m bench read as orbit (the link map's footprint formula was fed the same metres as
+kilometres).
+
+Two blind zones closed:
+
+- **HOSTD** — its `errors` now surface as a page-level banner (they used to reach nobody but the
+  journal); the Wi-Fi mode/SSID/client-count joined the Ground Station Link panel (EXPO is the
+  satellite being its own access point, and the page could not tell that from the house network);
+  the On-Board Computer card gained the swap bar, colour thresholds on all four bars, profile TTL,
+  `profile — requested X` when a switch applied only partly, cadence scale, persistence, mission
+  label and the CPU governor (the `units` inventory rides the Profile row as a hover title).
+- **DHS** — a new **Flight Recorder** card, sixth in the subsystem row: recording/mission, mission
+  rows, both tracks as `written (+held)`, database size, last write, retention horizon, unfiled
+  photo bytes (which retention can never remove, so a non-zero number only grows).
+
+Smaller: Payload shows the sensor read counter with the last-read time (the proof a reachable
+sensor is actually measuring) and a running timelapse's interval; the mission picker shows distance
+(null stays absent — no fix is not zero metres) and `end_reason`; and the console's `telemetry`
+command finally hears its answer — `cubesat/comms/data` is subscribed and rendered, where before
+the question was published and the reply arrived on a topic nothing listened to.
 
 ---
 
