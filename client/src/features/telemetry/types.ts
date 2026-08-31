@@ -232,6 +232,20 @@ export const EMPTY_LIVE_STATE: LiveState = {
     heartbeats: {}
 }
 
+/**
+ * OBC's own health verdict, published so the ground can tell "off because the
+ * profile never started it" from "expected and silent". `watched` is the set
+ * of services the active profile expects to be running (always including
+ * `eps`); `lost` names the watched services whose heartbeats stopped or that
+ * said goodbye — the failure OBC latches `SAFE` over. The satellite publishes
+ * `lost` empty while a profile switch is settling, matching OBC's own refusal
+ * to read mid-switch goodbyes as faults.
+ */
+export interface SubsystemHealth {
+    watched: string[]
+    lost: string[]
+}
+
 export interface ObcStatus {
     timestamp: number
     /** The mission state. Named `status` on the wire, not `state`. */
@@ -240,6 +254,8 @@ export interface ObcStatus {
     cadenceScale: number | null
     persistence: Persistence | null
     missionLabel: string | null
+    /** Null from a recording or a satellite that predates the field. */
+    subsystems: SubsystemHealth | null
 }
 
 export interface EpsStatus {
@@ -303,7 +319,39 @@ export interface DhsStatus {
     lastWrite: number | null
     retentionDays: number | null
     attitude: { written: number; buffered: number; minIntervalSec: number } | null
+    /** Same shape of claim as `attitude`: rows on disk versus rows waiting on
+     *  a write that is failing. A growing `buffered` is the card refusing the
+     *  radio log while the recorder is still, correctly, alive. */
+    radio: { written: number; buffered: number } | null
     photos: { unfiledBytes: number | null; freeMb: number | null; minFreeMb: number | null } | null
+}
+
+/**
+ * One radio transaction, from `cubesat/comms/radio` — a received message, or a
+ * transmission attempt with whether it left. COMMS observes the traffic and
+ * DHS records it into `radio_log`; this is the live copy of the same event.
+ *
+ * The two directions observe different things, so half the fields are null by
+ * design: link quality exists only for what was heard (`sender`, `snr`,
+ * `rssi`, `hops` — each null where the node did not report it), an outcome
+ * only for what was said (`kind`, `sent` — a failed transmit arrives with
+ * `sent: false` rather than being suppressed).
+ */
+export interface RadioEvent {
+    timestamp: number
+    direction: 'rx' | 'tx'
+    /** tx: 'beacon', 'ack' or 'down'. Kept as a string so a kind newer than
+     *  this build still renders instead of vanishing. */
+    kind: string | null
+    /** The line as it crossed the air, verbatim. */
+    text: string | null
+    bytes: number | null
+    sender: string | null
+    snr: number | null
+    rssi: number | null
+    /** Mesh hops to arrival; 0 means heard directly. */
+    hops: number | null
+    sent: boolean | null
 }
 
 export interface CommsStatus {
@@ -319,6 +367,33 @@ export interface CommsStatus {
      */
     loraListening: boolean
     lastUplink: number | null
+}
+
+/**
+ * COMMS' answer to `get_telemetry`, from `cubesat/comms/data` — its cache of
+ * the newest message from each topic, bundled for a ground client that asked.
+ * Each nested block keeps the timestamp of the message it came from; that age
+ * is the only honest claim the bundle makes — it is what COMMS *heard*, not
+ * what is true at the moment of asking.
+ */
+export interface TelemetrySnapshot {
+    timestamp: number
+    requestId: string | null
+    obcState: MissionState | null
+    profile: Profile | null
+    missionId: number | null
+    /** Null where COMMS has heard nothing yet — the satellite sends `{}`. */
+    eps: EpsStatus | null
+    adcs: AdcsStatus | null
+    science: ScienceData | null
+    system: {
+        cpuPercent: number | null
+        ramPercent: number | null
+        swapPercent: number | null
+        diskPercent: number | null
+        uptimeSeconds: number | null
+        cpuTemperature: number | null
+    } | null
 }
 
 export interface HostStatus {
@@ -343,32 +418,77 @@ export interface HostStatus {
 // ── photographs ─────────────────────────────────────────────────────────────
 
 /**
+ * The sidecar contents, echoed on the message so a consumer can render the
+ * caption without fetching the `.json` file (which the satellite's HTTP
+ * deliberately does not serve). Present only when the capture asked for an
+ * overlay. The position carries its own `at` timestamp because a last known
+ * fix can be minutes old, and a coordinate with no age attached is exactly the
+ * plausible wrong number the satellite keeps refusing to publish.
+ */
+export interface PhotoOverlay {
+    capturedAt: string | null
+    missionState: string | null
+    position: (GnssFix & { at: number | null }) | null
+    width: number | null
+    height: number | null
+}
+
+/**
  * Branch on `kind`, never on whether a base64 blob is present. An on-demand
  * capture carries the image; a timelapse frame carries metadata only, because
  * five hundred frames through the broker would be hundreds of megabytes on a
- * bus whose job is the telemetry.
+ * bus whose job is the telemetry. The frames are on the satellite's card,
+ * filed under their mission, and reachable over its REST — which is what
+ * {@link Photo.file} plus the mission id name.
  */
 export type Photo =
     | {
           kind: 'photo'
           timestamp: number
+          /** The file name alone — what the photo endpoint wants. */
+          file: string | null
           path: string
           sizeBytes: number | null
           missionId: string | null
           photoBase64: string
-          position: GnssFix | null
-          /** Seconds between the fix and the shutter. A position on a photo is
-           *  only as true as the age of the fix it came from. */
-          positionAgeSec: number | null
+          overlay: PhotoOverlay | null
       }
     | {
-          kind: 'timelapse_frame'
+          kind: 'timelapse'
           timestamp: number
+          file: string | null
           path: string
           sizeBytes: number | null
           missionId: string | null
           sequence: number | null
+          overlay: PhotoOverlay | null
       }
+
+/** One photograph in a mission's directory, as the archive lists it. */
+export interface PhotoFile {
+    name: string
+    /** Where the image can be fetched from, resolved against the source's own
+     *  API base — never trusted from the wire. */
+    url: string
+}
+
+/**
+ * What the camera widget actually renders: one image with its provenance,
+ * already resolved from whichever channel it came by. `photo` carried its
+ * pixels over the bus; `timelapse` and `archive` are fetched from the
+ * mission's directory — which is why an unfiled frame (no mission open)
+ * cannot become a shot at all.
+ */
+export interface CameraShot {
+    src: string
+    kind: 'photo' | 'timelapse' | 'archive'
+    file: string | null
+    /** Epoch seconds of the capture, or null where only the archive listing —
+     *  which carries names alone — knows of the image. */
+    timestamp: number | null
+    missionId: string | null
+    sizeBytes: number | null
+}
 
 // ── commands ────────────────────────────────────────────────────────────────
 
