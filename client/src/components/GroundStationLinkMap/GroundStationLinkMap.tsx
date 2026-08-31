@@ -3,7 +3,7 @@ import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMa
 import L from 'leaflet'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { AdcsStatus, CommsStatus } from '../../features/telemetry/types'
+import type { AdcsStatus, CommsStatus, HostStatus } from '../../features/telemetry/types'
 import StatRow from '../common/StatRow/StatRow'
 
 import 'leaflet/dist/leaflet.css'
@@ -12,6 +12,8 @@ import styles from './GroundStationLinkMap.module.scss'
 interface Props {
     adcs: AdcsStatus | null
     comms: CommsStatus | null
+    /** For the Wi-Fi half of the link, which HOSTD owns. */
+    host: HostStatus | null
     isLoading: boolean
 }
 
@@ -116,7 +118,7 @@ const splitAtAntimeridian = (points: Array<[number, number]>): Array<Array<[numb
     return segments.filter((segment) => segment.length > 1)
 }
 
-const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, isLoading }) => {
+const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, host, isLoading }) => {
     const showSkeleton = isLoading && !adcs
 
     /*
@@ -139,13 +141,16 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, isLoadi
         return splitAtAntimeridian(points)
     }, [currentLat, currentLng])
 
-    // Simplified footprint radius: visible coverage ≈ sqrt(2 * R * h + h²)
+    // Simplified footprint radius: visible coverage ≈ sqrt(2 * R * h + h²).
+    // The receiver reports altitude in metres; this formula wants kilometres,
+    // and feeding it metres once inflated a 116 m walk into a 116 km orbit.
     const footprintRadius = useMemo(() => {
         const earthRadius = 6371 // km
-        if (currentAlt <= 0) {
+        const altKm = currentAlt / 1000
+        if (altKm <= 0) {
             return 500
         }
-        const radius = Math.sqrt(2 * earthRadius * currentAlt + currentAlt * currentAlt)
+        const radius = Math.sqrt(2 * earthRadius * altKm + altKm * altKm)
         return Math.min(radius, 3000)
     }, [currentAlt])
 
@@ -192,7 +197,10 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, isLoadi
                     {currentLat !== 0 && currentLng !== 0 && (
                         <CircleMarker
                             center={[currentLat, currentLng]}
-                            radius={footprintRadius / 50}
+                            // Display floor only: a walking-height footprint is
+                            // under a pixel, and an invisible marker reads as a
+                            // missing satellite rather than a low one.
+                            radius={Math.max(6, footprintRadius / 50)}
                             pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.1, weight: 1 }}
                         />
                     )}
@@ -209,7 +217,7 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, isLoadi
                                 className={styles.tooltip}
                             >
                                 <div className={styles.tooltipContent}>
-                                    <div>Alt: {currentAlt?.toFixed(1)} km</div>
+                                    <div>Alt: {currentAlt?.toFixed(1)} m</div>
                                 </div>
                             </Tooltip>
                         </Marker>
@@ -261,6 +269,27 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, isLoadi
                                 ? new Date(comms.lastUplink * 1000).toLocaleTimeString(undefined, { hour12: false })
                                 : 'none'}
                         </b>
+                    </div>
+                </div>
+                {/*
+                  The other link. HOSTD owns the Wi-Fi — the profile decides
+                  whether the satellite is a client, its own access point (EXPO)
+                  or offline (FLIGHT) — and until now none of that reached the
+                  page: a satellite that had dropped to AP mode looked identical
+                  to one on the house network.
+                */}
+                <div className={styles.coords}>
+                    <div className={styles.coord}>
+                        <span>Wi-Fi</span>
+                        <b>{host?.network ? (host.network.mode === 'ap' ? 'access point' : host.network.mode) : '—'}</b>
+                    </div>
+                    <div className={styles.coord}>
+                        <span>SSID</span>
+                        <b>{host?.network?.ssid ?? '—'}</b>
+                    </div>
+                    <div className={styles.coord}>
+                        <span>Clients</span>
+                        <b>{host?.network?.clients ?? '—'}</b>
                     </div>
                 </div>
                 <div className={styles.bottomRow}>

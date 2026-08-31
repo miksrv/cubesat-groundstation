@@ -1,4 +1,4 @@
-import { mockAdcs, mockComms } from '../../test-fixtures'
+import { mockAdcs, mockComms, mockHost } from '../../test-fixtures'
 import { render, screen } from '../../test-utils'
 
 import GroundStationLinkMap from './GroundStationLinkMap'
@@ -19,6 +19,7 @@ describe('GroundStationLinkMap', () => {
             <GroundStationLinkMap
                 adcs={mockAdcs}
                 comms={mockComms}
+                host={mockHost}
                 isLoading={false}
             />
         )
@@ -30,6 +31,7 @@ describe('GroundStationLinkMap', () => {
             <GroundStationLinkMap
                 adcs={null}
                 comms={null}
+                host={null}
                 isLoading={true}
             />
         )
@@ -41,6 +43,7 @@ describe('GroundStationLinkMap', () => {
             <GroundStationLinkMap
                 adcs={mockAdcs}
                 comms={mockComms}
+                host={mockHost}
                 isLoading={false}
             />
         )
@@ -55,11 +58,31 @@ describe('GroundStationLinkMap', () => {
         expect(screen.getByText('Listening')).toBeInTheDocument()
     })
 
+    it('shows the Wi-Fi half of the link, which HOSTD owns', () => {
+        // In FLIGHT the Wi-Fi is off, in EXPO the satellite is its own access
+        // point — until these rows existed the page could not tell the two apart.
+        render(
+            <GroundStationLinkMap
+                adcs={mockAdcs}
+                comms={mockComms}
+                host={{
+                    ...mockHost,
+                    network: { mode: 'ap', ssid: 'CubeSat', clients: 3 }
+                }}
+                isLoading={false}
+            />
+        )
+        expect(screen.getByText('access point')).toBeInTheDocument()
+        expect(screen.getByText('CubeSat')).toBeInTheDocument()
+        expect(screen.getByText('3')).toBeInTheDocument()
+    })
+
     it('renders the map container and ground station marker', () => {
         render(
             <GroundStationLinkMap
                 adcs={mockAdcs}
                 comms={mockComms}
+                host={mockHost}
                 isLoading={false}
             />
         )
@@ -72,6 +95,7 @@ describe('GroundStationLinkMap', () => {
             <GroundStationLinkMap
                 adcs={mockAdcs}
                 comms={mockComms}
+                host={mockHost}
                 isLoading={true}
             />
         )
