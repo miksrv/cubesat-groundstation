@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
+import type { AttitudeUpdate } from '../../features/telemetry/source'
 import type { AdcsStatus } from '../../features/telemetry/types'
 import { useAttitudeRef } from '../../features/telemetry/useSource'
 import { chartColors } from '../../styles/chartColors'
@@ -10,6 +11,10 @@ import styles from './Satellite3DView.module.scss'
 interface Props {
     adcs: AdcsStatus | null
     isLoading: boolean
+    /** Overrides the live attitude channel — the mission timeline hands its own
+     *  interpolated orientation here, so the scene replays the archive through
+     *  exactly the path it renders the satellite. Absent means live. */
+    attitude?: React.MutableRefObject<AttitudeUpdate | null>
 }
 
 const AXIS = {
@@ -25,7 +30,7 @@ const Satellite3DScene = lazy(() => import('./Satellite3DScene'))
 
 const fmtRate = (n: number | null | undefined): string => (n != null ? n.toFixed(2) : '—')
 
-const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading }) => {
+const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude }) => {
     const showSkeleton = isLoading && !adcs
     /*
       The scene reads this on its own animation frame. Deliberately not state:
@@ -33,7 +38,8 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading }) => {
       dispatch and a render per sample would be a frame budget spent
       re-rendering a tree that did not change.
     */
-    const attitudeRef = useAttitudeRef()
+    const liveAttitudeRef = useAttitudeRef()
+    const attitudeRef = attitude ?? liveAttitudeRef
 
     return (
         <Container

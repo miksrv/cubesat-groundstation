@@ -1,0 +1,80 @@
+.panel {
+    height: 100%;
+}
+
+.empty {
+    color: var(--text-color-secondary);
+    font-size: 0.72rem;
+    padding: 14px 0;
+
+    code {
+        font-family: var(--font-family-mono);
+        font-size: 0.68rem;
+    }
+}
+
+.scroll {
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.68rem;
+
+    th {
+        position: sticky;
+        top: 0;
+        text-align: left;
+        padding: 4px 10px 4px 0;
+        color: var(--text-color-secondary);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 0.6rem;
+        background: var(--container-background-color, #14171c);
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 3px 10px 3px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        color: var(--text-color-primary);
+        white-space: nowrap;
+    }
+}
+
+.mono {
+    font-family: var(--font-family-mono);
+}
+
+.rx {
+    color: var(--color-green);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.tx {
+    // chartColors.blue[0] — the legend's "status" blue; there is no --color-blue token.
+    color: #3b82f6;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+// A transmission that never left: kept on the record, marked, never hidden.
+.failed td {
+    color: var(--color-red);
+}
+
+.message {
+    font-family: var(--font-family-mono);
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.messageHead {
+    width: 100%;
+}

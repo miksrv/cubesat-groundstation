@@ -39,7 +39,7 @@ describe('QuickCommandsWidget', () => {
     it('hides the buttons entirely when the source cannot be commanded', () => {
         // A recording has no satellite behind it. Buttons that silently do
         // nothing are worse than buttons that are not there.
-        source.capabilities = { commands: false, archive: true, photos: false }
+        source.capabilities = { commands: false, archive: true, photos: false, radio: false }
         render(<QuickCommandsWidget />)
         expect(screen.getByText(/no satellite to command/)).toBeInTheDocument()
         expect(screen.queryByText('TAKE PHOTO')).not.toBeInTheDocument()

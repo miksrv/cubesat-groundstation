@@ -30,19 +30,13 @@ const SubsystemStatusWidget: React.FC<Props> = React.memo(({ live, latest, isLoa
                         <li
                             key={s.key}
                             className={styles.item}
+                            /* The detail still matters — a colour on its own says a
+                               subsystem is unhappy without saying why, and half of
+                               the amber states are the satellite behaving correctly.
+                               It lives on hover so the row stays two columns. */
+                            title={s.detail}
                         >
                             <span className={styles.name}>{s.label}</span>
-                            {/* The detail is the point: a colour on its own says a
-                                subsystem is unhappy without saying why, and half of
-                                these amber states are the satellite behaving
-                                correctly — a withheld heading, a profile that
-                                records nothing. */}
-                            <span
-                                className={styles.name}
-                                title={s.detail}
-                            >
-                                {s.detail}
-                            </span>
                             <StatusBadge status={s.status} />
                         </li>
                     ))}
