@@ -1,0 +1,225 @@
+/**
+ * The mission timeline: one clock, and everything the replay shows derived
+ * from it.
+ *
+ * The hook owns the playhead — play, pause, scrub, speed — and hands the
+ * Dashboard three things per instant: the live-shaped state (so every widget
+ * renders a replayed mission exactly as it renders the satellite), the rows
+ * recorded up to the playhead (so the charts grow with it instead of showing
+ * the mission's future), and the interpolated attitude in a ref (so the 3D
+ * scene reads it on its own animation frame, exactly as it reads the live
+ * channel — see `useAttitudeRef` for why that bypasses React).
+ *
+ * Loading goes through the one data-source interface, so the timeline works
+ * against the satellite's archive and against the recording bundled with the
+ * static demo build alike — which is what makes it a feature of the demo
+ * rather than something only reachable on the satellite.
+ */
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+
+import { liveStateFromRow } from '../telemetry/fromRow'
+import type { AttitudeUpdate } from '../telemetry/source'
+import type { AttitudeSample, LiveState, MissionDetail, MissionSummary, TelemetryRecord } from '../telemetry/types'
+import { getSource } from '../telemetry/useSource'
+
+import { attitudeAt, epochOf, hasQuaternion, indexAtOrBefore } from './playback'
+
+/** How often the playhead advances, in ms. Four steps a second is finer than
+ *  the attitude was recorded (1 Hz), so playback is limited by the recording,
+ *  never by this. */
+const TICK_MS = 250
+
+/** ×1 is the walk as it happened; ×60 turns a one-hour mission into a minute.
+ *  Cycled rather than picked from a menu — three well-spaced choices beat a
+ *  slider nobody can set precisely. */
+const SPEEDS = [1, 10, 60]
+
+export type TimelinePhase = 'idle' | 'picking' | 'loading' | 'ready' | 'error'
+
+export interface Timeline {
+    phase: TimelinePhase
+    /** Known once the picker has opened; newest first, as the archive lists. */
+    missions: MissionSummary[] | null
+    detail: MissionDetail | null
+    error: string | null
+
+    /** Epoch seconds. Meaningful only in `ready`. */
+    playhead: number
+    start: number
+    end: number
+    playing: boolean
+    speed: number
+
+    /** The replayed state at the playhead, shaped exactly like the live one.
+     *  Null before the mission's first row: nothing had been recorded yet, and
+     *  the widgets render that as they render a satellite not yet heard from. */
+    state: LiveState | null
+    /** Rows recorded up to the playhead, newest first — what the charts draw. */
+    rows: TelemetryRecord[]
+    /** Orientation at the playhead, slerped between recorded samples. */
+    attitudeRef: React.MutableRefObject<AttitudeUpdate | null>
+
+    open: () => void
+    pick: (id: number) => void
+    play: () => void
+    pause: () => void
+    seek: (t: number) => void
+    cycleSpeed: () => void
+    /** Back to the live view; everything loaded is dropped. */
+    exit: () => void
+}
+
+export const useTimeline = (): Timeline => {
+    const [phase, setPhase] = useState<TimelinePhase>('idle')
+    const [missions, setMissions] = useState<MissionSummary[] | null>(null)
+    const [detail, setDetail] = useState<MissionDetail | null>(null)
+    const [error, setError] = useState<string | null>(null)
+    const [playhead, setPlayhead] = useState(0)
+    const [playing, setPlaying] = useState(false)
+    const [speed, setSpeed] = useState(SPEEDS[0])
+    const attitudeRef = useRef<AttitudeUpdate | null>(null)
+
+    // Parsed once per mission, not once per tick: the playhead asks "which row
+    // is current" four times a second, over what can be thousands of rows.
+    const rowTimes = useMemo(() => (detail ? detail.telemetry.map((row) => epochOf(row.timestamp)) : []), [detail])
+    const usableAttitude = useMemo<AttitudeSample[]>(
+        () => (detail ? detail.attitude.filter(hasQuaternion) : []),
+        [detail]
+    )
+
+    const start = useMemo(() => (detail ? epochOf(detail.mission.startedAt) : 0), [detail])
+    const end = useMemo(() => {
+        if (!detail) {
+            return 0
+        }
+        if (detail.mission.endedAt) {
+            return epochOf(detail.mission.endedAt)
+        }
+        // A mission still open (or closed by a power loss before DHS could
+        // write the end) replays up to the last thing it recorded.
+        const lastRow = rowTimes.length > 0 ? rowTimes[rowTimes.length - 1] : start
+        const lastAttitude = usableAttitude.length > 0 ? usableAttitude[usableAttitude.length - 1].t : start
+        return Math.max(start, lastRow, lastAttitude)
+    }, [detail, rowTimes, usableAttitude, start])
+
+    // ── the clock ────────────────────────────────────────────────────────────
+
+    useEffect(() => {
+        if (!playing) {
+            return
+        }
+        const timer = setInterval(() => {
+            setPlayhead((current) => Math.min(current + (TICK_MS / 1000) * speed, end))
+        }, TICK_MS)
+        return () => clearInterval(timer)
+    }, [playing, speed, end])
+
+    // Pausing at the end is an effect of the playhead arriving there, not a
+    // special case inside the ticker — scrubbing to the end pauses the same way.
+    useEffect(() => {
+        if (playing && playhead >= end) {
+            setPlaying(false)
+        }
+    }, [playing, playhead, end])
+
+    // ── what the playhead means ──────────────────────────────────────────────
+
+    const rowIndex = indexAtOrBefore(rowTimes, playhead)
+
+    const state = useMemo(() => {
+        if (!detail || rowIndex < 0) {
+            return null
+        }
+        return liveStateFromRow(detail.telemetry[rowIndex], detail.mission, {
+            played: rowIndex + 1,
+            total: detail.telemetry.length
+        })
+    }, [detail, rowIndex])
+
+    const rows = useMemo(() => {
+        if (!detail || rowIndex < 0) {
+            return []
+        }
+        return detail.telemetry.slice(0, rowIndex + 1).reverse()
+    }, [detail, rowIndex])
+
+    useEffect(() => {
+        attitudeRef.current = phase === 'ready' ? attitudeAt(usableAttitude, playhead) : null
+    }, [phase, usableAttitude, playhead])
+
+    // ── actions ──────────────────────────────────────────────────────────────
+
+    const open = (): void => {
+        setPhase('picking')
+        setError(null)
+        getSource()
+            .listMissions()
+            .then(setMissions)
+            .catch((cause: unknown) => {
+                setError(cause instanceof Error ? cause.message : 'the mission archive is unreachable')
+                setPhase('error')
+            })
+    }
+
+    const pick = (id: number): void => {
+        setPhase('loading')
+        setError(null)
+        getSource()
+            .loadMission(id)
+            .then((loaded) => {
+                setDetail(loaded)
+                const openedAt = epochOf(loaded.mission.startedAt)
+                setPlayhead(openedAt)
+                // A mission with nothing to replay — purged, or recorded
+                // nothing — opens paused: pressing play on it would do nothing,
+                // and the bar says why instead.
+                setPlaying(loaded.telemetry.length > 0 || loaded.attitude.length > 0)
+                setPhase('ready')
+            })
+            .catch((cause: unknown) => {
+                setError(cause instanceof Error ? cause.message : `mission ${id} would not load`)
+                setPhase('error')
+            })
+    }
+
+    const exit = (): void => {
+        setPhase('idle')
+        setMissions(null)
+        setDetail(null)
+        setError(null)
+        setPlaying(false)
+        setPlayhead(0)
+        setSpeed(SPEEDS[0])
+        attitudeRef.current = null
+    }
+
+    return {
+        phase,
+        missions,
+        detail,
+        error,
+        playhead,
+        start,
+        end,
+        playing,
+        speed,
+        state,
+        rows,
+        attitudeRef,
+        open,
+        pick,
+        play: () => {
+            // Play at the end means "again": rewind rather than a button that
+            // silently does nothing.
+            if (playhead >= end) {
+                setPlayhead(start)
+            }
+            setPlaying(true)
+        },
+        pause: () => setPlaying(false),
+        seek: (t: number) => setPlayhead(Math.min(Math.max(t, start), end)),
+        cycleSpeed: () => setSpeed((current) => SPEEDS[(SPEEDS.indexOf(current) + 1) % SPEEDS.length]),
+        exit
+    }
+}
