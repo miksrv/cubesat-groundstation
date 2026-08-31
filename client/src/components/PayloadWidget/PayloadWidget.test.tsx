@@ -20,6 +20,33 @@ describe('PayloadWidget', () => {
         expect(screen.getByText('412 lx')).toBeInTheDocument()
     })
 
+    it('shows the read counter, which is the proof the sensor is measuring', () => {
+        // "answered" says the device is reachable; a growing counter with a
+        // recent read time says it is actually doing its job.
+        render(
+            <PayloadWidget
+                payload={mockPayload}
+                science={mockScience}
+                isLoading={false}
+            />
+        )
+        expect(screen.getByText(/148 · last/)).toBeInTheDocument()
+    })
+
+    it('shows the interval of a running timelapse alongside its frames', () => {
+        render(
+            <PayloadWidget
+                payload={{
+                    ...mockPayload,
+                    timelapse: { active: true, intervalSec: 30, frames: 7, reason: null }
+                }}
+                science={mockScience}
+                isLoading={false}
+            />
+        )
+        expect(screen.getByText('running, 7 frames @ 30s')).toBeInTheDocument()
+    })
+
     it('says why the UV index is missing rather than dashing it out', () => {
         // Two SEN0501 revisions read one raw register with formulas that disagree
         // by a factor of forty, so the satellite publishes the raw count and

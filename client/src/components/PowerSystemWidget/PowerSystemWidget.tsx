@@ -1,23 +1,73 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { EpsStatus, LiveState } from '../../features/telemetry/types'
+import type { EpsStatus, LiveState, TelemetryRecord } from '../../features/telemetry/types'
+import { chartColors } from '../../styles/chartColors'
 import { getEpsStatus } from '../../utils/subsystemStatus'
+import Sparkline from '../common/Sparkline/Sparkline'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
 
 import styles from './PowerSystemWidget.module.scss'
 
+/** The window the voltage sparkline draws — the same one Telemetry Graphs uses. */
+const SPARK_ROWS = 50
+
 interface Props {
     eps: EpsStatus | null
+    /** Recorded rows, newest first, for the voltage trend. */
+    history: TelemetryRecord[]
     isLoading: boolean
 }
 
-const barColorByStatus: Record<'OK' | 'WARN' | 'CRITICAL' | 'UNKNOWN', string> = {
+const barColorByStatus: Record<'OK' | 'WARN' | 'FAIL' | 'OFF' | 'UNKNOWN', string> = {
     OK: 'var(--color-green)',
     WARN: 'var(--color-orange)',
-    CRITICAL: 'var(--color-red)',
+    FAIL: 'var(--color-red)',
+    OFF: 'var(--text-color-secondary)',
     UNKNOWN: 'var(--text-color-secondary)'
+}
+
+/**
+ * One CRATE LSB is 0.208 %/h, so a reading at or under it is indistinguishable
+ * from gauge noise — and dividing the battery by noise promises hundreds of
+ * hours the satellite never measured. Below this floor the estimate is
+ * withheld, which is this project's answer to every number it cannot justify.
+ */
+const RATE_NOISE_FLOOR = 0.21
+
+/**
+ * `~` is part of the value: this is an extrapolation of the instantaneous
+ * rate, not a measurement — a satellite that just started charging reports a
+ * rate that will not hold for the whole climb.
+ */
+const chargeEstimate = (battery: number | null, rate: number | null): string => {
+    if (battery == null || rate == null || Math.abs(rate) < RATE_NOISE_FLOOR) {
+        return '—'
+    }
+    const hours = rate > 0 ? (100 - battery) / rate : battery / -rate
+    const span = hours >= 1 ? `~${hours.toFixed(1)} h` : `~${Math.max(1, Math.round(hours * 60))} min`
+    return `${span} to ${rate > 0 ? 'full' : 'empty'}`
+}
+
+/**
+ * The footer's line, a couple of words at most — it shares its row with the
+ * badge. `getEpsStatus().detail` leads with the charge percent, which is the
+ * right tooltip for the Subsystem Status widget but a duplicate here — the
+ * Battery Level row is four lines up. SAFE and CRITICAL name the satellite's
+ * own descent thresholds (25 % and 10 %).
+ */
+const footerLine = (status: ReturnType<typeof getEpsStatus>, eps: EpsStatus | null): string => {
+    switch (status.status) {
+        case 'FAIL':
+            return 'CRITICAL range'
+        case 'WARN':
+            return 'below SAFE'
+        case 'OK':
+            return eps?.externalPower === true ? 'on mains' : 'on battery'
+        default:
+            return 'no reading yet'
+    }
 }
 
 const EMPTY: LiveState = {
@@ -41,11 +91,19 @@ const EMPTY: LiveState = {
  * both rows are gone and `charge_rate` — which the gauge really does report —
  * is here instead.
  */
-const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, isLoading }) => {
+const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, history, isLoading }) => {
     const showSkeleton = isLoading && !eps
     const status = getEpsStatus({ ...EMPTY, eps })
     const batteryLevel = eps?.batteryPercent ?? null
     const rate = eps?.chargeRate ?? null
+    const voltageTrend = useMemo(
+        () =>
+            history
+                .slice(0, SPARK_ROWS)
+                .reverse()
+                .map((row) => row.voltage),
+        [history]
+    )
 
     return (
         <Container
@@ -64,7 +122,7 @@ const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, isLoading }) => {
                         label='Battery Level'
                         value={batteryLevel != null ? `${batteryLevel.toFixed(1)} %` : '—'}
                         mono
-                        accent={status.status === 'CRITICAL' ? 'red' : status.status === 'WARN' ? 'orange' : 'green'}
+                        accent={status.status === 'FAIL' ? 'red' : status.status === 'WARN' ? 'orange' : 'green'}
                     />
                     {/*
                       Signed percent per hour from the gauge's CRATE register. It is
@@ -77,6 +135,12 @@ const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, isLoading }) => {
                         value={rate != null ? `${rate > 0 ? '+' : ''}${rate.toFixed(2)} %/h` : '—'}
                         mono
                         accent={rate != null && rate < 0 ? 'orange' : 'default'}
+                    />
+                    <StatRow
+                        label='Charge Estimate'
+                        value={chargeEstimate(batteryLevel, rate)}
+                        mono
+                        accent={rate != null && rate < -RATE_NOISE_FLOOR ? 'orange' : 'default'}
                     />
                     <StatRow
                         label='Power Source'
@@ -92,8 +156,15 @@ const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, isLoading }) => {
                             }}
                         />
                     </div>
+                    {/* Blue is the Battery Voltage series' own hue in Telemetry
+                        Graphs — colour follows the entity across widgets. Last
+                        in the card, mirroring the Temperatures layout. */}
+                    <Sparkline
+                        values={voltageTrend}
+                        color={chartColors.blue[0]}
+                    />
                     <div className={styles.footer}>
-                        <span className={styles.footerLabel}>{status.detail}</span>
+                        <span className={styles.footerLabel}>{footerLine(status, eps)}</span>
                         <StatusBadge
                             status={status.status}
                             label={status.status === 'OK' ? 'NOMINAL' : undefined}

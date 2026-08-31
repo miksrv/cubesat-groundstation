@@ -53,7 +53,9 @@ const OrbitGroundTrack: React.FC<Props> = React.memo(({ latest, history, orbit, 
                             </div>
                             <div className={styles.coord}>
                                 <span>ALT</span>
-                                <b>{latest?.gnss.alt != null ? `${latest.gnss.alt.toFixed(1)} km` : '—'}</b>
+                                {/* Metres, as the receiver reports them — the km
+                                    label once turned a 116 m bench into orbit. */}
+                                <b>{latest?.gnss.alt != null ? `${latest.gnss.alt.toFixed(1)} m` : '—'}</b>
                             </div>
                             <div className={styles.coord}>
                                 <span>SPEED</span>

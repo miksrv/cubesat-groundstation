@@ -61,6 +61,25 @@ const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, isLoading
                         value={payload?.sensor ? (payload.sensor.present ? 'answered' : 'silent') : '—'}
                         accent={payload?.sensor?.present ? 'green' : payload?.sensor ? 'orange' : 'default'}
                     />
+                    {/* Not a duplicate of "answered": a counter that grows and a
+                        recent read time are the proof the sensor is measuring,
+                        not merely reachable. */}
+                    <StatRow
+                        label='Sensor reads'
+                        value={
+                            payload?.sensor?.readings != null
+                                ? `${payload.sensor.readings}${
+                                      payload.sensor.lastRead != null
+                                          ? ` · last ${new Date(payload.sensor.lastRead * 1000).toLocaleTimeString(
+                                                undefined,
+                                                { hour12: false }
+                                            )}`
+                                          : ''
+                                  }`
+                                : '—'
+                        }
+                        mono
+                    />
                     <StatRow
                         label='Light'
                         value={science?.light != null ? `${science.light.toFixed(0)} lx` : '—'}
@@ -89,7 +108,9 @@ const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, isLoading
                             timelapse == null
                                 ? '—'
                                 : timelapse.active
-                                  ? `running, ${timelapse.frames} frames`
+                                  ? `running, ${timelapse.frames} frames${
+                                        timelapse.intervalSec != null ? ` @ ${timelapse.intervalSec}s` : ''
+                                    }`
                                   : (timelapse.reason ?? 'idle')
                         }
                         accent={timelapse?.active ? 'green' : 'default'}
