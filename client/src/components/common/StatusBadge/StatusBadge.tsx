@@ -12,14 +12,16 @@ interface Props {
 const classByStatus: Record<StatusLevel, string> = {
     OK: 'ok',
     WARN: 'warn',
-    CRITICAL: 'critical',
+    FAIL: 'fail',
+    OFF: 'off',
     UNKNOWN: 'unknown'
 }
 
 const defaultLabel: Record<StatusLevel, string> = {
     OK: 'OK',
     WARN: 'WARN',
-    CRITICAL: 'CRIT',
+    FAIL: 'FAIL',
+    OFF: 'OFF',
     UNKNOWN: '—'
 }
 

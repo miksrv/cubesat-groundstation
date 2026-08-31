@@ -24,10 +24,11 @@
     color: var(--color-orange);
 }
 
-.critical {
+.fail {
     color: var(--color-red);
 }
 
+.off,
 .unknown {
     color: var(--text-color-secondary);
 }
