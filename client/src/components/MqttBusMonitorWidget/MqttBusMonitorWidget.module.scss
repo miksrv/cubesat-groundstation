@@ -17,6 +17,15 @@
     animation: dashFlow 1.6s linear infinite;
 }
 
+// A service the profile never started: grey and still, deliberately not
+// animated — a pulsing line out of a stopped unit would be the diagram
+// inventing traffic.
+.pulseLineOff {
+    stroke-width: 1.4;
+    stroke-dasharray: 4 5;
+    fill: none;
+}
+
 .chip {
     fill: #0d1015;
     stroke: rgba(255, 255, 255, 0.1);
@@ -30,9 +39,21 @@
     letter-spacing: 0.04em;
 }
 
+.chipLabelOff {
+    fill: var(--text-color-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
 .dotLeft,
 .dotRight {
     filter: drop-shadow(0 0 3px currentColor);
+}
+
+// No glow either: the glow is the "on air" cue.
+.dotOff {
+    opacity: 0.6;
 }
 
 .hubBox {
