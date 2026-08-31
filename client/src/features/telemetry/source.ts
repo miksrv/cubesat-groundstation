@@ -17,7 +17,17 @@
  * somebody edits the live path, and nobody notices until it is deployed.
  */
 
-import type { Command, LiveState, MissionDetail, MissionSummary, Photo, TelemetryRecord } from './types'
+import type {
+    Command,
+    LiveState,
+    MissionDetail,
+    MissionSummary,
+    Photo,
+    PhotoFile,
+    RadioEvent,
+    TelemetryRecord,
+    TelemetrySnapshot
+} from './types'
 
 export type SourceKind = 'live' | 'replay'
 
@@ -31,6 +41,9 @@ export interface SourceCapabilities {
     archive: boolean
     /** Whether photographs arrive. */
     photos: boolean
+    /** Whether radio traffic arrives — false on a replay, so the radio table
+     *  is not rendered as a widget that can only ever be empty. */
+    radio: boolean
 }
 
 export interface TelemetrySource {
@@ -62,6 +75,21 @@ export interface TelemetrySource {
     subscribePhotos(listener: (photo: Photo) => void): () => void
 
     /**
+     * COMMS' answers to `get_telemetry`, as they arrive on `cubesat/comms/data`.
+     * A response channel, not a state: the bundle exists because some ground
+     * client asked, and the console that asked is the thing waiting on it.
+     */
+    subscribeSnapshots(listener: (snapshot: TelemetrySnapshot) => void): () => void
+
+    /**
+     * Radio transactions as they happen — every message heard and every
+     * transmission attempted, from `cubesat/comms/radio`. A replay source
+     * emits nothing here (the bundled recording predates the radio log);
+     * whether the channel exists at all is `capabilities.radio`.
+     */
+    subscribeRadio(listener: (event: RadioEvent) => void): () => void
+
+    /**
      * The most recent telemetry rows, newest first.
      *
      * Needed as well as {@link subscribe} because two things a dashboard shows
@@ -80,6 +108,22 @@ export interface TelemetrySource {
      *  `purgedAt` on the summary, which is a different thing and must render
      *  differently. */
     loadMission(id: number): Promise<MissionDetail>
+
+    /**
+     * The photographs a mission has on disk, oldest first — the order the
+     * satellite lists them in, which is chronological because the names embed
+     * the UTC capture time. Names and fetchable URLs, never pixels: a page
+     * that just opened wants the newest image, not the whole directory.
+     */
+    listPhotos(missionId: number): Promise<PhotoFile[]>
+
+    /**
+     * Where this photograph's pixels can be fetched, or null when they cannot
+     * be: a frame filed under `unfiled/` (the satellite serves only photos
+     * filed under a mission), or a source with no backend at all. This is how
+     * a timelapse frame — announced by metadata only — becomes an image.
+     */
+    photoUrl(photo: Photo): string | null
 
     /** Publish a ground command. Rejects when {@link SourceCapabilities.commands}
      *  is false, rather than resolving as though it had been sent. */
@@ -103,5 +147,6 @@ export interface AttitudeUpdate {
 export const NO_CAPABILITIES: SourceCapabilities = {
     commands: false,
     archive: false,
-    photos: false
+    photos: false,
+    radio: false
 }

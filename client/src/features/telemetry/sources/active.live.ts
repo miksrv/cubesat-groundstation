@@ -12,10 +12,13 @@ import type { TelemetrySource } from '../source'
 
 import { LiveSource } from './live'
 
-const env = (name: string, fallback: string): string => {
-    const value = (process.env as Record<string, string | undefined>)[name]
-    return value == null || value === '' ? fallback : value
-}
+// Spelled as literal `process.env.NAME` expressions and nothing cleverer: the
+// bundler's `define` replaces exactly that text at build time, and a browser
+// has no `process` object to fall back on. A dynamic lookup —
+// `process.env[name]` — survives bundling verbatim and throws on the first
+// real page load, which is precisely how this comment got here.
+const BROKER_URL = process.env.PUBLIC_BROKER_URL ?? ''
+const API_BASE = process.env.PUBLIC_API_BASE ?? '/api'
 
 export const createSource = (): TelemetrySource =>
     new LiveSource({
@@ -23,7 +26,7 @@ export const createSource = (): TelemetrySource =>
         // bundle work on cubesat.local, on an EXPO access point's IP, and
         // through a dev proxy without being rebuilt for each.
         brokerUrl:
-            env('PUBLIC_BROKER_URL', '') ||
+            BROKER_URL ||
             (typeof window === 'undefined' ? 'ws://localhost:9001' : `ws://${window.location.hostname}:9001`),
-        apiBase: env('PUBLIC_API_BASE', '/api')
+        apiBase: API_BASE || '/api'
     })

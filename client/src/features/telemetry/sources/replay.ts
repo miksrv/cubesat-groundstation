@@ -17,8 +17,19 @@
  * a feature of the demo rather than something only reachable on the satellite.
  */
 
+import { liveStateFromRow } from '../fromRow'
 import type { AttitudeUpdate, SourceCapabilities, TelemetrySource } from '../source'
-import type { AdcsStatus, Command, LiveState, MissionDetail, MissionSummary, Photo, TelemetryRecord } from '../types'
+import type {
+    Command,
+    LiveState,
+    MissionDetail,
+    MissionSummary,
+    Photo,
+    PhotoFile,
+    RadioEvent,
+    TelemetryRecord,
+    TelemetrySnapshot
+} from '../types'
 import { EMPTY_LIVE_STATE } from '../types'
 
 /** How fast the recording is replayed against wall time. */
@@ -40,6 +51,10 @@ export interface Recording {
         t: number
         quaternion: { w: number | null; x: number | null; y: number | null; z: number | null }
     }>
+    /** The mission's radio traffic, ascending in `timestamp`. Empty for a
+     *  recording made before `radio_log` existed — not the same as a silent
+     *  radio, and `capabilities.radio` says which this is. */
+    radio: RadioEvent[]
 }
 
 export class ReplaySource implements TelemetrySource {
@@ -50,20 +65,32 @@ export class ReplaySource implements TelemetrySource {
      * button that silently does nothing is worse than one that is not there —
      * the UI asks this rather than assuming, and hides the console.
      */
-    public readonly capabilities: SourceCapabilities = { commands: false, archive: true, photos: false }
+    public readonly capabilities: SourceCapabilities
 
     private timer: ReturnType<typeof setInterval> | null = null
     private attitudeTimer: ReturnType<typeof setInterval> | null = null
     private cursor = 0
     private attitudeCursor = 0
+    private radioCursor = 0
     private state: LiveState = { ...EMPTY_LIVE_STATE }
     private readonly listeners = new Set<(state: LiveState) => void>()
     private readonly attitudeListeners = new Set<(sample: AttitudeUpdate) => void>()
+    private readonly radioListeners = new Set<(event: RadioEvent) => void>()
 
     public constructor(
         private readonly recording: Recording,
         private readonly speed: number = DEFAULT_SPEED
-    ) {}
+    ) {
+        this.capabilities = {
+            commands: false,
+            archive: true,
+            photos: false,
+            // Declared from what the recording actually holds: an export made
+            // before radio_log existed has no traffic to replay, and a widget
+            // fed by it could only ever be empty.
+            radio: recording.radio.length > 0
+        }
+    }
 
     public subscribe(listener: (state: LiveState) => void): () => void {
         this.listeners.add(listener)
@@ -90,6 +117,31 @@ export class ReplaySource implements TelemetrySource {
         // static hosting. Declared absent in `capabilities` rather than
         // delivered empty.
         return () => undefined
+    }
+
+    public subscribeSnapshots(_listener: (snapshot: TelemetrySnapshot) => void): () => void {
+        // Snapshots are answers to `get_telemetry`, and a recording cannot be
+        // asked — `send` rejects, so nothing can be waiting on this channel.
+        return () => undefined
+    }
+
+    public async listPhotos(_missionId: number): Promise<PhotoFile[]> {
+        // Same reason as subscribePhotos: there is no backend to fetch an
+        // image from, so listing names would promise pixels that cannot come.
+        return []
+    }
+
+    public photoUrl(_photo: Photo): string | null {
+        return null
+    }
+
+    public subscribeRadio(listener: (event: RadioEvent) => void): () => void {
+        this.radioListeners.add(listener)
+        this.start()
+        return () => {
+            this.radioListeners.delete(listener)
+            this.stopIfIdle()
+        }
     }
 
     public async recentTelemetry(limit: number): Promise<TelemetryRecord[]> {
@@ -129,6 +181,7 @@ export class ReplaySource implements TelemetrySource {
         this.stop()
         this.listeners.clear()
         this.attitudeListeners.clear()
+        this.radioListeners.clear()
     }
 
     // ── the replay ──────────────────────────────────────────────────────────
@@ -155,80 +208,36 @@ export class ReplaySource implements TelemetrySource {
     }
 
     private stopIfIdle(): void {
-        if (this.listeners.size === 0 && this.attitudeListeners.size === 0) {
+        if (this.listeners.size === 0 && this.attitudeListeners.size === 0 && this.radioListeners.size === 0) {
             this.stop()
         }
     }
 
     private step(): void {
         const rows = this.recording.telemetry
-        const row = rows[this.cursor % rows.length]
-        this.cursor += 1
-        const at = Date.parse(row.timestamp) / 1000 || 0
-        this.state = {
-            ...this.state,
-            obc: {
-                timestamp: at,
-                status: row.obcState ?? 'NOMINAL',
-                profile: row.profile,
-                cadenceScale: 1,
-                persistence: 'mission_db',
-                missionLabel: this.recording.mission.label
-            },
-            eps: {
-                timestamp: at,
-                batteryPercent: row.battery,
-                voltage: row.voltage,
-                externalPower: row.externalPower,
-                // Not recorded as a column — it lives in raw_json, which an
-                // export does not carry. Withheld rather than derived from two
-                // battery readings, which would be a rate this satellite never
-                // measured.
-                chargeRate: null
-            },
-            adcs: this.adcsFrom(row, at),
-            science: {
-                timestamp: at,
-                temperature: row.temperature,
-                humidity: row.humidity,
-                pressure: row.pressure,
-                light: row.light,
-                uvIndex: row.uvIndex,
-                uvRaw: null
-            },
-            dhs: {
-                timestamp: at,
-                recording: true,
-                database: null,
-                mission: {
-                    id: this.recording.mission.id,
-                    label: this.recording.mission.label,
-                    startedAt: this.recording.mission.startedAt,
-                    rows: this.cursor
-                },
-                rows: rows.length,
-                dbSizeBytes: null,
-                lastWrite: at,
-                retentionDays: null,
-                attitude: null,
-                photos: null
-            }
+        const index = this.cursor % rows.length
+        if (index === 0) {
+            // A new lap of the loop: the radio log starts over with it.
+            this.radioCursor = 0
         }
+        const row = rows[index]
+        this.cursor += 1
+        this.state = liveStateFromRow(row, this.recording.mission, {
+            played: this.cursor,
+            total: rows.length
+        })
         this.listeners.forEach((listener) => listener(this.state))
+        this.stepRadio(Date.parse(row.timestamp) / 1000 || 0)
     }
 
-    private adcsFrom(row: TelemetryRecord, at: number): AdcsStatus {
-        return {
-            timestamp: at,
-            roll: row.roll,
-            pitch: row.pitch,
-            yaw: row.yaw,
-            quaternion: row.quaternion,
-            calibStatus: row.calibStatus,
-            imuTemp: row.imuTemp,
-            accel: row.accel,
-            gyro: row.gyro,
-            gnss: row.gnss
+    /** Emit every radio event up to the playhead — the table stays in step
+     *  with the charts, on the same compressed clock. */
+    private stepRadio(playhead: number): void {
+        const events = this.recording.radio
+        while (this.radioCursor < events.length && events[this.radioCursor].timestamp <= playhead) {
+            const event = events[this.radioCursor]
+            this.radioCursor += 1
+            this.radioListeners.forEach((listener) => listener(event))
         }
     }
 

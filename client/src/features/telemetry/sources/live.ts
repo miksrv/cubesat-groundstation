@@ -35,13 +35,25 @@ import {
     decodeObc,
     decodePayload,
     decodePhoto,
+    decodeRadio,
     decodeScience,
+    decodeSnapshot,
     decodeTelemetry,
     num,
     str
 } from '../decode'
 import type { AttitudeUpdate, SourceCapabilities, TelemetrySource } from '../source'
-import type { Command, LiveState, MissionDetail, MissionSummary, Photo, TelemetryRecord } from '../types'
+import type {
+    Command,
+    LiveState,
+    MissionDetail,
+    MissionSummary,
+    Photo,
+    PhotoFile,
+    RadioEvent,
+    TelemetryRecord,
+    TelemetrySnapshot
+} from '../types'
 import { EMPTY_LIVE_STATE } from '../types'
 
 /** Mirrors `cubesat/common/topics.py`. Kept as one table for the same reason it
@@ -58,6 +70,8 @@ const TOPICS = {
     payloadPhoto: 'cubesat/payload/photo',
     dhsStatus: 'cubesat/dhs/status',
     commsStatus: 'cubesat/comms/status',
+    commsData: 'cubesat/comms/data',
+    commsRadio: 'cubesat/comms/radio',
     heartbeat: 'cubesat/heartbeat'
 } as const
 
@@ -73,13 +87,20 @@ export interface LiveOptions {
 export class LiveSource implements TelemetrySource {
     public readonly kind = 'live' as const
     public readonly label = 'satellite'
-    public readonly capabilities: SourceCapabilities = { commands: true, archive: true, photos: true }
+    public readonly capabilities: SourceCapabilities = {
+        commands: true,
+        archive: true,
+        photos: true,
+        radio: true
+    }
 
     private client: MqttClient | null = null
     private state: LiveState = { ...EMPTY_LIVE_STATE }
     private readonly listeners = new Set<(state: LiveState) => void>()
     private readonly attitudeListeners = new Set<(sample: AttitudeUpdate) => void>()
     private readonly photoListeners = new Set<(photo: Photo) => void>()
+    private readonly radioListeners = new Set<(event: RadioEvent) => void>()
+    private readonly snapshotListeners = new Set<(snapshot: TelemetrySnapshot) => void>()
 
     public constructor(private readonly options: LiveOptions) {}
 
@@ -108,6 +129,22 @@ export class LiveSource implements TelemetrySource {
         this.connect()
         return () => {
             this.photoListeners.delete(listener)
+        }
+    }
+
+    public subscribeRadio(listener: (event: RadioEvent) => void): () => void {
+        this.radioListeners.add(listener)
+        this.connect()
+        return () => {
+            this.radioListeners.delete(listener)
+        }
+    }
+
+    public subscribeSnapshots(listener: (snapshot: TelemetrySnapshot) => void): () => void {
+        this.snapshotListeners.add(listener)
+        this.connect()
+        return () => {
+            this.snapshotListeners.delete(listener)
         }
     }
 
@@ -142,6 +179,24 @@ export class LiveSource implements TelemetrySource {
                 }
             })
         }
+    }
+
+    public async listPhotos(missionId: number): Promise<PhotoFile[]> {
+        const body = await this.get<{ photos: unknown[] }>(`/missions/${missionId}/photos`)
+        return (body.photos ?? []).flatMap((row) => {
+            const name = str((row as Record<string, unknown>).name)
+            // The URL is built against this source's own API base rather than
+            // taken from the wire: the listing's `url` field is relative to
+            // the satellite's HTTP root, which is only the same origin when
+            // the page came from the satellite itself.
+            return name ? [{ name, url: `${this.options.apiBase}/photos/${missionId}/${name}` }] : []
+        })
+    }
+
+    public photoUrl(photo: Photo): string | null {
+        return photo.missionId != null && photo.file != null
+            ? `${this.options.apiBase}/photos/${photo.missionId}/${photo.file}`
+            : null
     }
 
     public async send(command: Command): Promise<void> {
@@ -223,6 +278,23 @@ export class LiveSource implements TelemetrySource {
                 return this.patch({ dhs: decodeDhs(raw) })
             case TOPICS.commsStatus:
                 return this.patch({ comms: decodeComms(raw) })
+            case TOPICS.commsData: {
+                // A response, not a state: COMMS publishes this only because a
+                // ground client asked, and whoever asked is subscribed here.
+                const snapshot = decodeSnapshot(raw)
+                this.snapshotListeners.forEach((listener) => listener(snapshot))
+                return
+            }
+            case TOPICS.commsRadio: {
+                // A stream, not a state: like photographs, each event leaves by
+                // its own door and nothing of it lives in LiveState — a "last
+                // packet" field would be stale the moment it was rendered.
+                const event = decodeRadio(raw)
+                if (event) {
+                    this.radioListeners.forEach((listener) => listener(event))
+                }
+                return
+            }
             case TOPICS.payloadPhoto: {
                 const photo = decodePhoto(raw)
                 if (photo) {
