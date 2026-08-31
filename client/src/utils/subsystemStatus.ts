@@ -23,7 +23,14 @@
 
 import type { LiveState, MissionState, TelemetryRecord } from '../features/telemetry/types'
 
-export type StatusLevel = 'OK' | 'WARN' | 'CRITICAL' | 'UNKNOWN'
+/**
+ * `FAIL` is OBC's verdict, not this file's: a service the profile expects
+ * whose heartbeats stopped. `OFF` is the opposite finding from the same data —
+ * the profile never started it, so its silence is correct behaviour. `UNKNOWN`
+ * is only the moment before the evidence arrives: a page that just connected,
+ * a satellite too old to publish `subsystems`.
+ */
+export type StatusLevel = 'OK' | 'WARN' | 'FAIL' | 'OFF' | 'UNKNOWN'
 
 export type SubsystemKey = 'OBC' | 'EPS' | 'ADCS' | 'PAYLOAD' | 'DHS' | 'COMMS'
 
@@ -35,9 +42,9 @@ export interface SubsystemStatus {
     detail: string
 }
 
-/** Worse-of comparator: CRITICAL > WARN > OK > UNKNOWN. */
+/** Worse-of comparator: FAIL > WARN > OK > OFF > UNKNOWN. */
 export const worse = (a: StatusLevel, b: StatusLevel): StatusLevel => {
-    const rank: Record<StatusLevel, number> = { UNKNOWN: 0, OK: 1, WARN: 2, CRITICAL: 3 }
+    const rank: Record<StatusLevel, number> = { UNKNOWN: 0, OFF: 1, OK: 2, WARN: 3, FAIL: 4 }
     return rank[a] >= rank[b] ? a : b
 }
 
@@ -59,7 +66,7 @@ export const getEpsStatus = (live: LiveState): SubsystemStatus => {
         return { key: 'EPS', label: 'EPS', status: 'OK', detail: `${charge}, on mains` }
     }
     if (eps.batteryPercent < BATTERY_CRITICAL) {
-        return { key: 'EPS', label: 'EPS', status: 'CRITICAL', detail: `${charge} — shutdown range` }
+        return { key: 'EPS', label: 'EPS', status: 'FAIL', detail: `${charge} — shutdown range` }
     }
     if (eps.batteryPercent < BATTERY_SAFE) {
         return { key: 'EPS', label: 'EPS', status: 'WARN', detail: `${charge} on battery` }
@@ -97,7 +104,7 @@ export const getAdcsStatus = (live: LiveState): SubsystemStatus => {
 const DESCENT: Record<string, StatusLevel> = {
     LOW_POWER: 'WARN',
     SAFE: 'WARN',
-    CRITICAL: 'CRITICAL'
+    CRITICAL: 'FAIL'
 }
 
 export const getObcStatus = (live: LiveState, latest: TelemetryRecord | null): SubsystemStatus => {
@@ -123,6 +130,12 @@ export const getObcStatus = (live: LiveState, latest: TelemetryRecord | null): S
 export const getPayloadStatus = (live: LiveState): SubsystemStatus => {
     const payload = live.payload
     if (!payload) {
+        // A replayed row carries no payload_status, but its science columns are
+        // the sensor's own readings — evidence the device answered, which is
+        // exactly what `present` would have said.
+        if (live.science) {
+            return { key: 'PAYLOAD', label: 'PAYLOAD', status: 'OK', detail: 'science data recorded' }
+        }
         return { key: 'PAYLOAD', label: 'PAYLOAD', status: 'UNKNOWN', detail: 'not reporting' }
     }
     // `present` is the result of a real transaction with the device — which is
@@ -162,9 +175,20 @@ export const getDhsStatus = (live: LiveState): SubsystemStatus => {
             detail: `${dhs.attitude.buffered} samples held — writes failing`
         }
     }
+    if (dhs.radio && dhs.radio.buffered > 0) {
+        // The same claim for the radio log: events heard but not yet on disk.
+        return {
+            key: 'DHS',
+            label: 'DHS',
+            status: 'WARN',
+            detail: `${dhs.radio.buffered} radio events held — writes failing`
+        }
+    }
     if (!dhs.recording) {
-        // Not a fault: HOSTED and MAINTENANCE record nothing by design.
-        return { key: 'DHS', label: 'DHS', status: 'UNKNOWN', detail: 'no mission open' }
+        // Not a fault, and not unknown either: DHS reported in, its database
+        // answers, there is simply no mission to record yet — STANDBY, or a
+        // fresh DEPLOY. A recorder that is healthy and idle is healthy.
+        return { key: 'DHS', label: 'DHS', status: 'OK', detail: 'idle — no mission open' }
     }
     return { key: 'DHS', label: 'DHS', status: 'OK', detail: `mission ${dhs.mission?.id ?? '?'}` }
 }
@@ -175,7 +199,7 @@ export const getCommsStatus = (live: LiveState): SubsystemStatus => {
         return { key: 'COMMS', label: 'COMMS', status: 'UNKNOWN', detail: 'not reporting' }
     }
     if (comms.radio && !comms.radio.present) {
-        return { key: 'COMMS', label: 'COMMS', status: 'CRITICAL', detail: 'radio did not answer' }
+        return { key: 'COMMS', label: 'COMMS', status: 'FAIL', detail: 'radio did not answer' }
     }
     // Quiet is not deaf, and the two are different states. A profile that
     // silences the transmitter while the receiver keeps listening is the way
@@ -191,14 +215,61 @@ export const getCommsStatus = (live: LiveState): SubsystemStatus => {
     return { key: 'COMMS', label: 'COMMS', status: 'OK', detail: comms.radio?.node ?? 'transmitting' }
 }
 
-export const getSubsystemStatuses = (live: LiveState, latest: TelemetryRecord | null = null): SubsystemStatus[] => [
-    getObcStatus(live, latest),
-    getEpsStatus(live),
-    getAdcsStatus(live),
-    getPayloadStatus(live),
-    getDhsStatus(live),
-    getCommsStatus(live)
-]
+/** The wire name OBC's watch list uses for each row of the widget. */
+const SERVICE_BY_KEY: Record<Exclude<SubsystemKey, 'OBC'>, string> = {
+    EPS: 'eps',
+    ADCS: 'adcs',
+    PAYLOAD: 'payload',
+    DHS: 'dhs',
+    COMMS: 'comms'
+}
+
+/**
+ * OBC's verdict, laid over what the subsystem says about itself.
+ *
+ * The satellite is the authority on which services *should* be running: a
+ * service in `lost` is a fault whatever its last status message claimed, and
+ * one absent from `watched` is off because the profile says so — its silence
+ * is correct behaviour, not a grey mystery. Everything in between is judged
+ * from the subsystem's own status message, as before. Without `subsystems`
+ * (an old recording, an old satellite) nothing is overridden.
+ */
+const applyObcVerdict = (status: SubsystemStatus, live: LiveState): SubsystemStatus => {
+    const health = live.obc?.subsystems
+    if (!health || status.key === 'OBC') {
+        return status
+    }
+    const service = SERVICE_BY_KEY[status.key]
+    if (health.lost.includes(service)) {
+        return { ...status, status: 'FAIL', detail: 'expected by the profile and silent — OBC declared it lost' }
+    }
+    if (!health.watched.includes(service)) {
+        const profile = live.obc?.profile
+        return {
+            ...status,
+            status: 'OFF',
+            detail: profile ? `not started by ${profile}` : 'not started by this profile'
+        }
+    }
+    if (status.status === 'UNKNOWN') {
+        // Watched and not lost means OBC vouches for the process — heartbeats
+        // are current. That is all it vouches for: a heartbeat proves a
+        // process, never its hardware, so the level honestly stays UNKNOWN
+        // until a status message says a device answered.
+        return { ...status, detail: `${status.detail} — process alive per OBC` }
+    }
+    return status
+}
+
+export const getSubsystemStatuses = (live: LiveState, latest: TelemetryRecord | null = null): SubsystemStatus[] =>
+    [
+        getObcStatus(live, latest),
+        getEpsStatus(live),
+        getAdcsStatus(live),
+        getPayloadStatus(live),
+        getDhsStatus(live),
+        getCommsStatus(live)
+    ].map((status) => applyObcVerdict(status, live))
 
 export type MissionStatus = 'NOMINAL' | 'WARNING' | 'CRITICAL' | 'UNKNOWN'
 

@@ -15,10 +15,12 @@ import {
 const live = (patch: Partial<typeof mockLiveState> = {}) => ({ ...mockLiveState, ...patch })
 
 describe('worse', () => {
-    it('ranks CRITICAL above WARN above OK above UNKNOWN', () => {
-        expect(worse('OK', 'CRITICAL')).toBe('CRITICAL')
+    it('ranks FAIL above WARN above OK above OFF above UNKNOWN', () => {
+        expect(worse('OK', 'FAIL')).toBe('FAIL')
         expect(worse('WARN', 'OK')).toBe('WARN')
         expect(worse('UNKNOWN', 'OK')).toBe('OK')
+        expect(worse('OFF', 'UNKNOWN')).toBe('OFF')
+        expect(worse('OK', 'OFF')).toBe('OK')
     })
 })
 
@@ -31,8 +33,8 @@ describe('getEpsStatus', () => {
         expect(getEpsStatus(live({ eps: { ...mockLiveState.eps!, batteryPercent: 20 } })).status).toBe('WARN')
     })
 
-    it('is CRITICAL in the range that powers the host off', () => {
-        expect(getEpsStatus(live({ eps: { ...mockLiveState.eps!, batteryPercent: 6 } })).status).toBe('CRITICAL')
+    it('is FAIL in the range that powers the host off', () => {
+        expect(getEpsStatus(live({ eps: { ...mockLiveState.eps!, batteryPercent: 6 } })).status).toBe('FAIL')
     })
 
     it('is not alarmed by a flat battery that is plugged in and charging', () => {
@@ -47,7 +49,7 @@ describe('getEpsStatus', () => {
         // The second half of the rule: without it one failed charger would
         // disable the protection for as long as the cable stays in.
         const failing = { ...mockLiveState.eps!, batteryPercent: 8, externalPower: true, chargeRate: -3.0 }
-        expect(getEpsStatus(live({ eps: failing })).status).toBe('CRITICAL')
+        expect(getEpsStatus(live({ eps: failing })).status).toBe('FAIL')
     })
 
     it('is UNKNOWN before EPS has said anything', () => {
@@ -81,7 +83,7 @@ describe('getObcStatus', () => {
         const safe = { ...mockLiveState.obc!, status: 'SAFE' as const }
         expect(getObcStatus(live({ obc: safe }), null).status).toBe('WARN')
         const critical = { ...mockLiveState.obc!, status: 'CRITICAL' as const }
-        expect(getObcStatus(live({ obc: critical }), null).status).toBe('CRITICAL')
+        expect(getObcStatus(live({ obc: critical }), null).status).toBe('FAIL')
     })
 
     it('is OK with no recorded row at all', () => {
@@ -121,17 +123,26 @@ describe('getDhsStatus', () => {
         expect(getDhsStatus(live({ dhs: stuck })).status).toBe('WARN')
     })
 
-    it('does not call "no mission open" a fault', () => {
-        // HOSTED and MAINTENANCE record nothing by design.
+    it('reports held radio events the same way — the same claim, other track', () => {
+        const stuck = { ...mockLiveState.dhs!, radio: { written: 34, buffered: 12 } }
+        const status = getDhsStatus(live({ dhs: stuck }))
+        expect(status.status).toBe('WARN')
+        expect(status.detail).toMatch(/12 radio events held/)
+    })
+
+    it('calls a healthy recorder with no mission open OK, not a fault', () => {
+        // HOSTED and MAINTENANCE record nothing by design, and DHS did report in.
         const idle = { ...mockLiveState.dhs!, recording: false, mission: null }
-        expect(getDhsStatus(live({ dhs: idle })).status).toBe('UNKNOWN')
+        const status = getDhsStatus(live({ dhs: idle }))
+        expect(status.status).toBe('OK')
+        expect(status.detail).toMatch(/no mission open/)
     })
 })
 
 describe('getCommsStatus', () => {
-    it('is CRITICAL when the radio did not answer', () => {
+    it('is FAIL when the radio did not answer', () => {
         const dead = { ...mockLiveState.comms!, radio: { present: false, node: null, region: null } }
-        expect(getCommsStatus(live({ comms: dead })).status).toBe('CRITICAL')
+        expect(getCommsStatus(live({ comms: dead })).status).toBe('FAIL')
     })
 
     it('does not treat a silenced transmitter as a fault', () => {
@@ -154,6 +165,56 @@ describe('getSubsystemStatuses', () => {
             'DHS',
             'COMMS'
         ])
+    })
+
+    it('shows FAIL for a service OBC declared lost, whatever it last said about itself', () => {
+        // The last retained comms_status still says the radio is fine — it is
+        // retained, that is the point — but OBC watched the heartbeats stop.
+        const obc = {
+            ...mockLiveState.obc!,
+            subsystems: { watched: ['adcs', 'comms', 'dhs', 'eps', 'payload'], lost: ['comms'] }
+        }
+        const comms = getSubsystemStatuses(live({ obc }), null).find((s) => s.key === 'COMMS')!
+        expect(comms.status).toBe('FAIL')
+        expect(comms.detail).toMatch(/lost/)
+    })
+
+    it('shows OFF, not a fault, for a service the profile never started', () => {
+        // A red light on correct behaviour would be a lie: HOSTED does not run
+        // ADCS, PAYLOAD or DHS, and their silence is the profile working.
+        const obc = {
+            ...mockLiveState.obc!,
+            profile: 'HOSTED' as const,
+            subsystems: { watched: ['comms', 'eps'], lost: [] }
+        }
+        const silent = live({ obc, adcs: null, payload: null, dhs: null, science: null })
+        const byKey = Object.fromEntries(getSubsystemStatuses(silent, null).map((s) => [s.key, s]))
+        expect(byKey.ADCS.status).toBe('OFF')
+        expect(byKey.PAYLOAD.status).toBe('OFF')
+        expect(byKey.DHS.status).toBe('OFF')
+        expect(byKey.ADCS.detail).toMatch(/HOSTED/)
+        expect(byKey.COMMS.status).toBe('OK')
+    })
+
+    it('overrides nothing when the satellite predates the subsystems field', () => {
+        const obc = { ...mockLiveState.obc!, subsystems: null }
+        const statuses = getSubsystemStatuses(live({ obc, adcs: null }), null)
+        expect(statuses.find((s) => s.key === 'ADCS')!.status).toBe('UNKNOWN')
+    })
+
+    it('treats a replayed row with science columns as a payload that answered', () => {
+        // An export carries no payload_status, but the science columns are the
+        // sensor's own readings — evidence the device answered.
+        const replay = live({ payload: null })
+        expect(getSubsystemStatuses(replay, null).find((s) => s.key === 'PAYLOAD')!.status).toBe('OK')
+    })
+
+    it("keeps a watched-but-silent subsystem UNKNOWN, with OBC's vouching in the detail", () => {
+        // A heartbeat proves a process, never its hardware: OBC watching comms
+        // and not losing it earns a better explanation, not a better colour.
+        const comms = getSubsystemStatuses(live({ comms: null }), null).find((s) => s.key === 'COMMS')!
+        expect(comms.status).toBe('UNKNOWN')
+        expect(comms.detail).toMatch(/process alive per OBC/)
     })
 })
 

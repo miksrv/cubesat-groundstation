@@ -9,12 +9,16 @@
 
 import type { AttitudeUpdate, SourceCapabilities, TelemetrySource } from './features/telemetry/source'
 import type {
+    AttitudeSample,
     Command,
     LiveState,
     MissionDetail,
     MissionSummary,
     Photo,
-    TelemetryRecord
+    PhotoFile,
+    RadioEvent,
+    TelemetryRecord,
+    TelemetrySnapshot
 } from './features/telemetry/types'
 import { EMPTY_LIVE_STATE } from './features/telemetry/types'
 import { setSource } from './features/telemetry/useSource'
@@ -22,18 +26,28 @@ import { setSource } from './features/telemetry/useSource'
 export class FakeSource implements TelemetrySource {
     public readonly kind = 'live' as const
     public readonly label = 'test'
-    public capabilities: SourceCapabilities = { commands: true, archive: true, photos: true }
+    public capabilities: SourceCapabilities = { commands: true, archive: true, photos: true, radio: true }
 
     /** Everything `send` was called with, in order. */
     public readonly sent: Command[] = []
     public history: TelemetryRecord[] = []
     public missions: MissionSummary[] = []
+    /** What `loadMission` hands back as a mission's telemetry, oldest first —
+     *  the archive's order, which is the reverse of `history`'s. */
+    public missionTelemetry: TelemetryRecord[] = []
+    /** What `loadMission` hands back as the attitude track, ascending in t. */
+    public missionAttitude: AttitudeSample[] = []
     /** Set to make `recentTelemetry` reject, as an unreachable archive does. */
     public archiveError: Error | null = null
+    /** What `listPhotos` hands back, oldest first — the archive's order. */
+    public photos: PhotoFile[] = []
 
     private state: LiveState = { ...EMPTY_LIVE_STATE }
     private readonly listeners = new Set<(state: LiveState) => void>()
     private readonly attitudeListeners = new Set<(sample: AttitudeUpdate) => void>()
+    private readonly photoListeners = new Set<(photo: Photo) => void>()
+    private readonly radioListeners = new Set<(event: RadioEvent) => void>()
+    private readonly snapshotListeners = new Set<(snapshot: TelemetrySnapshot) => void>()
 
     public subscribe(listener: (state: LiveState) => void): () => void {
         this.listeners.add(listener)
@@ -50,8 +64,25 @@ export class FakeSource implements TelemetrySource {
         }
     }
 
-    public subscribePhotos(_listener: (photo: Photo) => void): () => void {
-        return () => undefined
+    public subscribePhotos(listener: (photo: Photo) => void): () => void {
+        this.photoListeners.add(listener)
+        return () => {
+            this.photoListeners.delete(listener)
+        }
+    }
+
+    public subscribeRadio(listener: (event: RadioEvent) => void): () => void {
+        this.radioListeners.add(listener)
+        return () => {
+            this.radioListeners.delete(listener)
+        }
+    }
+
+    public subscribeSnapshots(listener: (snapshot: TelemetrySnapshot) => void): () => void {
+        this.snapshotListeners.add(listener)
+        return () => {
+            this.snapshotListeners.delete(listener)
+        }
     }
 
     public async recentTelemetry(limit: number): Promise<TelemetryRecord[]> {
@@ -70,7 +101,18 @@ export class FakeSource implements TelemetrySource {
         if (!mission) {
             throw new Error(`no mission ${id}`)
         }
-        return { mission, telemetry: this.history, attitude: [] }
+        return { mission, telemetry: this.missionTelemetry, attitude: this.missionAttitude }
+    }
+
+    public async listPhotos(_missionId: number): Promise<PhotoFile[]> {
+        if (this.archiveError) {
+            throw this.archiveError
+        }
+        return this.photos
+    }
+
+    public photoUrl(photo: Photo): string | null {
+        return photo.missionId != null && photo.file != null ? `/api/photos/${photo.missionId}/${photo.file}` : null
     }
 
     public async send(command: Command): Promise<void> {
@@ -83,6 +125,9 @@ export class FakeSource implements TelemetrySource {
     public close(): void {
         this.listeners.clear()
         this.attitudeListeners.clear()
+        this.photoListeners.clear()
+        this.radioListeners.clear()
+        this.snapshotListeners.clear()
     }
 
     // ── what a test drives ──────────────────────────────────────────────────
@@ -95,6 +140,18 @@ export class FakeSource implements TelemetrySource {
 
     public emitAttitude(sample: AttitudeUpdate): void {
         this.attitudeListeners.forEach((listener) => listener(sample))
+    }
+
+    public emitPhoto(photo: Photo): void {
+        this.photoListeners.forEach((listener) => listener(photo))
+    }
+
+    public emitSnapshot(snapshot: TelemetrySnapshot): void {
+        this.snapshotListeners.forEach((listener) => listener(snapshot))
+    }
+
+    public emitRadio(event: RadioEvent): void {
+        this.radioListeners.forEach((listener) => listener(event))
     }
 }
 

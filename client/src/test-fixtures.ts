@@ -30,7 +30,8 @@ export const mockObc: ObcStatus = {
     profile: 'FLIGHT',
     cadenceScale: 1.0,
     persistence: 'mission_db',
-    missionLabel: 'walk to work'
+    missionLabel: 'walk to work',
+    subsystems: { watched: ['adcs', 'comms', 'dhs', 'eps', 'payload'], lost: [] }
 }
 
 export const mockEps: EpsStatus = {
@@ -85,6 +86,7 @@ export const mockDhs: DhsStatus = {
     lastWrite: AT,
     retentionDays: 30,
     attitude: { written: 3600, buffered: 0, minIntervalSec: 1.0 },
+    radio: { written: 34, buffered: 0 },
     photos: { unfiledBytes: 0, freeMb: 21493.7, minFreeMb: 512.0 }
 }
 
