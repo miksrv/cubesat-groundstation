@@ -46,6 +46,28 @@
     transition: width 0.4s ease;
 }
 
+/* The bar carries the verdict, not just the number: a resource nearly gone
+   should not be the same colour as one at rest. */
+.barWarn {
+    background: var(--color-orange);
+}
+
+.barCritical {
+    background: var(--color-red);
+}
+
+.valueWarn {
+    color: var(--color-orange);
+}
+
+.valueCritical {
+    color: var(--color-red);
+}
+
+.metaWarn {
+    color: var(--color-orange);
+}
+
 .metaRow {
     display: flex;
     align-items: center;
