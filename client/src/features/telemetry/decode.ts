@@ -27,10 +27,14 @@ import type {
     ObcStatus,
     PayloadStatus,
     Photo,
+    PhotoOverlay,
     Profile,
     Quaternion,
+    RadioEvent,
     ScienceData,
+    SubsystemHealth,
     TelemetryRecord,
+    TelemetrySnapshot,
     Vector3
 } from './types'
 
@@ -95,6 +99,18 @@ export const missionState = (value: unknown): MissionState | null =>
 
 // ── the status topics ───────────────────────────────────────────────────────
 
+ *  missing the field entirely (an older satellite) must read as "unknown",
+ *  never as "nothing is watched", which would render every subsystem OFF. */
+const serviceList = (value: unknown): string[] | null =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : null
+
+const subsystemHealth = (value: unknown): SubsystemHealth | null => {
+    const raw = asRecord(value)
+    const watched = serviceList(raw.watched)
+    const lost = serviceList(raw.lost)
+    return watched != null && lost != null ? { watched, lost } : null
+}
+
 export const decodeObc = (raw: Raw): ObcStatus | null => {
     const status = missionState(raw.status)
     if (status == null) {
@@ -106,7 +122,8 @@ export const decodeObc = (raw: Raw): ObcStatus | null => {
         profile: profile(raw.profile),
         cadenceScale: num(raw.cadence_scale),
         persistence: (str(raw.persistence) as ObcStatus['persistence']) ?? null,
-        missionLabel: str(raw.mission_label)
+        missionLabel: str(raw.mission_label),
+        subsystems: subsystemHealth(raw.subsystems)
     }
 }
 
@@ -180,6 +197,7 @@ export const decodePayload = (raw: Raw): PayloadStatus => {
 export const decodeDhs = (raw: Raw): DhsStatus => {
     const mission = asRecord(raw.mission)
     const attitude = asRecord(raw.attitude)
+    const radio = asRecord(raw.radio)
     const photos = asRecord(raw.photos)
     return {
         timestamp: num(raw.timestamp) ?? 0,
@@ -205,6 +223,12 @@ export const decodeDhs = (raw: Raw): DhsStatus => {
                   minIntervalSec: num(attitude.min_interval_sec) ?? 0
               }
             : null,
+        radio: raw.radio
+            ? {
+                  written: num(radio.written) ?? 0,
+                  buffered: num(radio.buffered) ?? 0
+              }
+            : null,
         photos: raw.photos
             ? {
                   unfiledBytes: num(photos.unfiled_bytes),
@@ -223,6 +247,64 @@ export const decodeComms = (raw: Raw): CommsStatus => {
         loraEnabled: raw.lora_enabled === true,
         loraListening: raw.lora_listening === true,
         lastUplink: num(raw.last_uplink)
+    }
+}
+
+/**
+ * A radio event, or null for a payload that cannot name its direction — a log
+ * entry that cannot say whether the satellite was talking or listening is not
+ * an entry, and DHS refuses the same shape on the recording side.
+ */
+export const decodeRadio = (raw: Raw): RadioEvent | null => {
+    const direction = raw.direction
+    if (direction !== 'rx' && direction !== 'tx') {
+        return null
+    }
+    return {
+        timestamp: num(raw.timestamp) ?? 0,
+        direction,
+        kind: str(raw.kind),
+        text: str(raw.text),
+        bytes: num(raw.bytes),
+        sender: str(raw.sender),
+        snr: num(raw.snr),
+        rssi: num(raw.rssi),
+        hops: num(raw.hops),
+        sent: bool(raw.sent)
+    }
+}
+
+/** `{}` means COMMS has heard nothing on that topic yet — not a payload of
+ *  zeros, so it decodes to null rather than through the block's decoder. */
+const nonEmpty = (value: unknown): Raw | null => {
+    const record = asRecord(value)
+    return Object.keys(record).length > 0 ? record : null
+}
+
+export const decodeSnapshot = (raw: Raw): TelemetrySnapshot => {
+    const eps = nonEmpty(raw.eps)
+    const adcs = nonEmpty(raw.adcs)
+    const science = nonEmpty(raw.payload)
+    const system = nonEmpty(raw.system)
+    return {
+        timestamp: num(raw.timestamp) ?? 0,
+        requestId: str(raw.request_id),
+        obcState: missionState(raw.obc_state),
+        profile: profile(raw.profile),
+        missionId: num(raw.mission_id),
+        eps: eps ? decodeEps(eps) : null,
+        adcs: adcs ? decodeAdcs(adcs) : null,
+        science: science ? decodeScience(science) : null,
+        system: system
+            ? {
+                  cpuPercent: num(system.cpu_percent),
+                  ramPercent: num(system.ram_percent),
+                  swapPercent: num(system.swap_percent),
+                  diskPercent: num(system.disk_percent),
+                  uptimeSeconds: num(system.uptime_seconds),
+                  cpuTemperature: num(system.cpu_temperature)
+              }
+            : null
     }
 }
 
@@ -250,28 +332,48 @@ export const decodeHost = (raw: Raw): HostStatus => {
     }
 }
 
+const photoOverlay = (value: unknown): PhotoOverlay | null => {
+    if (typeof value !== 'object' || value == null) {
+        return null
+    }
+    const overlay = value as Raw
+    const at = num(asRecord(overlay.position).at)
+    return {
+        capturedAt: str(overlay.captured_at),
+        missionState: str(overlay.mission_state),
+        position: overlay.position ? { ...gnss(overlay.position), at } : null,
+        width: num(overlay.width),
+        height: num(overlay.height)
+    }
+}
+
 export const decodePhoto = (raw: Raw): Photo | null => {
     const kind = str(raw.kind)
     const common = {
         timestamp: num(raw.timestamp) ?? 0,
+        file: str(raw.file),
         path: str(raw.path) ?? '',
         sizeBytes: num(raw.size_bytes),
-        missionId: str(raw.mission_id)
+        missionId: str(raw.mission_id),
+        overlay: photoOverlay(raw.overlay)
     }
     if (kind === 'photo') {
         return {
             ...common,
             kind: 'photo',
-            photoBase64: str(raw.photo_base64) ?? '',
-            position: raw.position ? gnss(raw.position) : null,
-            positionAgeSec: num(raw.position_age_sec)
+            photoBase64: str(raw.photo_base64) ?? ''
         }
     }
-    if (kind === 'timelapse_frame') {
-        return { ...common, kind: 'timelapse_frame', sequence: num(raw.sequence) }
+    if (kind === 'timelapse') {
+        // The satellite says `timelapse`, not `timelapse_frame` — the wire is
+        // its vocabulary, and an earlier build of this decoder silently
+        // dropped every frame by expecting a name of its own invention.
+        return { ...common, kind: 'timelapse', sequence: num(raw.sequence) }
     }
     // Branch on `kind`, never on the presence of a blob — a variant this build
-    // has not heard of is dropped rather than guessed at.
+    // has not heard of is dropped rather than guessed at. That covers the
+    // refusal shape too (`status: "ERROR"`, no kind): the retained
+    // payload_status already carries why the camera said no.
     return null
 }
 
