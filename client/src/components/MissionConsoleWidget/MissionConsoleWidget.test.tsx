@@ -80,6 +80,25 @@ describe('MissionConsoleWidget', () => {
         expect(screen.getByText(/cpu 34%, ram 52%, disk 41%/)).toBeInTheDocument()
     })
 
+    it('prints a camera refusal, which lands on cubesat/payload/photo', async () => {
+        // "photo" answers with "published to cubesat/command" — the refusal is
+        // the only message saying the satellite then said no.
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        act(() => {
+            source.emitPhotoRefusal({
+                timestamp: 1741863600,
+                requestId: null,
+                reason: 'card full - 12 MB free, 50 MB required'
+            })
+        })
+        expect(await screen.findByText('Camera refused: card full - 12 MB free, 50 MB required')).toBeInTheDocument()
+    })
+
     it('clears the console on the "clear" command', () => {
         render(
             <MissionConsoleWidget
@@ -112,6 +131,93 @@ describe('MissionConsoleWidget', () => {
         runCommand('profile expo')
         expect(await screen.findByText(/set_profile published/)).toBeInTheDocument()
         expect(source.sent).toEqual([{ command: 'set_profile', params: { profile: 'EXPO' } }])
+    })
+
+    it('prints the full vocabulary on "help", radio queries included', async () => {
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('help')
+        expect(await screen.findByText(/same lines work over the Meshtastic uplink/)).toBeInTheDocument()
+        expect(screen.getByText(/lora on\|off/)).toBeInTheDocument()
+        expect(screen.getByText(/pos\s+- position/)).toBeInTheDocument()
+    })
+
+    it('answers pos locally, in the radio reply syntax', async () => {
+        // Over LoRa this query comes back as a beacon from COMMS' caches; here
+        // the same data is already on the page, and the answer is printed in
+        // the same field syntax so both channels read alike.
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('pos')
+        expect(await screen.findByText(/re=pos lat=55\.7558 lon=37\.6173 fix=1/)).toBeInTheDocument()
+        expect(source.sent).toEqual([])
+    })
+
+    it('answers a query with err=nodata rather than a line of zeros', async () => {
+        render(
+            <MissionConsoleWidget
+                live={{ ...mockLiveState, adcs: null }}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('pos')
+        expect(await screen.findByText('re=pos ok=0 err=nodata')).toBeInTheDocument()
+    })
+
+    it('tolerates the radio spelling with the ! prefix', async () => {
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('!photo')
+        expect(await screen.findByText(/take_photo published/)).toBeInTheDocument()
+        expect(source.sent).toEqual([{ command: 'take_photo' }])
+    })
+
+    it('takes the timelapse interval in seconds, like the radio does', async () => {
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('timelapse 15')
+        expect(await screen.findByText(/start_timelapse published/)).toBeInTheDocument()
+        expect(source.sent).toEqual([{ command: 'start_timelapse', params: { interval_sec: 15 } }])
+    })
+
+    it('answers bad arguments with a usage line instead of guessing', async () => {
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('timelapse soon')
+        expect(await screen.findByText('usage: timelapse <interval seconds>|stop')).toBeInTheDocument()
+        expect(source.sent).toEqual([])
+    })
+
+    it('switches the radio with lora on|off', async () => {
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('lora off')
+        expect(await screen.findByText(/set_comms_config published/)).toBeInTheDocument()
+        expect(source.sent).toEqual([{ command: 'set_comms_config', params: { lora_enabled: false } }])
     })
 
     it('refuses a profile this build does not know rather than sending it', async () => {

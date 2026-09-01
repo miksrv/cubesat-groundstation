@@ -1,4 +1,4 @@
-import { mockDhs } from '../../test-fixtures'
+import { mockDhs, mockObc } from '../../test-fixtures'
 import { render, screen } from '../../test-utils'
 
 import FlightRecorderWidget from './FlightRecorderWidget'
@@ -10,6 +10,7 @@ describe('FlightRecorderWidget', () => {
         render(
             <FlightRecorderWidget
                 dhs={mockDhs}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -24,6 +25,7 @@ describe('FlightRecorderWidget', () => {
         render(
             <FlightRecorderWidget
                 dhs={mockDhs}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -36,6 +38,7 @@ describe('FlightRecorderWidget', () => {
         render(
             <FlightRecorderWidget
                 dhs={{ ...mockDhs, radio: { written: 34, buffered: 12 } }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -46,6 +49,7 @@ describe('FlightRecorderWidget', () => {
         render(
             <FlightRecorderWidget
                 dhs={{ ...mockDhs, recording: false, mission: null }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -60,6 +64,7 @@ describe('FlightRecorderWidget', () => {
                     ...mockDhs,
                     photos: { unfiledBytes: 4_718_592, freeMb: 21493.7, minFreeMb: 512 }
                 }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -70,9 +75,22 @@ describe('FlightRecorderWidget', () => {
         const { container } = render(
             <FlightRecorderWidget
                 dhs={null}
+                obc={null}
                 isLoading={true}
             />
         )
         expect(container.querySelector('[data-testid="skeleton"]')).toBeInTheDocument()
+    })
+
+    it('says OFF, not a dash, for a recorder the profile never started', () => {
+        render(
+            <FlightRecorderWidget
+                dhs={null}
+                obc={{ ...mockObc, profile: 'EXPO', subsystems: { watched: ['eps', 'comms'], lost: [] } }}
+                isLoading={false}
+            />
+        )
+        expect(screen.getByText('OFF')).toBeInTheDocument()
+        expect(screen.getByText('not started by EXPO')).toBeInTheDocument()
     })
 })

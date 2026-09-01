@@ -73,6 +73,19 @@ describe('Dashboard', () => {
         )
     })
 
+    it('says the broker is gone instead of impersonating a silent satellite', async () => {
+        // Before the connection channel existed, a dead broker and a satellite
+        // that had not published yet rendered identically. The stale state
+        // stays on screen — it is the last thing the satellite said — but the
+        // link badge reports what the transport knows.
+        render(<Dashboard />)
+        source.emit(mockLiveState)
+        await waitFor(() => expect(screen.getByText('ACTIVE')).toBeInTheDocument())
+        source.emitConnection('offline')
+        await waitFor(() => expect(screen.getByText('OFFLINE')).toBeInTheDocument())
+        expect(screen.getAllByText('NOMINAL').length).toBeGreaterThan(0)
+    })
+
     it('keeps the live view when the recorded history is unreachable', async () => {
         // Two channels of different kinds. Losing the archive costs the charts
         // and the host metrics; it must not blank a dashboard that is otherwise

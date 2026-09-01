@@ -4,7 +4,7 @@ import { useObservedEvents } from '../../features/events/useObservedEvents'
 import { useOrbit } from '../../features/orbit/useOrbit'
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { EMPTY_LIVE_STATE } from '../../features/telemetry/types'
-import { getSource, useCameraShot, useLiveState } from '../../features/telemetry/useSource'
+import { getSource, useCameraShot, useConnection, useLiveState } from '../../features/telemetry/useSource'
 import { useTimeline } from '../../features/timeline/useTimeline'
 import ADCSWidget from '../ADCSWidget/ADCSWidget'
 import CameraViewWidget from '../CameraViewWidget/CameraViewWidget'
@@ -75,6 +75,9 @@ const HISTORY_REFRESH_MS = 30_000
  */
 const Dashboard: React.FC = () => {
     const live = useLiveState()
+    // The transport's own state, shown even during a replay: the replay is a
+    // past mission, but the connection is this page's present.
+    const connection = useConnection()
     const orbit = useOrbit()
     const events = useObservedEvents(live)
     const timeline = useTimeline()
@@ -136,7 +139,7 @@ const Dashboard: React.FC = () => {
                 latest={latest}
                 orbit={replaying ? null : orbit}
                 isLoading={connecting}
-                isError={!replaying && historyError}
+                connection={connection}
             />
             <MissionTimelineBar timeline={timeline} />
             {!replaying && historyError && (
@@ -192,6 +195,7 @@ const Dashboard: React.FC = () => {
                 <div className={styles.rowSubsystems}>
                     <PowerSystemWidget
                         eps={shown.eps}
+                        obc={shown.obc}
                         history={shownHistory}
                         isLoading={connecting}
                     />
@@ -204,6 +208,7 @@ const Dashboard: React.FC = () => {
                     />
                     <ADCSWidget
                         adcs={shown.adcs}
+                        obc={shown.obc}
                         isLoading={connecting}
                     />
                     <OBCSystemWidget
@@ -214,6 +219,7 @@ const Dashboard: React.FC = () => {
                     <PayloadWidget
                         payload={shown.payload}
                         science={shown.science}
+                        obc={shown.obc}
                         isLoading={connecting}
                     />
                 </div>
@@ -255,6 +261,7 @@ const Dashboard: React.FC = () => {
                         {getSource().capabilities.radio && <RadioLinkLogWidget />}
                         <FlightRecorderWidget
                             dhs={live.dhs}
+                            obc={live.obc}
                             isLoading={connecting}
                         />
                     </div>

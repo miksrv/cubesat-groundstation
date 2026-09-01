@@ -13,30 +13,55 @@ interface Props {
 }
 
 /**
- * The satellite's own vocabulary, typed out.
+ * The satellite's own vocabulary, typed out — and it is the *radio's*
+ * vocabulary, verbatim.
+ *
+ * These are exactly the lines `comms/compact.py` accepts over the Meshtastic
+ * uplink, so an operator learns one command language: what works here works
+ * from a phone in a field, and vice versa (the radio also tolerates a `!`
+ * prefix, and so does this parser). The queries — ping, pos, sys, env,
+ * mission — are answered by COMMS from its caches over the radio; here they
+ * are answered from the same data the page already holds, printed in the
+ * radio reply's own `re=... key=value` syntax so the answer reads the same on
+ * both channels.
  *
  * The previous console offered `reboot obc` and `reset adcs`, which the
  * satellite has never implemented — a console that accepts a command and does
  * nothing teaches the operator something false about the thing they are
- * operating. Everything below is a real command on `cubesat/command`, and
- * `poweroff` is absent because the vocabulary has no such thing: `CRITICAL` is
- * the only thing permitted to power the host down.
+ * operating. `poweroff` is absent because the vocabulary has no such thing
+ * (`CRITICAL` is the only thing permitted to power the host down), and
+ * `restart` is absent because its handler is not written yet — the satellite
+ * answers that spelling with `err=unknown`, and this console must not know
+ * more commands than the satellite does.
  */
 const HELP_TEXT = [
-    'Available commands:',
-    '  status                  - what the satellite is reporting right now',
-    '  profile <name>          - HOSTED | DEMO | EXPO | FLIGHT | DIAG | MAINTENANCE',
+    'Satellite commands - the same lines work over the Meshtastic uplink:',
+    '  ping                    - proof of life',
+    '  pos                     - position, with the age of the fix',
+    '  sys                     - cpu, ram, disk, uptime',
+    '  env                     - temperature, humidity, pressure, light',
+    '  mission                 - the mission being recorded',
+    '  photo                   - take one photograph',
+    '  timelapse <sec>|stop    - start (interval in seconds) or stop a timelapse',
     '  science start|stop      - enter or leave SCIENCE',
+    '  profile <name>          - HOSTED | DEMO | EXPO | FLIGHT | DIAG | MAINTENANCE',
     '  safe                    - request SAFE',
     '  recover                 - leave SAFE once the fault is gone',
-    '  photo                   - take one photograph',
-    '  timelapse start|stop    - start or stop a timelapse',
+    '  lora on|off             - allow or silence radio transmission',
+    'Console commands:',
+    '  status                  - what the satellite is reporting right now',
     '  telemetry               - ask COMMS to republish its whole cache',
     '  clear                   - clear the console',
     '  help                    - show this message'
 ]
 
 const PROFILES: Profile[] = ['HOSTED', 'DEMO', 'EXPO', 'FLIGHT', 'DIAG', 'MAINTENANCE']
+
+/** The queries COMMS answers itself over the radio; the console answers them
+ *  locally, from the same telemetry the rest of the page renders. */
+type QueryName = 'ping' | 'pos' | 'sys' | 'env' | 'mission'
+
+type Parsed = { command: Command } | { query: QueryName } | { usage: string } | null
 
 /**
  * COMMS' answer to `telemetry`, rendered. Nulls stay dashes: the bundle is
@@ -74,30 +99,145 @@ const snapshotLines = (snapshot: TelemetrySnapshot): string[] => {
     return lines
 }
 
-/** One typed line to one command, or null when it is not one. */
-const parse = (line: string): Command | null | 'bad-profile' => {
-    const [head, tail] = [line.split(/\s+/)[0], line.split(/\s+/).slice(1).join(' ')]
-    switch (head) {
+/**
+ * One typed line to one command, mirroring `comms/compact.py` case for case —
+ * the same verbs, the same argument shapes, the optional `!`. Where the radio
+ * answers a mistyped `!` line with a terse `err=unknown`, a console has room
+ * to say what the arguments should have been, so bad arguments come back as a
+ * usage line rather than a shrug.
+ */
+const parse = (line: string): Parsed => {
+    const words = line.replace(/^!/, '').split(/\s+/).filter(Boolean)
+    if (words.length === 0) {
+        return null
+    }
+    const [verb, ...args] = words
+    const bare = (result: Parsed): Parsed => (args.length === 0 ? result : { usage: `${verb} takes no arguments` })
+    switch (verb) {
+        case 'ping':
+        case 'pos':
+        case 'sys':
+        case 'env':
+        case 'mission':
+            return bare({ query: verb })
+        case 'photo':
+            return bare({ command: { command: 'take_photo' } })
+        case 'safe':
+            return bare({ command: { command: 'safe_mode' } })
+        case 'recover':
+            return bare({ command: { command: 'recover' } })
+        case 'telemetry':
+            return bare({ command: { command: 'get_telemetry' } })
         case 'profile': {
-            const name = tail.toUpperCase() as Profile
-            return PROFILES.includes(name) ? { command: 'set_profile', params: { profile: name } } : 'bad-profile'
+            const name = args.join(' ').toUpperCase() as Profile
+            // Profiles are data on the satellite, but a typo should fail here
+            // rather than reach OBC and be refused there — one round trip
+            // later, with the operator watching nothing happen.
+            return PROFILES.includes(name)
+                ? { command: { command: 'set_profile', params: { profile: name } } }
+                : { usage: `Unknown profile. One of: ${PROFILES.join(', ')}` }
         }
         case 'science':
-            return tail === 'stop' ? { command: 'science_stop' } : { command: 'science_start' }
-        case 'safe':
-            return { command: 'safe_mode' }
-        case 'recover':
-            return { command: 'recover' }
-        case 'photo':
-            return { command: 'take_photo' }
+            if (args.length === 1 && (args[0] === 'start' || args[0] === 'stop')) {
+                return { command: { command: args[0] === 'start' ? 'science_start' : 'science_stop' } }
+            }
+            return { usage: 'usage: science start|stop' }
         case 'timelapse':
-            return tail === 'stop'
-                ? { command: 'stop_timelapse' }
-                : { command: 'start_timelapse', params: { interval_sec: 30 } }
-        case 'telemetry':
-            return { command: 'get_telemetry' }
+            if (args.length === 1 && args[0] === 'stop') {
+                return { command: { command: 'stop_timelapse' } }
+            }
+            if (args.length === 1 && /^\d+$/.test(args[0])) {
+                return { command: { command: 'start_timelapse', params: { interval_sec: Number(args[0]) } } }
+            }
+            return { usage: 'usage: timelapse <interval seconds>|stop' }
+        case 'lora':
+            if (args.length === 1 && (args[0] === 'on' || args[0] === 'off')) {
+                return { command: { command: 'set_comms_config', params: { lora_enabled: args[0] === 'on' } } }
+            }
+            return { usage: 'usage: lora on|off' }
         default:
             return null
+    }
+}
+
+/** Whole seconds since an epoch-seconds timestamp, as the radio spells it. */
+const ageOf = (timestamp: number | null | undefined): string =>
+    timestamp != null ? String(Math.max(0, Math.round(Date.now() / 1000 - timestamp))) : '?'
+
+/** `key=value` pairs with the absent ones omitted, never zeroed — the same
+ *  withhold-rather-than-fabricate rule the radio reply follows. */
+const replyLine = (re: QueryName, fields: Array<[string, string | null]>): string =>
+    [`re=${re}`, ...fields.filter(([, value]) => value != null).map(([key, value]) => `${key}=${value}`)].join(' ')
+
+const NO_DATA = (re: QueryName): string => `re=${re} ok=0 err=nodata`
+
+/**
+ * The console's answers to the query verbs, printed in the radio reply's own
+ * field syntax — over LoRa these come back as a beacon, and an operator who
+ * has read one should recognise the other.
+ */
+const answerQuery = (query: QueryName, live: LiveState, latest: TelemetryRecord | null): string => {
+    switch (query) {
+        case 'ping': {
+            if (!live.obc) {
+                return NO_DATA('ping')
+            }
+            return replyLine('ping', [
+                ['st', live.obc.status],
+                ['pr', live.obc.profile],
+                ['b', live.eps?.batteryPercent != null ? live.eps.batteryPercent.toFixed(1) : null],
+                ['v', live.eps?.voltage != null ? live.eps.voltage.toFixed(2) : null],
+                ['age', ageOf(live.obc.timestamp)]
+            ])
+        }
+        case 'pos': {
+            const gnss = live.adcs?.gnss
+            if (gnss?.lat == null || gnss.lon == null) {
+                return NO_DATA('pos')
+            }
+            return replyLine('pos', [
+                ['lat', gnss.lat.toFixed(4)],
+                ['lon', gnss.lon.toFixed(4)],
+                ['fix', gnss.fix ? '1' : '0'],
+                ['age', ageOf(live.adcs?.timestamp)],
+                ['alt', gnss.alt != null ? gnss.alt.toFixed(0) : null],
+                ['sat', gnss.satellites != null ? String(gnss.satellites) : null]
+            ])
+        }
+        case 'sys': {
+            if (latest?.cpuPercent == null) {
+                return NO_DATA('sys')
+            }
+            return replyLine('sys', [
+                ['cpu', latest.cpuPercent.toFixed(0)],
+                ['ram', latest.ramPercent != null ? latest.ramPercent.toFixed(0) : null],
+                ['disk', latest.diskPercent != null ? latest.diskPercent.toFixed(0) : null],
+                ['up', latest.uptimeSeconds != null ? `${(latest.uptimeSeconds / 3600).toFixed(1)}h` : null],
+                ['tc', latest.cpuTemperature != null ? latest.cpuTemperature.toFixed(1) : null]
+            ])
+        }
+        case 'env': {
+            const science = live.science
+            if (science?.temperature == null) {
+                return NO_DATA('env')
+            }
+            return replyLine('env', [
+                ['age', ageOf(science.timestamp)],
+                ['tc', science.temperature.toFixed(1)],
+                ['rh', science.humidity != null ? science.humidity.toFixed(0) : null],
+                ['hpa', science.pressure != null ? science.pressure.toFixed(0) : null],
+                ['lux', science.light != null ? science.light.toFixed(0) : null]
+            ])
+        }
+        case 'mission': {
+            if (live.dhs?.mission == null) {
+                return NO_DATA('mission')
+            }
+            return replyLine('mission', [
+                ['m', String(live.dhs.mission.id)],
+                ['rows', String(live.dhs.mission.rows)]
+            ])
+        }
     }
 }
 
@@ -127,6 +267,17 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
     useEffect(
         () => getSource().subscribeSnapshots((snapshot) => print(snapshotLines(snapshot))),
 
+        []
+    )
+
+    // A refused capture answers on `cubesat/payload/photo`, not on any status
+    // topic. Without this line the console prints "published to
+    // cubesat/command" and then nothing, which reads as success.
+    useEffect(
+        () =>
+            getSource().subscribePhotoRefusals((refusal) =>
+                print(`Camera refused: ${refusal.reason ?? 'no reason given'}`)
+            ),
         []
     )
 
@@ -174,18 +325,24 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
         }
 
         const parsed = parse(cmd)
-        if (parsed === 'bad-profile') {
-            print(`Unknown profile. One of: ${PROFILES.join(', ')}`)
-            return
-        }
         if (parsed == null) {
             print(`Unknown command: "${raw}". Type "help" for a list of commands.`)
             return
         }
+        if ('usage' in parsed) {
+            print(parsed.usage)
+            return
+        }
+        if ('query' in parsed) {
+            // Answered locally, like COMMS answers them from its own caches
+            // over the radio: the data being asked about is already here.
+            print(answerQuery(parsed.query, live, latest))
+            return
+        }
 
         try {
-            await source.send(parsed)
-            print(`${parsed.command} published to cubesat/command`)
+            await source.send(parsed.command)
+            print(`${parsed.command.command} published to cubesat/command`)
         } catch (error) {
             print(error instanceof Error ? error.message : 'Command failed.')
         }

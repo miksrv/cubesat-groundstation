@@ -1,8 +1,8 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { DhsStatus, LiveState } from '../../features/telemetry/types'
-import { getDhsStatus } from '../../utils/subsystemStatus'
+import type { DhsStatus, LiveState, ObcStatus } from '../../features/telemetry/types'
+import { applyObcVerdict, getDhsStatus } from '../../utils/subsystemStatus'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
 
@@ -10,6 +10,9 @@ import styles from './FlightRecorderWidget.module.scss'
 
 interface Props {
     dhs: DhsStatus | null
+    /** For OBC's verdict on the service itself: a subsystem the profile never
+     *  started earns "OFF", not the dash of a page still waiting for data. */
+    obc: ObcStatus | null
     isLoading: boolean
 }
 
@@ -21,8 +24,7 @@ const EMPTY: LiveState = {
     payload: null,
     science: null,
     dhs: null,
-    comms: null,
-    heartbeats: {}
+    comms: null
 }
 
 const time = (epoch: number | null): string =>
@@ -42,9 +44,10 @@ const writtenPlusHeld = (track: { written: number; buffered: number } | null): s
  * `status` into the console or hovering a tooltip. Everything here is the
  * retained `dhs_status`, so a freshly opened page knows it immediately.
  */
-const FlightRecorderWidget: React.FC<Props> = React.memo(({ dhs, isLoading }) => {
+const FlightRecorderWidget: React.FC<Props> = React.memo(({ dhs, obc, isLoading }) => {
     const showSkeleton = isLoading && !dhs
-    const status = getDhsStatus({ ...EMPTY, dhs })
+    const live: LiveState = { ...EMPTY, dhs, obc }
+    const status = applyObcVerdict(getDhsStatus(live), live)
     const unfiled = dhs?.photos?.unfiledBytes ?? null
 
     return (
