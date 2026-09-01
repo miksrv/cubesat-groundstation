@@ -7,7 +7,7 @@
  * and this file is the cheapest possible proof that it holds.
  */
 
-import type { AttitudeUpdate, SourceCapabilities, TelemetrySource } from './features/telemetry/source'
+import type { AttitudeUpdate, ConnectionState, SourceCapabilities, TelemetrySource } from './features/telemetry/source'
 import type {
     AttitudeSample,
     Command,
@@ -16,6 +16,7 @@ import type {
     MissionSummary,
     Photo,
     PhotoFile,
+    PhotoRefusal,
     RadioEvent,
     TelemetryRecord,
     TelemetrySnapshot
@@ -43,9 +44,12 @@ export class FakeSource implements TelemetrySource {
     public photos: PhotoFile[] = []
 
     private state: LiveState = { ...EMPTY_LIVE_STATE }
+    private connection: ConnectionState = 'online'
     private readonly listeners = new Set<(state: LiveState) => void>()
+    private readonly connectionListeners = new Set<(state: ConnectionState) => void>()
     private readonly attitudeListeners = new Set<(sample: AttitudeUpdate) => void>()
     private readonly photoListeners = new Set<(photo: Photo) => void>()
+    private readonly photoRefusalListeners = new Set<(refusal: PhotoRefusal) => void>()
     private readonly radioListeners = new Set<(event: RadioEvent) => void>()
     private readonly snapshotListeners = new Set<(snapshot: TelemetrySnapshot) => void>()
 
@@ -54,6 +58,14 @@ export class FakeSource implements TelemetrySource {
         listener(this.state)
         return () => {
             this.listeners.delete(listener)
+        }
+    }
+
+    public subscribeConnection(listener: (state: ConnectionState) => void): () => void {
+        this.connectionListeners.add(listener)
+        listener(this.connection)
+        return () => {
+            this.connectionListeners.delete(listener)
         }
     }
 
@@ -68,6 +80,13 @@ export class FakeSource implements TelemetrySource {
         this.photoListeners.add(listener)
         return () => {
             this.photoListeners.delete(listener)
+        }
+    }
+
+    public subscribePhotoRefusals(listener: (refusal: PhotoRefusal) => void): () => void {
+        this.photoRefusalListeners.add(listener)
+        return () => {
+            this.photoRefusalListeners.delete(listener)
         }
     }
 
@@ -124,8 +143,10 @@ export class FakeSource implements TelemetrySource {
 
     public close(): void {
         this.listeners.clear()
+        this.connectionListeners.clear()
         this.attitudeListeners.clear()
         this.photoListeners.clear()
+        this.photoRefusalListeners.clear()
         this.radioListeners.clear()
         this.snapshotListeners.clear()
     }
@@ -138,12 +159,22 @@ export class FakeSource implements TelemetrySource {
         this.listeners.forEach((listener) => listener(state))
     }
 
+    /** Change the transport's state, as a lost or restored broker would. */
+    public emitConnection(state: ConnectionState): void {
+        this.connection = state
+        this.connectionListeners.forEach((listener) => listener(state))
+    }
+
     public emitAttitude(sample: AttitudeUpdate): void {
         this.attitudeListeners.forEach((listener) => listener(sample))
     }
 
     public emitPhoto(photo: Photo): void {
         this.photoListeners.forEach((listener) => listener(photo))
+    }
+
+    public emitPhotoRefusal(refusal: PhotoRefusal): void {
+        this.photoRefusalListeners.forEach((listener) => listener(refusal))
     }
 
     public emitSnapshot(snapshot: TelemetrySnapshot): void {

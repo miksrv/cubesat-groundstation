@@ -22,6 +22,7 @@
  */
 
 import type { LiveState, MissionState, TelemetryRecord } from '../features/telemetry/types'
+import { MISSION_STATES } from '../features/telemetry/types'
 
 /**
  * `FAIL` is OBC's verdict, not this file's: a service the profile expects
@@ -115,6 +116,12 @@ export const getObcStatus = (live: LiveState, latest: TelemetryRecord | null): S
     const descent = DESCENT[obc.status]
     if (descent) {
         return { key: 'OBC', label: 'OBC', status: descent, detail: `state ${obc.status}` }
+    }
+    // The state name is rendered wherever the satellite says it, but a name
+    // this build cannot classify must not be pronounced healthy — OK below is
+    // a claim, and it is only earned by a state on the known list.
+    if (!MISSION_STATES.includes(obc.status as MissionState)) {
+        return { key: 'OBC', label: 'OBC', status: 'UNKNOWN', detail: `unrecognized state ${obc.status}` }
     }
     // CPU and RAM are not on any status topic — only DHS records them — so this
     // is the newest recorded row, up to one DHS cadence old. Absent while no
@@ -233,8 +240,12 @@ const SERVICE_BY_KEY: Record<Exclude<SubsystemKey, 'OBC'>, string> = {
  * is correct behaviour, not a grey mystery. Everything in between is judged
  * from the subsystem's own status message, as before. Without `subsystems`
  * (an old recording, an old satellite) nothing is overridden.
+ *
+ * Exported for the per-subsystem widgets, whose footers would otherwise show
+ * a grey dash for a service the profile deliberately never started — "OFF"
+ * is a finding, "—" is a shrug, and the two must not look alike.
  */
-const applyObcVerdict = (status: SubsystemStatus, live: LiveState): SubsystemStatus => {
+export const applyObcVerdict = (status: SubsystemStatus, live: LiveState): SubsystemStatus => {
     const health = live.obc?.subsystems
     if (!health || status.key === 'OBC') {
         return status
@@ -283,8 +294,11 @@ export type MissionStatus = 'NOMINAL' | 'WARNING' | 'CRITICAL' | 'UNKNOWN'
  * what the satellite thinks.
  */
 export const getMissionStatus = (live: LiveState): MissionStatus => {
-    const state: MissionState | undefined = live.obc?.status
-    if (!state) {
+    const state = live.obc?.status
+    // Unknown covers both silence and a state this build cannot classify: the
+    // headline NOMINAL is a health claim, and an unrecognized state has not
+    // earned it — the badge still shows the state's real name.
+    if (!state || !MISSION_STATES.includes(state as MissionState)) {
         return 'UNKNOWN'
     }
     if (state === 'CRITICAL') {

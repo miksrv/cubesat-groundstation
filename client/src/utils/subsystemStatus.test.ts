@@ -91,6 +91,15 @@ describe('getObcStatus', () => {
         // nothing is not a fault.
         expect(getObcStatus(live(), null).status).toBe('OK')
     })
+
+    it('does not pronounce a state it cannot classify healthy', () => {
+        // The satellite may grow a state after this build ships. The name
+        // renders verbatim, but OK is a claim only a known state earns.
+        const grown = { ...mockLiveState.obc!, status: 'HIBERNATE' }
+        const verdict = getObcStatus(live({ obc: grown }), mockTelemetryRecord)
+        expect(verdict.status).toBe('UNKNOWN')
+        expect(verdict.detail).toBe('unrecognized state HIBERNATE')
+    })
 })
 
 describe('getPayloadStatus', () => {
@@ -237,5 +246,10 @@ describe('getMissionStatus', () => {
 
     it('is UNKNOWN before OBC has published', () => {
         expect(getMissionStatus(emptyLiveState)).toBe('UNKNOWN')
+    })
+
+    it('is UNKNOWN for a state this build cannot classify', () => {
+        // NOMINAL is a health claim; an unrecognized state has not earned it.
+        expect(getMissionStatus(live({ obc: { ...mockLiveState.obc!, status: 'HIBERNATE' } }))).toBe('UNKNOWN')
     })
 })

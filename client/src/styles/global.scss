@@ -30,6 +30,14 @@ body {
     border-radius: 2px;
 }
 
+/* Override Container panel padding: the footers sit flush on the card's
+   bottom edge, so the ui-kit's symmetric 15px reads as too much air there.
+   The `section` prefix out-ranks the ui-kit's own rule, which is injected
+   at runtime and would otherwise win the cascade tie. */
+section[class*='styles-module_container__'] {
+    padding: 15px 15px 6px;
+}
+
 /* Override Container panel header + title */
 [class*='styles-module_container__'] [class*='styles-module_header__'] {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);

@@ -72,7 +72,7 @@ export const mockPayload: PayloadStatus = {
     camera: { device: 'Camera Module V2', present: true },
     storage: { freeMb: 21493.7, minFreeMb: 512.0, blocked: false },
     timelapse: { active: false, intervalSec: null, frames: 0, reason: null },
-    missionId: '42',
+    missionId: 42,
     photoDir: '/var/lib/cubesat/photos/42'
 }
 
@@ -118,8 +118,7 @@ export const mockLiveState: LiveState = {
     payload: mockPayload,
     science: mockScience,
     dhs: mockDhs,
-    comms: mockComms,
-    heartbeats: { obc: AT, eps: AT, adcs: AT, payload: AT, dhs: AT, comms: AT }
+    comms: mockComms
 }
 
 /** Nothing has arrived yet — the state a page is in the instant it connects. */
@@ -131,8 +130,7 @@ export const emptyLiveState: LiveState = {
     payload: null,
     science: null,
     dhs: null,
-    comms: null,
-    heartbeats: {}
+    comms: null
 }
 
 /** One row of `telemetry`, as the archive hands it over. */
