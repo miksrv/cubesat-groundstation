@@ -22,6 +22,30 @@ interface MiniChartProps {
     valueFormatter: (v: number | null) => string
 }
 
+const MINUTE = 60_000
+const DAY = 24 * 60 * MINUTE
+
+/**
+ * Four charts share the card's width, so each one gets barely 200 px of axis —
+ * room for three or four labels, not for one per sample. How much of a
+ * timestamp is worth printing depends on how wide the window is: seconds carry
+ * the information on a walk that spans minutes, and are noise once the mission
+ * is long enough that the hour is what distinguishes two points.
+ */
+const axisTimeFormat = (data: Array<[Date, number | null]>): string => {
+    if (data.length < 2) {
+        return '{HH}:{mm}:{ss}'
+    }
+    const span = data[data.length - 1][0].getTime() - data[0][0].getTime()
+    if (span < 10 * MINUTE) {
+        return '{HH}:{mm}:{ss}'
+    }
+    if (span < DAY) {
+        return '{HH}:{mm}'
+    }
+    return '{dd}.{MM}\n{HH}:{mm}'
+}
+
 const MiniChart: React.FC<MiniChartProps> = React.memo(({ title, color, data, valueFormatter }) => {
     const ref = useRef<HTMLDivElement>(null)
     const chart = useRef<echarts.ECharts | null>(null)
@@ -44,13 +68,28 @@ const MiniChart: React.FC<MiniChartProps> = React.memo(({ title, color, data, va
         }
     }, [])
 
-    const option = useMemo(
-        () => ({
+    const timeFormat = useMemo(() => axisTimeFormat(data), [data])
+
+    const option = useMemo(() => {
+        const twoLineLabels = timeFormat.includes('\n')
+
+        return {
             backgroundColor: 'transparent',
-            grid: { top: 8, right: 8, bottom: 20, left: 34 },
+            // Room on the right for the last label's second half, and a taller
+            // gutter when the format wraps onto a date line.
+            grid: { top: 8, right: 14, bottom: twoLineLabels ? 30 : 20, left: 34 },
             xAxis: {
                 type: 'time',
-                axisLabel: { color: '#3a3a3a', fontSize: 9 },
+                // `splitNumber` asks for few ticks; `hideOverlap` is what
+                // actually guarantees it, dropping any label that would collide
+                // with one already drawn instead of stacking them into a smear.
+                splitNumber: 3,
+                axisLabel: {
+                    color: '#3a3a3a',
+                    fontSize: 9,
+                    hideOverlap: true,
+                    formatter: timeFormat
+                },
                 axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)', width: 1 } }
             },
             yAxis: {
@@ -61,6 +100,10 @@ const MiniChart: React.FC<MiniChartProps> = React.memo(({ title, color, data, va
             },
             series: [
                 {
+                    // The tooltip prints `seriesName`; without one ECharts
+                    // invents "series0" and every chart's tooltip claims to be
+                    // the same nameless line.
+                    name: title,
                     type: 'line',
                     data,
                     smooth: true,
@@ -71,9 +114,8 @@ const MiniChart: React.FC<MiniChartProps> = React.memo(({ title, color, data, va
                 }
             ],
             tooltip: createChartTooltip({ dateFormat: 'full', valueFormatter: (v) => valueFormatter(v) })
-        }),
-        [data, color, valueFormatter]
-    )
+        }
+    }, [data, title, color, valueFormatter, timeFormat])
 
     useEffect(() => {
         chart.current?.setOption(option, { notMerge: false })
@@ -140,8 +182,12 @@ const TelemetryGraphsWidget: React.FC<Props> = React.memo(({ history, isLoading 
                         data={series.voltage}
                         valueFormatter={valueFormatters.voltage}
                     />
+                    {/* Three thermometers fly on this satellite — the SoC die, the
+                        BNO055's die and the SEN0501's air reading. `temperature` is
+                        the last of those, and an unqualified "Temperature" left the
+                        chart claiming all three. */}
                     <MiniChart
-                        title='Temperature'
+                        title='Temperature (SEN0501)'
                         color={chartColors.orange[0]}
                         data={series.temperature}
                         valueFormatter={valueFormatters.temperature}

@@ -2,7 +2,6 @@ import React from 'react'
 import { Container } from 'simple-react-ui-kit'
 
 import type { RadioEvent } from '../../features/telemetry/types'
-import { useRadioLog } from '../../features/telemetry/useSource'
 
 import styles from './RadioLinkLogWidget.module.scss'
 
@@ -17,6 +16,12 @@ import styles from './RadioLinkLogWidget.module.scss'
  * while it is still empty. Half the columns are blank by design — link quality
  * exists only for what was heard, an outcome only for what was said — and a
  * blank is rendered as a dash, never as a zero.
+ *
+ * The events arrive as a prop rather than from a subscription inside the widget,
+ * so the same table renders the live link and the traffic a replayed mission
+ * recorded into `radio_log`. It was the last widget still reaching for a channel
+ * of its own, which during a replay meant one panel reading the present while
+ * everything beside it read a past afternoon.
  */
 
 const dash = '—'
@@ -35,9 +40,15 @@ const origin = (event: RadioEvent): string => {
     return event.kind ?? dash
 }
 
-const RadioLinkLogWidget: React.FC = () => {
-    const events = useRadioLog()
+interface Props {
+    /** Newest first. Live from `cubesat/comms/radio`, or a replayed mission's
+     *  own traffic up to the playhead. */
+    events: RadioEvent[]
+    /** What to say when there are none — the reason differs by mode. */
+    emptyMessage?: string
+}
 
+const RadioLinkLogWidget: React.FC<Props> = ({ events, emptyMessage }) => {
     return (
         <Container
             title='Radio Link Log'
@@ -45,8 +56,12 @@ const RadioLinkLogWidget: React.FC = () => {
         >
             {events.length === 0 && (
                 <div className={styles.empty}>
-                    No radio traffic yet — rows appear as the link talks and listens. The same events are recorded into
-                    the mission&apos;s <code>radio_log</code>.
+                    {emptyMessage ?? (
+                        <>
+                            No radio traffic yet — rows appear as the link talks and listens. The same events are
+                            recorded into the mission&apos;s <code>radio_log</code>.
+                        </>
+                    )}
                 </div>
             )}
             {events.length > 0 && (
@@ -75,7 +90,7 @@ const RadioLinkLogWidget: React.FC = () => {
                                         event.sent === false ? 'transmission failed — never left the radio' : undefined
                                     }
                                 >
-                                    <td className={styles.mono}>{time(event.timestamp)}</td>
+                                    <td className={`${styles.mono} ${styles.time}`}>{time(event.timestamp)}</td>
                                     <td className={event.direction === 'rx' ? styles.rx : styles.tx}>
                                         {event.direction === 'rx' ? '▼ RX' : '▲ TX'}
                                     </td>

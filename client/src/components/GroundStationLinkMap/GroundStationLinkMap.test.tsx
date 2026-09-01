@@ -58,6 +58,25 @@ describe('GroundStationLinkMap', () => {
         expect(screen.getByText('Listening')).toBeInTheDocument()
     })
 
+    it('shows a beacon that is off as off, and the receiver as still listening', () => {
+        // The DEMO/EXPO case since 2026-09-01: the profile starts the beacon off,
+        // and this panel is where an operator checks whether the satellite is
+        // quiet (a setting) or deaf (a different profile entirely). The two rows
+        // must not read the same.
+        render(
+            <GroundStationLinkMap
+                adcs={mockAdcs}
+                comms={{ ...mockComms, loraEnabled: false, loraListening: true }}
+                host={mockHost}
+                isLoading={false}
+            />
+        )
+        const rows = screen.getAllByText(/^(yes|no)$/).map((node) => node.textContent)
+        // Transmitting first, Listening second — the order the panel renders.
+        expect(rows[0]).toBe('no')
+        expect(rows[1]).toBe('yes')
+    })
+
     it('shows the Wi-Fi half of the link, which HOSTD owns', () => {
         // In FLIGHT the Wi-Fi is off, in EXPO the satellite is its own access
         // point — until these rows existed the page could not tell the two apart.

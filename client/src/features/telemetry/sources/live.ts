@@ -46,6 +46,7 @@ import {
 import type { AttitudeUpdate, ConnectionState, SourceCapabilities, TelemetrySource } from '../source'
 import type {
     Command,
+    CommandEcho,
     LiveState,
     MissionDetail,
     MissionSummary,
@@ -82,7 +83,17 @@ const TOPICS = {
     commsRadio: 'cubesat/comms/radio'
 } as const
 
-const SUBSCRIBED = Object.values(TOPICS).filter((topic) => topic !== TOPICS.command)
+/**
+ * Everything on the bus, `cubesat/command` included.
+ *
+ * That topic used to be excluded — a page publishing onto it had no reason to
+ * hear itself. It is subscribed since 2026-09-01 because the console shows the
+ * command traffic rather than each widget narrating its own button: what crosses
+ * this topic is also what a phone, the CLI and an uplink relayed off the radio
+ * put there, and that is worth seeing. The browser ACL already permits
+ * `read cubesat/#`.
+ */
+const SUBSCRIBED = Object.values(TOPICS)
 
 export interface LiveOptions {
     /** e.g. `ws://cubesat.local:9001`. */
@@ -110,6 +121,7 @@ export class LiveSource implements TelemetrySource {
     private readonly photoListeners = new Set<(photo: Photo) => void>()
     private readonly photoRefusalListeners = new Set<(refusal: PhotoRefusal) => void>()
     private readonly radioListeners = new Set<(event: RadioEvent) => void>()
+    private readonly commandListeners = new Set<(echo: CommandEcho) => void>()
     private readonly snapshotListeners = new Set<(snapshot: TelemetrySnapshot) => void>()
 
     public constructor(private readonly options: LiveOptions) {}
@@ -167,6 +179,14 @@ export class LiveSource implements TelemetrySource {
         }
     }
 
+    public subscribeCommands(listener: (echo: CommandEcho) => void): () => void {
+        this.commandListeners.add(listener)
+        this.connect()
+        return () => {
+            this.commandListeners.delete(listener)
+        }
+    }
+
     public subscribeSnapshots(listener: (snapshot: TelemetrySnapshot) => void): () => void {
         this.snapshotListeners.add(listener)
         this.connect()
@@ -192,6 +212,15 @@ export class LiveSource implements TelemetrySource {
             telemetry: ((body.telemetry ?? []) as unknown[]).map((row) =>
                 decodeTelemetry(row as Record<string, unknown>)
             ),
+            // radio_log names its time column `t`, as attitude does — the
+            // recorder's own epoch, not the ISO second telemetry rows carry.
+            // Mapped to `timestamp` here so a recorded event and a live one are
+            // the same shape by the time any widget sees them.
+            radio: ((body.radio ?? []) as unknown[]).flatMap((row) => {
+                const event = row as Record<string, unknown>
+                const decoded = decodeRadio({ ...event, timestamp: event.t })
+                return decoded ? [decoded] : []
+            }),
             attitude: ((body.attitude ?? []) as unknown[]).map((row) => {
                 const sample = row as Record<string, unknown>
                 return {
@@ -316,6 +345,26 @@ export class LiveSource implements TelemetrySource {
                     this.attitudeListeners.forEach((listener) => listener(sample))
                 }
                 return this.patch({ adcs })
+            }
+            case TOPICS.command: {
+                const name = str(raw.command)
+                if (name == null) {
+                    // Not a command, whatever else it is. Dropped rather than
+                    // printed: this topic is open to every ground client, so a
+                    // malformed payload is somebody else's typo, not an event.
+                    return
+                }
+                const params = raw.params
+                const echo: CommandEcho = {
+                    at: Date.now() / 1000,
+                    command: name,
+                    params:
+                        params != null && typeof params === 'object' && !Array.isArray(params)
+                            ? (params as Record<string, unknown>)
+                            : null
+                }
+                this.commandListeners.forEach((listener) => listener(echo))
+                return
             }
             case TOPICS.payloadStatus:
                 return this.patch({ payload: decodePayload(raw) })

@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Container } from 'simple-react-ui-kit'
 
-import type { Command, LiveState, Profile, TelemetryRecord, TelemetrySnapshot } from '../../features/telemetry/types'
+import { subscribeNotices } from '../../features/console/notices'
+import type {
+    Command,
+    CommandEcho,
+    LiveState,
+    Profile,
+    TelemetryRecord,
+    TelemetrySnapshot
+} from '../../features/telemetry/types'
 import { getSource } from '../../features/telemetry/useSource'
 
 import styles from './MissionConsoleWidget.module.scss'
@@ -10,6 +18,12 @@ interface Props {
     live: LiveState
     /** For uptime and the host metrics, which only DHS records. */
     latest: TelemetryRecord | null
+    /** True while a recorded mission is being replayed. The console stays on the
+     *  page — the widget set does not change with the mode — but nothing can be
+     *  typed into it: there is no present to command, and a queued command that
+     *  reached the satellite anyway would act on *now* while the operator is
+     *  looking at a past afternoon. */
+    disabled?: boolean
 }
 
 /**
@@ -43,10 +57,11 @@ const HELP_TEXT = [
     '  mission                 - the mission being recorded',
     '  photo                   - take one photograph',
     '  science start|stop      - enter or leave SCIENCE',
+    '  restart <service>       - restart adcs, payload, dhs or comms through HOSTD',
     '  profile <name>          - HOSTED | DEMO | EXPO | FLIGHT | DIAG | MAINTENANCE',
     '  safe                    - request SAFE',
     '  recover                 - leave SAFE once the fault is gone',
-    '  lora on|off             - allow or silence radio transmission',
+    '  beacon on|off           - start or stop transmitting (listening is unaffected)',
     'Console commands:',
     '  status                  - what the satellite is reporting right now',
     '  telemetry               - ask COMMS to republish its whole cache',
@@ -136,16 +151,29 @@ const parse = (line: string): Parsed => {
                 ? { command: { command: 'set_profile', params: { profile: name } } }
                 : { usage: `Unknown profile. One of: ${PROFILES.join(', ')}` }
         }
+        case 'restart':
+            // The satellite gained the handler on 2026-09-01: OBC relays it,
+            // HOSTD executes it against the allowlist. Which services exist is
+            // the satellite's answer, so this only checks the shape.
+            if (args.length === 1) {
+                return { command: { command: 'restart_service', params: { service: args[0] } } }
+            }
+            return { usage: 'usage: restart <adcs|payload|dhs|comms>' }
         case 'science':
             if (args.length === 1 && (args[0] === 'start' || args[0] === 'stop')) {
                 return { command: { command: args[0] === 'start' ? 'science_start' : 'science_stop' } }
             }
             return { usage: 'usage: science start|stop' }
+        // `lora` is what this verb was called until 2026-09-01, kept accepted
+        // because it may be in somebody's fingers. Renamed because it said the
+        // wrong thing: turning it off never turned the radio off, and quiet-but-
+        // listening is the way back into a satellite in SAFE.
+        case 'beacon':
         case 'lora':
             if (args.length === 1 && (args[0] === 'on' || args[0] === 'off')) {
                 return { command: { command: 'set_comms_config', params: { lora_enabled: args[0] === 'on' } } }
             }
-            return { usage: 'usage: lora on|off' }
+            return { usage: 'usage: beacon on|off' }
         default:
             return null
     }
@@ -161,6 +189,18 @@ const replyLine = (re: QueryName, fields: Array<[string, string | null]>): strin
     [`re=${re}`, ...fields.filter(([, value]) => value != null).map(([key, value]) => `${key}=${value}`)].join(' ')
 
 const NO_DATA = (re: QueryName): string => `re=${re} ok=0 err=nodata`
+
+/**
+ * One command as it crossed the bus, in the field syntax the rest of this
+ * console uses. `→` rather than the `>` of a typed line: this one is traffic,
+ * and it may not have come from this page at all.
+ */
+const busLine = (echo: CommandEcho): string => {
+    const params = Object.entries(echo.params ?? {})
+        .filter(([, value]) => value != null)
+        .map(([key, value]) => `${key}=${String(value)}`)
+    return [`→ ${echo.command}`, ...params].join(' ')
+}
 
 /**
  * The console's answers to the query verbs, printed in the radio reply's own
@@ -232,7 +272,11 @@ const answerQuery = (query: QueryName, live: LiveState, latest: TelemetryRecord 
     }
 }
 
-const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
+/** Enough to scroll back through a session, bounded so an all-day stand cannot
+ *  grow it without end. */
+const MAX_LINES = 400
+
+const MissionConsoleWidget: React.FC<Props> = ({ live, latest, disabled = false }) => {
     const [lines, setLines] = useState<string[]>([
         'CubeSat Mission Console v1.0',
         'Type "help" for a list of commands.'
@@ -248,7 +292,11 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
     }, [lines])
 
     const print = (text: string | string[]) => {
-        setLines((prev) => [...prev, ...(Array.isArray(text) ? text : [text])])
+        // Trimmed from the head: the transcript now carries the bus traffic as
+        // well as what was typed, and an EXPO stand left open all day would
+        // otherwise grow one array without limit. Oldest lines are the ones to
+        // lose — this is a terminal, and the prompt is at the bottom.
+        setLines((prev) => [...prev, ...(Array.isArray(text) ? text : [text])].slice(-MAX_LINES))
     }
 
     // The `telemetry` command used to be write-only: the answer lands on
@@ -262,8 +310,8 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
     )
 
     // A refused capture answers on `cubesat/payload/photo`, not on any status
-    // topic. Without this line the console prints "published to
-    // cubesat/command" and then nothing, which reads as success.
+    // topic. Without this line a command goes out and nothing follows, which
+    // reads as success.
     useEffect(
         () =>
             getSource().subscribePhotoRefusals((refusal) =>
@@ -271,6 +319,18 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
             ),
         []
     )
+
+    // Every command that crosses `cubesat/command`, whoever put it there: this
+    // console, the Quick Commands panel beside it, a phone, the `cubesat` CLI,
+    // or an uplink COMMS relayed off the radio. Printing the *traffic* rather
+    // than each widget's own narration is what makes this a log of the satellite
+    // instead of a log of this tab's intentions — and it is the visible form of
+    // "every command works identically over MQTT and over LoRa".
+    useEffect(() => getSource().subscribeCommands((echo) => print(busLine(echo))), [])
+
+    // What a widget could not say for itself: a publish that never reached the
+    // broker has no echo above, and it is the failure most worth not missing.
+    useEffect(() => subscribeNotices(print), [])
 
     const runStatus = () => {
         if (!live.obc) {
@@ -333,7 +393,9 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
 
         try {
             await source.send(parsed.command)
-            print(`${parsed.command.command} published to cubesat/command`)
+            // Nothing printed on success: the command comes back off
+            // `cubesat/command` a moment later and prints itself, once, however
+            // it was sent. Printing here as well would double every line.
         } catch (error) {
             print(error instanceof Error ? error.message : 'Command failed.')
         }
@@ -366,8 +428,9 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest }) => {
                     className={styles.input}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder='Type a command…'
+                    placeholder={disabled ? 'Replaying a recorded mission — commands are off' : 'Type a command…'}
                     autoComplete='off'
+                    disabled={disabled}
                 />
             </form>
         </Container>

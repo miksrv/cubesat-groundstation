@@ -11,6 +11,7 @@ import type { AttitudeUpdate, ConnectionState, SourceCapabilities, TelemetrySour
 import type {
     AttitudeSample,
     Command,
+    CommandEcho,
     LiveState,
     MissionDetail,
     MissionSummary,
@@ -38,6 +39,8 @@ export class FakeSource implements TelemetrySource {
     public missionTelemetry: TelemetryRecord[] = []
     /** What `loadMission` hands back as the attitude track, ascending in t. */
     public missionAttitude: AttitudeSample[] = []
+    /** What `loadMission` hands back as the mission's radio traffic, ascending. */
+    public missionRadio: RadioEvent[] = []
     /** Set to make `recentTelemetry` reject, as an unreachable archive does. */
     public archiveError: Error | null = null
     /** What `listPhotos` hands back, oldest first — the archive's order. */
@@ -51,6 +54,7 @@ export class FakeSource implements TelemetrySource {
     private readonly photoListeners = new Set<(photo: Photo) => void>()
     private readonly photoRefusalListeners = new Set<(refusal: PhotoRefusal) => void>()
     private readonly radioListeners = new Set<(event: RadioEvent) => void>()
+    private readonly commandListeners = new Set<(echo: CommandEcho) => void>()
     private readonly snapshotListeners = new Set<(snapshot: TelemetrySnapshot) => void>()
 
     public subscribe(listener: (state: LiveState) => void): () => void {
@@ -97,6 +101,13 @@ export class FakeSource implements TelemetrySource {
         }
     }
 
+    public subscribeCommands(listener: (echo: CommandEcho) => void): () => void {
+        this.commandListeners.add(listener)
+        return () => {
+            this.commandListeners.delete(listener)
+        }
+    }
+
     public subscribeSnapshots(listener: (snapshot: TelemetrySnapshot) => void): () => void {
         this.snapshotListeners.add(listener)
         return () => {
@@ -120,7 +131,12 @@ export class FakeSource implements TelemetrySource {
         if (!mission) {
             throw new Error(`no mission ${id}`)
         }
-        return { mission, telemetry: this.missionTelemetry, attitude: this.missionAttitude }
+        return {
+            mission,
+            telemetry: this.missionTelemetry,
+            attitude: this.missionAttitude,
+            radio: this.missionRadio
+        }
     }
 
     public async listPhotos(_missionId: number): Promise<PhotoFile[]> {
@@ -183,6 +199,11 @@ export class FakeSource implements TelemetrySource {
 
     public emitRadio(event: RadioEvent): void {
         this.radioListeners.forEach((listener) => listener(event))
+    }
+
+    /** A command crossing `cubesat/command` — this page's, or anybody's. */
+    public emitCommand(echo: CommandEcho): void {
+        this.commandListeners.forEach((listener) => listener(echo))
     }
 }
 

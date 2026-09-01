@@ -1,3 +1,4 @@
+import { subscribeNotices } from '../../features/console/notices'
 import type { FakeSource } from '../../test-source'
 import { installFakeSource } from '../../test-source'
 import { render, screen, waitFor } from '../../test-utils'
@@ -23,11 +24,27 @@ describe('QuickCommandsWidget', () => {
         expect(screen.queryByText('REBOOT OBC')).not.toBeInTheDocument()
     })
 
-    it('publishes onto cubesat/command like any other ground client', async () => {
+    it('publishes onto cubesat/command like any other ground client, and says nothing', async () => {
+        // The command reappears in the Mission Console, off the bus — one
+        // transcript in the order the bus saw things, rather than each panel
+        // narrating its own button.
         render(<QuickCommandsWidget />)
         screen.getByText('TAKE PHOTO').click()
         await waitFor(() => expect(source.sent).toEqual([{ command: 'take_photo' }]))
-        expect(screen.getByText(/published to cubesat\/command/)).toBeInTheDocument()
+        expect(screen.queryByText(/published to cubesat\/command/)).not.toBeInTheDocument()
+    })
+
+    it('posts a failed publish into the console, which is the case that must not be silent', async () => {
+        const notices: string[] = []
+        const stop = subscribeNotices((text) => notices.push(text))
+        source.send = async () => {
+            throw new Error('broker unreachable')
+        }
+        render(<QuickCommandsWidget />)
+        screen.getByText('TAKE PHOTO').click()
+        await waitFor(() => expect(notices).toHaveLength(1))
+        expect(notices[0]).toMatch(/take_photo failed: broker unreachable/)
+        stop()
     })
 
     it('sends set_profile with the profile as a parameter', async () => {

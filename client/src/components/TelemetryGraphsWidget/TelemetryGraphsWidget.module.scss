@@ -22,12 +22,18 @@
     margin-bottom: 2px;
 }
 
+/* Sensor-qualified titles are long enough to collide with the value beside
+   them on a narrow column; clip the title rather than push the value out. */
 .miniTitle {
     font-size: 0.62rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text-color-secondary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .miniValue {

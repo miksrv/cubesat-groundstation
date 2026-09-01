@@ -10,7 +10,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { mockTelemetryRecord } from '../../test-fixtures'
 import type { FakeSource } from '../../test-source'
 import { installFakeSource } from '../../test-source'
-import type { AttitudeSample, MissionSummary, TelemetryRecord } from '../telemetry/types'
+import type { AttitudeSample, MissionSummary, RadioEvent, TelemetryRecord } from '../telemetry/types'
 
 import { useTimeline } from './useTimeline'
 
@@ -178,11 +178,85 @@ describe('useTimeline', () => {
     })
 
     it('cycles the speed and moves the playhead proportionally faster', async () => {
+        // x1, x2, x4: a mission's rows are 30 s apart, and the x10/x60 this
+        // replaced crossed several of them per tick, so the charts jumped
+        // rather than played.
         const { result } = await readyTimeline()
         act(() => result.current.cycleSpeed())
-        expect(result.current.speed).toBe(10)
+        expect(result.current.speed).toBe(2)
         act(() => jest.advanceTimersByTime(1_000))
-        expect(result.current.playhead).toBeCloseTo(START + 10, 6)
+        expect(result.current.playhead).toBeCloseTo(START + 2, 6)
+
+        act(() => result.current.cycleSpeed())
+        expect(result.current.speed).toBe(4)
+        // And back round: three choices, cycled, not a menu.
+        act(() => result.current.cycleSpeed())
+        expect(result.current.speed).toBe(1)
+    })
+
+    it("builds the mission's log from its own rows, growing with the playhead", async () => {
+        // Through the very diff the live log uses: an event is a reading of
+        // telemetry, so the satellite needs no events table for a replay to have
+        // one — and the backend-less demo build gets them for free.
+        source.missionTelemetry = [
+            { ...rowAt(5, 80), obcState: 'NOMINAL' },
+            { ...rowAt(35, 79), obcState: 'SCIENCE' },
+            { ...rowAt(65, 78), obcState: 'NOMINAL' }
+        ]
+        const { result } = await readyTimeline()
+        // The playhead opens at the mission's own start, which is before its
+        // first row: nothing had been recorded yet, so there is nothing to log.
+        expect(result.current.events).toEqual([])
+
+        act(() => result.current.seek(START + 5))
+        // The first row produces two lines, exactly as the live log does on the
+        // first message it ever sees: the mission opening and the state it was
+        // in. Same function, same output — that is the point of reusing it.
+        expect(result.current.events.map((entry) => entry.message)).toEqual([
+            'mission 8 opened',
+            'mission state NOMINAL'
+        ])
+
+        act(() => result.current.seek(START + 65))
+        const messages = result.current.events.map((entry) => entry.message)
+        // Newest first, as every log on the page reads.
+        expect(messages[0]).toBe('mission state SCIENCE -> NOMINAL')
+        expect(messages).toContain('mission state NOMINAL -> SCIENCE')
+    })
+
+    it("hands over the mission's radio traffic up to the playhead and no further", async () => {
+        const heard = (at: number, text: string): RadioEvent => ({
+            timestamp: at,
+            direction: 'rx',
+            kind: null,
+            text,
+            bytes: text.length,
+            sender: '!e2f1a4c8',
+            snr: 6.25,
+            rssi: -96,
+            hops: 0,
+            sent: null
+        })
+        source.missionRadio = [heard(START + 10, 'early'), heard(START + 50, 'late')]
+        const { result } = await readyTimeline()
+        act(() => result.current.seek(START + 20))
+        expect(result.current.radio.map((entry) => entry.text)).toEqual(['early'])
+
+        act(() => result.current.seek(START + 60))
+        // Newest first: the later line leads.
+        expect(result.current.radio.map((entry) => entry.text)).toEqual(['late', 'early'])
+    })
+
+    it('drops the whole replay on exit, so the live view is not left holding a past', async () => {
+        const { result } = await readyTimeline()
+        act(() => result.current.exit())
+        expect(result.current.phase).toBe('idle')
+        expect(result.current.state).toBeNull()
+        expect(result.current.rows).toEqual([])
+        expect(result.current.events).toEqual([])
+        expect(result.current.radio).toEqual([])
+        expect(result.current.attitudeRef.current).toBeNull()
+        expect(result.current.speed).toBe(1)
     })
 
     it('opens a mission with nothing to replay paused', async () => {

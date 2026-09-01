@@ -19,6 +19,7 @@
 
 import type {
     Command,
+    CommandEcho,
     LiveState,
     MissionDetail,
     MissionSummary,
@@ -117,6 +118,17 @@ export interface TelemetrySource {
      * whether the channel exists at all is `capabilities.radio`.
      */
     subscribeRadio(listener: (event: RadioEvent) => void): () => void
+
+    /**
+     * Commands as they cross `cubesat/command` — including this page's own, and
+     * including a phone's, the CLI's and an uplink relayed off the radio.
+     *
+     * A channel rather than a return value from {@link send} deliberately: the
+     * console shows what actually reached the bus, not what a widget meant to
+     * put there, and one log of the traffic is truer than each widget narrating
+     * itself. A replay source emits nothing — a recording has no command bus.
+     */
+    subscribeCommands(listener: (echo: CommandEcho) => void): () => void
 
     /**
      * The most recent telemetry rows, newest first.

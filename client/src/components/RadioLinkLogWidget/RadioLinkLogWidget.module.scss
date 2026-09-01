@@ -44,28 +44,41 @@
         color: var(--text-color-primary);
         white-space: nowrap;
     }
+
+    /* These three qualify `td` on purpose. As bare classes they lose to the
+       `.table td` rule above on specificity, which is how the direction column
+       came to render in the body colour despite having a green and a blue. */
+
+    /* The same secondary grey the Live Telemetry Stream gives its timestamps:
+       the clock is context for the row, not part of its content. */
+    td.time {
+        color: var(--text-color-secondary);
+    }
+
+    td.rx {
+        color: var(--color-green);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    td.tx {
+        // chartColors.blue[0] — the legend's "status" blue; there is no --color-blue token.
+        color: #3b82f6;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* A transmission that never left: kept on the record, marked, never hidden.
+       Qualified by `tr` so it outranks `td.rx`/`td.tx`/`td.time` — which it ties
+       with otherwise — and the whole row, direction and clock included, goes
+       red. */
+    tr.failed td {
+        color: var(--color-red);
+    }
 }
 
 .mono {
     font-family: var(--font-family-mono);
-}
-
-.rx {
-    color: var(--color-green);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.tx {
-    // chartColors.blue[0] — the legend's "status" blue; there is no --color-blue token.
-    color: #3b82f6;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-// A transmission that never left: kept on the record, marked, never hidden.
-.failed td {
-    color: var(--color-red);
 }
 
 .message {

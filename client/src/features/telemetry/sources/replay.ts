@@ -21,6 +21,7 @@ import { liveStateFromRow } from '../fromRow'
 import type { AttitudeUpdate, ConnectionState, SourceCapabilities, TelemetrySource } from '../source'
 import type {
     Command,
+    CommandEcho,
     LiveState,
     MissionDetail,
     MissionSummary,
@@ -157,6 +158,13 @@ export class ReplaySource implements TelemetrySource {
         }
     }
 
+    public subscribeCommands(_listener: (echo: CommandEcho) => void): () => void {
+        // A recording has no command bus: nothing was published while it played
+        // back, and inventing traffic would put words in a satellite's mouth.
+        // The console's own lines still appear; the bus lines simply do not.
+        return () => undefined
+    }
+
     public async recentTelemetry(limit: number): Promise<TelemetryRecord[]> {
         // The window that has already been replayed, so a chart grows with the
         // playhead instead of showing the satellite's future.
@@ -179,7 +187,8 @@ export class ReplaySource implements TelemetrySource {
                 t: sample.t,
                 quaternion: sample.quaternion,
                 gyro: { x: null, y: null, z: null }
-            }))
+            })),
+            radio: this.recording.radio
         }
     }
 

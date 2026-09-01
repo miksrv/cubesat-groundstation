@@ -28,7 +28,8 @@ const END = Date.parse(mission.endedAt as string) / 1000
 const detail: MissionDetail = {
     mission,
     telemetry: [mockTelemetryRecord],
-    attitude: []
+    attitude: [],
+    radio: []
 }
 
 /** A timeline the test drives by hand — the bar only renders the interface. */
@@ -38,6 +39,8 @@ const timelineStub = (overrides: Partial<Timeline>): Timeline => ({
     detail: null,
     error: null,
     playhead: START,
+    events: [],
+    radio: [],
     start: START,
     end: END,
     playing: false,
@@ -155,7 +158,8 @@ describe('MissionTimelineBar', () => {
         const purgedDetail: MissionDetail = {
             mission: { ...mission, purgedAt: '2026-09-29T00:00:00Z' },
             telemetry: [],
-            attitude: []
+            attitude: [],
+            radio: []
         }
         const timeline = timelineStub({ phase: 'ready', detail: purgedDetail })
         render(<MissionTimelineBar timeline={timeline} />)
@@ -164,7 +168,7 @@ describe('MissionTimelineBar', () => {
     })
 
     it('says when a mission recorded nothing at all', () => {
-        const emptyDetail: MissionDetail = { mission, telemetry: [], attitude: [] }
+        const emptyDetail: MissionDetail = { mission, telemetry: [], attitude: [], radio: [] }
         const timeline = timelineStub({ phase: 'ready', detail: emptyDetail })
         render(<MissionTimelineBar timeline={timeline} />)
         expect(screen.getByText('This mission recorded nothing to replay')).toBeInTheDocument()

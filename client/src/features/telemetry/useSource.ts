@@ -98,7 +98,7 @@ export const useLatestPhoto = (): Photo | null => {
  * recovered from its name rather than declared unknown. A name that does not
  * match the pattern honestly yields null.
  */
-const captureTimeFromName = (name: string): number | null => {
+export const captureTimeFromName = (name: string): number | null => {
     const match = /_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/.exec(name)
     if (match == null) {
         return null

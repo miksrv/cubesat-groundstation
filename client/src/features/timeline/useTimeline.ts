@@ -18,9 +18,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import type { ObservedEvent } from '../events/observed'
+import { diffStates, MAX_EVENTS } from '../events/observed'
 import { liveStateFromRow } from '../telemetry/fromRow'
 import type { AttitudeUpdate } from '../telemetry/source'
-import type { AttitudeSample, LiveState, MissionDetail, MissionSummary, TelemetryRecord } from '../telemetry/types'
+import type {
+    AttitudeSample,
+    LiveState,
+    MissionDetail,
+    MissionSummary,
+    RadioEvent,
+    TelemetryRecord
+} from '../telemetry/types'
 import { getSource } from '../telemetry/useSource'
 
 import { attitudeAt, epochOf, hasQuaternion, indexAtOrBefore } from './playback'
@@ -30,10 +39,14 @@ import { attitudeAt, epochOf, hasQuaternion, indexAtOrBefore } from './playback'
  *  never by this. */
 const TICK_MS = 250
 
-/** ×1 is the walk as it happened; ×60 turns a one-hour mission into a minute.
- *  Cycled rather than picked from a menu — three well-spaced choices beat a
- *  slider nobody can set precisely. */
-const SPEEDS = [1, 10, 60]
+/** ×1 is the walk as it happened. Cycled rather than picked from a menu — three
+ *  choices beat a slider nobody can set precisely.
+ *
+ *  ×10/×60 were the first pair tried and are gone: a mission's telemetry rows
+ *  are 30 s apart, so at ×60 the playhead crossed two of them per tick and the
+ *  charts moved in jumps rather than playing. These three keep every recorded
+ *  row on screen for at least a moment. */
+const SPEEDS = [1, 2, 4]
 
 export type TimelinePhase = 'idle' | 'picking' | 'loading' | 'ready' | 'error'
 
@@ -57,6 +70,18 @@ export interface Timeline {
     state: LiveState | null
     /** Rows recorded up to the playhead, newest first — what the charts draw. */
     rows: TelemetryRecord[]
+    /** The mission's own log up to the playhead, newest first.
+     *
+     *  Computed here from the recorded rows through `diffStates` — the very
+     *  function the live log uses — rather than being fetched: the satellite
+     *  keeps no events table, and it should not. Events are a reading of
+     *  telemetry, and the reading belongs wherever the telemetry is displayed,
+     *  which is also what lets the backend-less demo build show them. */
+    events: ObservedEvent[]
+    /** The link's traffic up to the playhead, newest first. From the mission's
+     *  own `radio_log`, so the Radio Link Log reads the trip rather than the
+     *  live satellite while everything beside it reads a recording. */
+    radio: RadioEvent[]
     /** Orientation at the playhead, slerped between recorded samples. */
     attitudeRef: React.MutableRefObject<AttitudeUpdate | null>
 
@@ -144,6 +169,48 @@ export const useTimeline = (): Timeline => {
         return detail.telemetry.slice(0, rowIndex + 1).reverse()
     }, [detail, rowIndex])
 
+    // Every event the whole mission holds, derived once per mission rather than
+    // once per tick: the playhead moves four times a second over what can be
+    // thousands of rows, and re-diffing the lot each time would be the most
+    // expensive thing on the page. Filtering the result by the playhead is what
+    // makes the log grow as the replay plays.
+    const allEvents = useMemo(() => {
+        if (!detail) {
+            return []
+        }
+        const out: ObservedEvent[] = []
+        let previous: LiveState | null = null
+        detail.telemetry.forEach((row, index) => {
+            const at = liveStateFromRow(row, detail.mission, {
+                played: index + 1,
+                total: detail.telemetry.length
+            })
+            out.push(...diffStates(previous, at))
+            previous = at
+        })
+        return out
+    }, [detail])
+
+    const events = useMemo(
+        () =>
+            allEvents
+                .filter((entry) => entry.at <= playhead)
+                .slice(-MAX_EVENTS)
+                .reverse(),
+        [allEvents, playhead]
+    )
+
+    const radio = useMemo(
+        () =>
+            detail
+                ? detail.radio
+                      .filter((entry) => entry.timestamp <= playhead)
+                      .slice(-MAX_EVENTS)
+                      .reverse()
+                : [],
+        [detail, playhead]
+    )
+
     useEffect(() => {
         attitudeRef.current = phase === 'ready' ? attitudeAt(usableAttitude, playhead) : null
     }, [phase, usableAttitude, playhead])
@@ -206,6 +273,8 @@ export const useTimeline = (): Timeline => {
         speed,
         state,
         rows,
+        events,
+        radio,
         attitudeRef,
         open,
         pick,

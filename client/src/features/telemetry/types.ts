@@ -219,6 +219,12 @@ export interface MissionDetail {
     /** Empty for a mission recorded before the `attitude` table existed, and for
      *  one whose detail has been purged. Not the same as "it never moved". */
     attitude: AttitudeSample[]
+    /** The link's own journal during the trip, ascending in `timestamp`. Empty
+     *  for a mission recorded before `radio_log` existed and for one purged —
+     *  never the same claim as "the radio said nothing". Present so a replay
+     *  can show the Radio Link Log against the mission it belongs to instead of
+     *  leaving that one widget reading the live satellite. */
+    radio: RadioEvent[]
 }
 
 // ── the live view ───────────────────────────────────────────────────────────
@@ -551,6 +557,25 @@ export interface CameraShot {
     sizeBytes: number | null
 }
 
+/**
+ * A command as it crossed `cubesat/command` — heard, not sent.
+ *
+ * The distinction is the point: this arrives from the broker, so it covers every
+ * ground client at once — this page, a phone, the `cubesat` CLI, and an uplink
+ * relayed off the radio by COMMS. That is the visible form of "every command
+ * works identically over MQTT and over LoRa", and it is why the console prints
+ * what crossed the bus rather than what this tab intended to publish.
+ *
+ * `at` is when the page heard it: a command payload carries no timestamp of its
+ * own (nothing downstream needs one), and inventing a satellite-side time for it
+ * would be exactly the fabrication this project refuses.
+ */
+export interface CommandEcho {
+    at: number
+    command: string
+    params: Record<string, unknown> | null
+}
+
 // ── commands ────────────────────────────────────────────────────────────────
 
 /**
@@ -561,15 +586,18 @@ export interface CameraShot {
  * There is deliberately no `poweroff`: `CRITICAL` is the only thing permitted
  * to power the host down, and it decides that from the battery.
  */
+/** Every command the satellite answers for. The single table in
+ *  `cubesat-sim/README.md` → The command vocabulary is the source of truth;
+ *  this is that list in a type. `start_timelapse`/`stop_timelapse` went with the
+ *  timelapse itself on 2026-09-01 — a mission photographs itself now. */
 export type CommandName =
     | 'set_profile'
     | 'science_start'
     | 'science_stop'
     | 'safe_mode'
     | 'recover'
+    | 'restart_service'
     | 'take_photo'
-    | 'start_timelapse'
-    | 'stop_timelapse'
     | 'get_telemetry'
     | 'set_comms_config'
 

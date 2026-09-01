@@ -46,19 +46,6 @@
     }
 }
 
-/* The replay drops the link-bound widgets, so its rows hold fewer columns */
-.rowTopReplay {
-    grid-template-columns: 1fr 1.8fr 1fr;
-
-    @include breakpoint-tablet {
-        grid-template-columns: 1fr 1fr;
-    }
-    @include breakpoint-mobile {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-}
-
 /* Per-subsystem compact widgets */
 .rowSubsystems {
     display: grid;
@@ -139,9 +126,10 @@
     min-width: 0;
 }
 
-/* One widget left in the row while the replay hides its live-bound neighbours.
-   Last in the file so it wins over .rowGraphs and .rowStream at equal
-   specificity. */
+/* One widget left in a row: the radio log is absent on a source whose recording
+   predates radio_log, and the recorder takes the full width. It is no longer a
+   replay rule — the widget set does not change with the mode. Last in the file
+   so it wins at equal specificity. */
 .rowSolo {
     grid-template-columns: 1fr;
 }

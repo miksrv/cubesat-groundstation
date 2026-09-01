@@ -1,9 +1,10 @@
 import { act } from 'react'
 
+import { postNotice } from '../../features/console/notices'
 import { mockLiveState, mockTelemetryRecord } from '../../test-fixtures'
 import type { FakeSource } from '../../test-source'
 import { installFakeSource } from '../../test-source'
-import { fireEvent, render, screen } from '../../test-utils'
+import { fireEvent, render, screen, waitFor } from '../../test-utils'
 
 import MissionConsoleWidget from './MissionConsoleWidget'
 
@@ -81,8 +82,8 @@ describe('MissionConsoleWidget', () => {
     })
 
     it('prints a camera refusal, which lands on cubesat/payload/photo', async () => {
-        // "photo" answers with "published to cubesat/command" — the refusal is
-        // the only message saying the satellite then said no.
+        // The echo off cubesat/command says a photo was asked for; this refusal
+        // is the only message saying the satellite then said no.
         render(
             <MissionConsoleWidget
                 live={mockLiveState}
@@ -129,8 +130,56 @@ describe('MissionConsoleWidget', () => {
             />
         )
         runCommand('profile expo')
-        expect(await screen.findByText(/set_profile published/)).toBeInTheDocument()
-        expect(source.sent).toEqual([{ command: 'set_profile', params: { profile: 'EXPO' } }])
+        await waitFor(() => expect(source.sent).toEqual([{ command: 'set_profile', params: { profile: 'EXPO' } }]))
+        // Nothing is printed on the way out. The line appears when the command
+        // comes back off the bus — see the echo tests below.
+        expect(screen.queryByText(/set_profile published/)).not.toBeInTheDocument()
+    })
+
+    it('prints every command that crosses the bus, whoever sent it', async () => {
+        // The console shows the traffic, not this tab's intentions: a phone, the
+        // `cubesat` CLI and an uplink relayed off the radio by COMMS all publish
+        // onto the same topic, and that is the visible form of "every command
+        // works identically over MQTT and over LoRa".
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        act(() => {
+            source.emitCommand({ at: 1741863600, command: 'set_profile', params: { profile: 'EXPO' } })
+        })
+        expect(await screen.findByText('→ set_profile profile=EXPO')).toBeInTheDocument()
+    })
+
+    it('prints a bus command with no parameters as the verb alone', async () => {
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        act(() => {
+            source.emitCommand({ at: 1741863600, command: 'take_photo', params: null })
+        })
+        expect(await screen.findByText('→ take_photo')).toBeInTheDocument()
+    })
+
+    it('prints what another widget could not say for itself', async () => {
+        // A publish that never reached the broker has no echo, so the panel that
+        // tried posts the failure here rather than narrating it beside its own
+        // buttons.
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        act(() => {
+            postNotice('Quick command take_photo failed: broker unreachable')
+        })
+        expect(await screen.findByText(/Quick command take_photo failed/)).toBeInTheDocument()
     })
 
     it('prints the full vocabulary on "help", radio queries included', async () => {
@@ -142,7 +191,7 @@ describe('MissionConsoleWidget', () => {
         )
         runCommand('help')
         expect(await screen.findByText(/same lines work over the Meshtastic uplink/)).toBeInTheDocument()
-        expect(screen.getByText(/lora on\|off/)).toBeInTheDocument()
+        expect(screen.getByText(/beacon on\|off/)).toBeInTheDocument()
         expect(screen.getByText(/pos\s+- position/)).toBeInTheDocument()
     })
 
@@ -180,8 +229,7 @@ describe('MissionConsoleWidget', () => {
             />
         )
         runCommand('!photo')
-        expect(await screen.findByText(/take_photo published/)).toBeInTheDocument()
-        expect(source.sent).toEqual([{ command: 'take_photo' }])
+        await waitFor(() => expect(source.sent).toEqual([{ command: 'take_photo' }]))
     })
 
     it('answers a verb the satellite no longer has like any other unknown line', async () => {
@@ -211,16 +259,33 @@ describe('MissionConsoleWidget', () => {
         expect(source.sent).toEqual([])
     })
 
-    it('switches the radio with lora on|off', async () => {
+    it('starts and stops transmission with beacon on|off', async () => {
         render(
             <MissionConsoleWidget
                 live={mockLiveState}
                 latest={mockTelemetryRecord}
             />
         )
-        runCommand('lora off')
-        expect(await screen.findByText(/set_comms_config published/)).toBeInTheDocument()
-        expect(source.sent).toEqual([{ command: 'set_comms_config', params: { lora_enabled: false } }])
+        runCommand('beacon off')
+        await waitFor(() =>
+            expect(source.sent).toEqual([{ command: 'set_comms_config', params: { lora_enabled: false } }])
+        )
+    })
+
+    it('still accepts the verb this one replaced', async () => {
+        // `lora on|off` until 2026-09-01. Renamed because it said the wrong
+        // thing — turning it off never turned the radio off — and kept accepted
+        // because a command that worked last week should not read as unknown.
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('lora on')
+        await waitFor(() =>
+            expect(source.sent).toEqual([{ command: 'set_comms_config', params: { lora_enabled: true } }])
+        )
     })
 
     it('refuses a profile this build does not know rather than sending it', async () => {

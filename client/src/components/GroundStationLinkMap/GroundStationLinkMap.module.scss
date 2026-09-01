@@ -228,7 +228,8 @@
     justify-content: center;
     align-items: flex-end;
     // Matches StatRow's 4px top/bottom padding stacking to 8px between rows
-    gap: 8px;
+    gap: 10px;
+    padding: 4px 0;
     flex-shrink: 0;
 }
 
