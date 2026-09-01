@@ -11,6 +11,7 @@ describe('PowerSystemWidget', () => {
             <PowerSystemWidget
                 history={[]}
                 eps={mockEps}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -30,6 +31,7 @@ describe('PowerSystemWidget', () => {
             <PowerSystemWidget
                 history={[]}
                 eps={{ ...mockEps, batteryPercent: 80, chargeRate: -2.5 }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -41,6 +43,7 @@ describe('PowerSystemWidget', () => {
             <PowerSystemWidget
                 history={[]}
                 eps={{ ...mockEps, batteryPercent: 80, externalPower: true, chargeRate: 8 }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -55,6 +58,7 @@ describe('PowerSystemWidget', () => {
             <PowerSystemWidget
                 history={[]}
                 eps={mockEps}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -66,6 +70,7 @@ describe('PowerSystemWidget', () => {
             <PowerSystemWidget
                 history={[]}
                 eps={{ ...mockEps, externalPower: true }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -80,6 +85,7 @@ describe('PowerSystemWidget', () => {
             <PowerSystemWidget
                 history={[]}
                 eps={{ ...mockEps, batteryPercent: 8, externalPower: true, chargeRate: 4.2 }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -94,6 +100,7 @@ describe('PowerSystemWidget', () => {
                     { ...mockTelemetryRecord, id: 1, voltage: 4.2 }
                 ]}
                 eps={mockEps}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -105,6 +112,7 @@ describe('PowerSystemWidget', () => {
             <PowerSystemWidget
                 history={[]}
                 eps={null}
+                obc={null}
                 isLoading={true}
             />
         )

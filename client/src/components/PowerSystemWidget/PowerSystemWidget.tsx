@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { EpsStatus, LiveState, TelemetryRecord } from '../../features/telemetry/types'
+import type { EpsStatus, LiveState, ObcStatus, TelemetryRecord } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
-import { getEpsStatus } from '../../utils/subsystemStatus'
+import { applyObcVerdict, getEpsStatus } from '../../utils/subsystemStatus'
 import Sparkline from '../common/Sparkline/Sparkline'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
@@ -15,6 +15,9 @@ const SPARK_ROWS = 50
 
 interface Props {
     eps: EpsStatus | null
+    /** For OBC's verdict on the service itself: a subsystem the profile never
+     *  started earns "OFF", not the dash of a page still waiting for data. */
+    obc: ObcStatus | null
     /** Recorded rows, newest first, for the voltage trend. */
     history: TelemetryRecord[]
     isLoading: boolean
@@ -65,7 +68,10 @@ const footerLine = (status: ReturnType<typeof getEpsStatus>, eps: EpsStatus | nu
             return 'below SAFE'
         case 'OK':
             return eps?.externalPower === true ? 'on mains' : 'on battery'
-        default:
+        case 'OFF':
+            // OBC's verdict names the profile that never started the service.
+            return status.detail
+        case 'UNKNOWN':
             return 'no reading yet'
     }
 }
@@ -78,8 +84,7 @@ const EMPTY: LiveState = {
     payload: null,
     science: null,
     dhs: null,
-    comms: null,
-    heartbeats: {}
+    comms: null
 }
 
 /**
@@ -91,9 +96,10 @@ const EMPTY: LiveState = {
  * both rows are gone and `charge_rate` — which the gauge really does report —
  * is here instead.
  */
-const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, history, isLoading }) => {
+const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, obc, history, isLoading }) => {
     const showSkeleton = isLoading && !eps
-    const status = getEpsStatus({ ...EMPTY, eps })
+    const live: LiveState = { ...EMPTY, eps, obc }
+    const status = applyObcVerdict(getEpsStatus(live), live)
     const batteryLevel = eps?.batteryPercent ?? null
     const rate = eps?.chargeRate ?? null
     const voltageTrend = useMemo(
