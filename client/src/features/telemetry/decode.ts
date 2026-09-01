@@ -172,7 +172,7 @@ export const decodePayload = (raw: Raw): PayloadStatus => {
     const sensor = asRecord(raw.sensor)
     const camera = asRecord(raw.camera)
     const storage = asRecord(raw.storage)
-    const timelapse = asRecord(raw.timelapse)
+    const missionPhotos = asRecord(raw.mission_photos)
     return {
         timestamp: num(raw.timestamp) ?? 0,
         sensor: raw.sensor
@@ -191,12 +191,12 @@ export const decodePayload = (raw: Raw): PayloadStatus => {
                   blocked: storage.blocked === true
               }
             : null,
-        timelapse: raw.timelapse
+        missionPhotos: raw.mission_photos
             ? {
-                  active: timelapse.active === true,
-                  intervalSec: num(timelapse.interval_sec),
-                  frames: num(timelapse.frames) ?? 0,
-                  reason: str(timelapse.reason)
+                  active: missionPhotos.active === true,
+                  intervalSec: num(missionPhotos.interval_sec),
+                  frames: num(missionPhotos.frames) ?? 0,
+                  reason: str(missionPhotos.reason)
               }
             : null,
         missionId: num(raw.mission_id),
@@ -241,7 +241,6 @@ export const decodeDhs = (raw: Raw): DhsStatus => {
             : null,
         photos: raw.photos
             ? {
-                  unfiledBytes: num(photos.unfiled_bytes),
                   freeMb: num(photos.free_mb),
                   minFreeMb: num(photos.min_free_mb)
               }
@@ -374,11 +373,13 @@ export const decodePhoto = (raw: Raw): Photo | null => {
             photoBase64: str(raw.photo_base64) ?? ''
         }
     }
-    if (kind === 'timelapse') {
-        // The satellite says `timelapse`, not `timelapse_frame` — the wire is
-        // its vocabulary, and an earlier build of this decoder silently
-        // dropped every frame by expecting a name of its own invention.
-        return { ...common, kind: 'timelapse', sequence: num(raw.sequence) }
+    if (kind === 'mission_frame') {
+        // The wire is the satellite's vocabulary, and this field has cost us
+        // once already: an earlier build expected `timelapse_frame`, a name of
+        // this repository's own invention, and silently dropped every frame.
+        // The satellite renamed `timelapse` to `mission_frame` on 2026-09-01,
+        // when a mission started photographing itself instead of being asked to.
+        return { ...common, kind: 'mission_frame', sequence: num(raw.sequence) }
     }
     // Branch on `kind`, never on the presence of a blob — a variant this build
     // has not heard of is dropped rather than guessed at. The refusal shape
@@ -404,7 +405,11 @@ export const decodePhotoRefusal = (raw: Raw): PhotoRefusal | null => {
 export const decodeTelemetry = (raw: Raw): TelemetryRecord => ({
     id: num(raw.id) ?? 0,
     timestamp: str(raw.timestamp) ?? '',
-    missionId: num(raw.mission_id) ?? 0,
+    // Null where a row belongs to no mission: since 2026-09-01 DEMO and EXPO
+    // record nothing, and their rows reach the charts from the satellite's
+    // in-memory ring rather than from the database. Coercing that to 0 would
+    // name a mission that does not exist.
+    missionId: num(raw.mission_id),
     profile: profile(raw.profile),
     obcState: missionState(raw.obc_state),
     battery: num(raw.battery),

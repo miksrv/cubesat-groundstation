@@ -42,7 +42,6 @@ const HELP_TEXT = [
     '  env                     - temperature, humidity, pressure, light',
     '  mission                 - the mission being recorded',
     '  photo                   - take one photograph',
-    '  timelapse <sec>|stop    - start (interval in seconds) or stop a timelapse',
     '  science start|stop      - enter or leave SCIENCE',
     '  profile <name>          - HOSTED | DEMO | EXPO | FLIGHT | DIAG | MAINTENANCE',
     '  safe                    - request SAFE',
@@ -142,14 +141,6 @@ const parse = (line: string): Parsed => {
                 return { command: { command: args[0] === 'start' ? 'science_start' : 'science_stop' } }
             }
             return { usage: 'usage: science start|stop' }
-        case 'timelapse':
-            if (args.length === 1 && args[0] === 'stop') {
-                return { command: { command: 'stop_timelapse' } }
-            }
-            if (args.length === 1 && /^\d+$/.test(args[0])) {
-                return { command: { command: 'start_timelapse', params: { interval_sec: Number(args[0]) } } }
-            }
-            return { usage: 'usage: timelapse <interval seconds>|stop' }
         case 'lora':
             if (args.length === 1 && (args[0] === 'on' || args[0] === 'off')) {
                 return { command: { command: 'set_comms_config', params: { lora_enabled: args[0] === 'on' } } }

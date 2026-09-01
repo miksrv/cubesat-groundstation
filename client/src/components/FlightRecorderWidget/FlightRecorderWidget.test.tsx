@@ -57,20 +57,6 @@ describe('FlightRecorderWidget', () => {
         expect(screen.getByText(/no mission open/)).toBeInTheDocument()
     })
 
-    it('warns about unfiled photos, which retention can never remove', () => {
-        render(
-            <FlightRecorderWidget
-                dhs={{
-                    ...mockDhs,
-                    photos: { unfiledBytes: 4_718_592, freeMb: 21493.7, minFreeMb: 512 }
-                }}
-                obc={null}
-                isLoading={false}
-            />
-        )
-        expect(screen.getByText('4.7 MB')).toBeInTheDocument()
-    })
-
     it('shows skeleton when loading with no data', () => {
         const { container } = render(
             <FlightRecorderWidget

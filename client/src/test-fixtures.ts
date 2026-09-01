@@ -71,7 +71,7 @@ export const mockPayload: PayloadStatus = {
     sensor: { device: 'SEN0501', present: true, readings: 148, lastRead: AT - 5 },
     camera: { device: 'Camera Module V2', present: true },
     storage: { freeMb: 21493.7, minFreeMb: 512.0, blocked: false },
-    timelapse: { active: false, intervalSec: null, frames: 0, reason: null },
+    missionPhotos: { active: false, intervalSec: null, frames: 0, reason: null },
     missionId: 42,
     photoDir: '/var/lib/cubesat/photos/42'
 }
@@ -87,7 +87,7 @@ export const mockDhs: DhsStatus = {
     retentionDays: 30,
     attitude: { written: 3600, buffered: 0, minIntervalSec: 1.0 },
     radio: { written: 34, buffered: 0 },
-    photos: { unfiledBytes: 0, freeMb: 21493.7, minFreeMb: 512.0 }
+    photos: { freeMb: 21493.7, minFreeMb: 512.0 }
 }
 
 export const mockComms: CommsStatus = {

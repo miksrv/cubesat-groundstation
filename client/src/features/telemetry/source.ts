@@ -148,9 +148,9 @@ export interface TelemetrySource {
 
     /**
      * Where this photograph's pixels can be fetched, or null when they cannot
-     * be: a frame filed under `unfiled/` (the satellite serves only photos
+     * be: a frame with no mission (the satellite serves only photos
      * filed under a mission), or a source with no backend at all. This is how
-     * a timelapse frame — announced by metadata only — becomes an image.
+     * a mission frame — announced by metadata only — becomes an image.
      */
     photoUrl(photo: Photo): string | null
 

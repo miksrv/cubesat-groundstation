@@ -33,15 +33,15 @@ describe('useCameraShot', () => {
         })
     })
 
-    it('renders a timelapse frame from its URL, since the bus carried no pixels', () => {
+    it('renders a mission frame from its URL, since the bus carried no pixels', () => {
         const fake = installFakeSource()
         const { result } = renderHook(() => useCameraShot(42))
         act(() => {
             fake.emitPhoto({
-                kind: 'timelapse',
+                kind: 'mission_frame',
                 timestamp: 1741863600,
-                file: 'timelapse_20260830_120000_0007.jpg',
-                path: '/var/lib/cubesat/photos/42/timelapse_20260830_120000_0007.jpg',
+                file: 'frame_20260830_120000_0007.jpg',
+                path: '/var/lib/cubesat/photos/42/frame_20260830_120000_0007.jpg',
                 sizeBytes: 204800,
                 missionId: 42,
                 sequence: 7,
@@ -49,8 +49,8 @@ describe('useCameraShot', () => {
             })
         })
         expect(result.current).toMatchObject({
-            kind: 'timelapse',
-            src: '/api/photos/42/timelapse_20260830_120000_0007.jpg'
+            kind: 'mission_frame',
+            src: '/api/photos/42/frame_20260830_120000_0007.jpg'
         })
     })
 
@@ -80,15 +80,15 @@ describe('useCameraShot', () => {
         await waitFor(() => expect(result.current).toMatchObject({ kind: 'archive', timestamp: null }))
     })
 
-    it('shows nothing for an unfiled frame: the satellite serves only filed photos', () => {
+    it('shows nothing for a frame with no mission: the satellite serves only filed photos', () => {
         const fake = installFakeSource()
         const { result } = renderHook(() => useCameraShot(null))
         act(() => {
             fake.emitPhoto({
-                kind: 'timelapse',
+                kind: 'mission_frame',
                 timestamp: 1741863600,
-                file: 'timelapse_20260830_120000_0001.jpg',
-                path: '/var/lib/cubesat/photos/unfiled/timelapse_20260830_120000_0001.jpg',
+                file: 'frame_20260830_120000_0001.jpg',
+                path: '/run/cubesat/photo/frame_20260830_120000_0001.jpg',
                 sizeBytes: 204800,
                 missionId: null,
                 sequence: 1,

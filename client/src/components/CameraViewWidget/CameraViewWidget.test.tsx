@@ -72,7 +72,7 @@ describe('CameraViewWidget', () => {
         expect(screen.getByText(/photo_20260830_120000\.jpg · mission 42/)).toBeInTheDocument()
     })
 
-    it('says a photograph filed under no mission is unfiled, never a mission of its own', () => {
+    it('says a photograph with no mission belongs to none, never to one of its own', () => {
         render(
             <CameraViewWidget
                 shot={shot({ missionId: null, src: 'data:image/jpeg;base64,abc' })}
@@ -80,7 +80,7 @@ describe('CameraViewWidget', () => {
                 isLoading={false}
             />
         )
-        expect(screen.getByText(/unfiled/)).toBeInTheDocument()
+        expect(screen.getByText(/no mission/)).toBeInTheDocument()
     })
 
     it('falls back to the placeholder when the image is gone from the satellite', () => {

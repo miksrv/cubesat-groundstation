@@ -68,8 +68,7 @@ transitions the page witnessed because the satellite keeps no events table.
 ## Widgets pass — 2026-08-29
 
 A day on the widgets, driven by data the bus did not yet carry — the satellite side of each item is
-in `cubesat-sim` (see its ROADMAP, same date). All of it is uncommitted in both repositories and
-not yet deployed to the Pi.
+in `cubesat-sim` (see its ROADMAP, same date). Committed here; not yet deployed to the Pi.
 
 - **Subsystem Status** is two columns again, with the *why* as a row tooltip, and renders OBC's own
   health verdict from the new `obc_status.subsystems` field: OK / WARN / **FAIL** (the profile
@@ -148,14 +147,54 @@ sensor is actually measuring) and a running timelapse's interval; the mission pi
 command finally hears its answer — `cubesat/comms/data` is subscribed and rendered, where before
 the question was published and the reply arrived on a topic nothing listened to.
 
+## Recording narrowed to `FLIGHT` — 2026-09-01
+
+The satellite decided that only `FLIGHT` and `DIAG` write to the SD card (`cubesat-sim` Q7): a
+demonstration is not a mission, the satellite stands on a desk during one, and the card is the
+component that wears out. The full account is in `cubesat-sim/ROADMAP.md`. What it changed here:
+
+- **`decodePhoto` accepts `kind: "mission_frame"`**, which is what the satellite now calls a frame a
+  mission took by itself. This field has cost us once already — an earlier build expected
+  `timelapse_frame`, a name of this repository's own invention, and silently dropped every frame —
+  so the rename was made in both repositories in one pass.
+- **`TelemetryRecord.missionId` is nullable.** A row published on `cubesat/dhs/telemetry` in
+  `DEMO`/`EXPO` belongs to no mission, and the decoder no longer coerces that to `0`, which would
+  have named a mission that does not exist.
+- **`payload_status.timelapse` is `mission_photos`**, and the Payload widget's row with it: a mission
+  photographs itself every `photos.mission_interval_sec` (300 s) while it is open, and there is no
+  command for it, so that row is the only place the state appears.
+- **`timelapse` is gone from the Mission Console** and from the satellite's compact radio
+  vocabulary. A spelling the satellite would answer `err=unknown` to is worse than no spelling.
+- **The Flight Recorder card lost "Unfiled photos".** `photos/unfiled/` no longer exists: a
+  photograph taken with no mission open is written to a tmpfs, published on the now-**retained**
+  `cubesat/payload/photo`, and deleted. Retention was forbidden to touch that directory, which made
+  the one place guaranteed to grow the one holding the least wanted photographs.
+- **The charts' history in `DEMO`/`EXPO` comes from RAM on the satellite**, not from the card:
+  `DASHBOARD` keeps a bounded ring of published rows and serves `/api/telemetry` out of it. Nothing
+  changed on this side — the same endpoint, the same shape — but the endpoint's *meaning* did: it is
+  now "the current session" (the open mission from the database while one is being recorded, the ring
+  otherwise) and carries `source: "mission" | "live"`.
+
+That closes the satellite half of the first 2026-08-31 finding below. **The client half is still
+open:** break the chart line on a gap. It is worth doing regardless of which source answered,
+because gaps happen *within* a mission too.
+
+`source` is also an opportunity not yet taken: "this session is not being recorded" and "the
+satellite has just started" are different statements, and a viewer who cannot tell them apart
+eventually decides the recorder is broken.
+
 ---
 
 ## Open
 
 **The bundled recording is a placeholder.** `client/scripts/make-placeholder-recording.mjs` generates
 it and it is meant to be thrown away — the demo should replay a real walk exported from the
-satellite. Nothing has run on the Raspberry Pi yet, so there is nothing to bundle. Stage 7 closes
-this, and it cannot close before the hardware has run.
+satellite. The stack has run on the Pi twice (2026-08-28 and 2026-08-31) and there are recorded
+missions to export, so what Stage 7 waits on is now a *walk* rather than a working satellite. Note
+what the export must carry before it is worth bundling: the mission's `radio_log` rows (2026-08-29,
+below) and its photographs, which `{mission, telemetry, attitude}` does not include. And after
+2026-09-01 only `FLIGHT` and `DIAG` record at all, so the mission to export is a trip or a rehearsal
+of one — a demonstration no longer leaves anything to export.
 
 **Attitude playback needs the timeline (Stage 6).** The `attitude` table exists on the satellite and
 `MissionDetail` carries it, but nothing draws it yet: the 3D view follows the live channel only.
@@ -174,6 +213,9 @@ neither CI nor `package.json`. The replacement is cheaper than the original was:
 `PUBLIC_SOURCE=replay` build needs no interception at all, because the page carries its own data.
 Stage 6 is the natural place for it, once there is a timeline worth driving.
 
-**Nothing here has run against a real satellite.** Every source is exercised against a fake or a
-recording. `cubesat-sim`'s `ROADMAP.md` carries the bench checks the WebSocket listener and its ACL
-are waiting on (V8, V9).
+**Little here has run against a real satellite.** Every source is exercised against a fake or a
+recording in the tests. In front of the hardware it has been open twice — V8 and V9 in
+`cubesat-sim/ROADMAP.md` passed on 2026-08-28, and the 2026-08-31 session found the two display bugs
+recorded above — but the widget passes of 2026-08-29 and 2026-08-30, the timeline of Stage 6 and the
+2026-09-01 changes above have all been written and tested without one. The next deploy is where they
+meet it.

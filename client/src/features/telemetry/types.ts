@@ -110,7 +110,11 @@ export interface TelemetryRecord {
     id: number
     /** ISO-8601 UTC to the second, e.g. `2026-08-24T07:12:03Z`. */
     timestamp: string
-    missionId: number
+    /** Null for a row that belongs to no mission. That is the normal case in
+     *  DEMO and EXPO, which record nothing (decided 2026-09-01): their rows
+     *  reach the charts from the satellite's in-memory ring, published on
+     *  `cubesat/dhs/telemetry`, rather than read back out of the database. */
+    missionId: number | null
     profile: Profile | null
     /** Verbatim, like {@link ObcStatus.status}: null only when the row never
      *  recorded one. */
@@ -325,7 +329,16 @@ export interface PayloadStatus {
     camera: { device: string | null; present: boolean } | null
     /** Why the satellite may have stopped taking photographs. */
     storage: { freeMb: number | null; minFreeMb: number | null; blocked: boolean } | null
-    timelapse: { active: boolean; intervalSec: number | null; frames: number; reason: string | null } | null
+    /** The mission's own photography: a frame every `photos.mission_interval_sec`
+     *  while a mission is open. There is no command for it, so this is the only
+     *  place its state appears. `reason` is null while it runs and when none has
+     *  ever run; afterwards it says why it stopped. */
+    missionPhotos: {
+        active: boolean
+        intervalSec: number | null
+        frames: number
+        reason: string | null
+    } | null
     /** The integer row id DHS owns — one type on every topic that names a
      *  mission. Its string form exists only as the photo directory's name. */
     missionId: number | null
@@ -346,7 +359,7 @@ export interface DhsStatus {
      *  a write that is failing. A growing `buffered` is the card refusing the
      *  radio log while the recorder is still, correctly, alive. */
     radio: { written: number; buffered: number } | null
-    photos: { unfiledBytes: number | null; freeMb: number | null; minFreeMb: number | null } | null
+    photos: { freeMb: number | null; minFreeMb: number | null } | null
 }
 
 /**
@@ -461,11 +474,16 @@ export interface PhotoOverlay {
 
 /**
  * Branch on `kind`, never on whether a base64 blob is present. An on-demand
- * capture carries the image; a timelapse frame carries metadata only, because
- * five hundred frames through the broker would be hundreds of megabytes on a
- * bus whose job is the telemetry. The frames are on the satellite's card,
- * filed under their mission, and reachable over its REST — which is what
- * {@link Photo.file} plus the mission id name.
+ * capture carries the image; a mission frame carries metadata only, because a
+ * hundred frames through the broker would be tens of megabytes on a bus whose
+ * job is the telemetry. Those frames are on the satellite's card, filed under
+ * their mission, and reachable over its REST — which is what {@link Photo.file}
+ * plus the mission id name.
+ *
+ * An on-demand capture taken with no mission open is never on the card at all:
+ * the satellite writes it to a tmpfs, publishes these pixels and deletes it. Its
+ * `missionId` is null and its `path` is not fetchable, which is why the pixels
+ * are the whole delivery.
  */
 export type Photo =
     | {
@@ -480,7 +498,7 @@ export type Photo =
           overlay: PhotoOverlay | null
       }
     | {
-          kind: 'timelapse'
+          kind: 'mission_frame'
           timestamp: number
           file: string | null
           path: string
@@ -523,7 +541,7 @@ export interface PhotoFile {
  */
 export interface CameraShot {
     src: string
-    kind: 'photo' | 'timelapse' | 'archive'
+    kind: 'photo' | 'mission_frame' | 'archive'
     file: string | null
     /** Epoch seconds of the capture. Live messages carry it; an archive shot
      *  recovers it from its file name, which embeds the UTC capture time.

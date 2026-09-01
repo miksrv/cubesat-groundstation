@@ -192,6 +192,13 @@ Needs Stage 1 and Stage 5.
 
 ## Stage 7 — The public demo · *groundstation*
 
+**Two additions since this was written.** The export has to carry the mission's `radio_log` rows
+(2026-08-29: the Radio Link Log widget replays them, and the client-side loader already accepts
+them) and its photographs — `{mission, telemetry, attitude}` is the whole body today, while frames
+live under `photos/<mission_id>/` and are listed separately. And since 2026-09-01 only `FLIGHT` and
+`DIAG` record, so the mission to export is a trip or a rehearsal of one; a demonstration leaves
+nothing to export, which is deliberate.
+
 - Export a real walk through Stage 5's endpoint, commit the JSON with the build
 - The demo replays something the satellite actually measured rather than a generator's idea of it,
   and reuses the whole of Stage 6

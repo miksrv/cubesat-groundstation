@@ -48,7 +48,6 @@ const FlightRecorderWidget: React.FC<Props> = React.memo(({ dhs, obc, isLoading 
     const showSkeleton = isLoading && !dhs
     const live: LiveState = { ...EMPTY, dhs, obc }
     const status = applyObcVerdict(getDhsStatus(live), live)
-    const unfiled = dhs?.photos?.unfiledBytes ?? null
 
     return (
         <Container
@@ -94,14 +93,6 @@ const FlightRecorderWidget: React.FC<Props> = React.memo(({ dhs, obc, isLoading 
                         label='Retention'
                         value={dhs?.retentionDays != null ? `${dhs.retentionDays} days` : '—'}
                         mono
-                    />
-                    {/* Photos filed under no mission: retention can never touch
-                        them, so a non-zero number only ever grows until a human
-                        acts — which is exactly why it is worth a row. */}
-                    <StatRow
-                        label='Unfiled photos'
-                        value={unfiled == null ? '—' : unfiled === 0 ? 'none' : megabytes(unfiled)}
-                        accent={unfiled != null && unfiled > 0 ? 'orange' : 'default'}
                     />
                     <div className={styles.footer}>
                         <span className={styles.footerLabel}>{status.detail}</span>

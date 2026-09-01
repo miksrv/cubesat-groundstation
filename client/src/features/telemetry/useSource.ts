@@ -94,7 +94,7 @@ export const useLatestPhoto = (): Photo | null => {
 /**
  * The archive listing carries names alone, but the satellite embeds the UTC
  * capture time in each name (`photo_20260830_120000.jpg`,
- * `timelapse_20260830_120000_0007.jpg`) — so an archived shot's timestamp is
+ * `frame_20260830_120000_0007.jpg`) — so an archived shot's timestamp is
  * recovered from its name rather than declared unknown. A name that does not
  * match the pattern honestly yields null.
  */
@@ -110,13 +110,14 @@ const captureTimeFromName = (name: string): number | null => {
 /**
  * The newest image the satellite can show, from whichever channel has one.
  *
- * Two channels, because `payload_photo` is deliberately not retained: a page
- * open at the moment of a capture gets the message — an on-demand photo with
- * its pixels aboard, a timelapse frame as a URL into the mission's directory —
- * but a page opened five minutes later would see nothing until the next one.
- * So until a live photograph arrives, the mission's directory is asked once
- * for its newest file. An unreachable archive only costs the fallback; the
- * live channel keeps working, which is the same degradation the charts have.
+ * Two channels. The live one carries an on-demand photo with its pixels aboard,
+ * or a mission frame as a URL into the mission's directory. `payload_photo` is
+ * retained as of 2026-09-01, so a page opened five minutes after a capture does
+ * get the last one from the broker — but a mission's frames are metadata only,
+ * and a page opened between them has nothing to show. So until a live photograph
+ * arrives, the mission's directory is asked once for its newest file. An
+ * unreachable archive only costs the fallback; the live channel keeps working,
+ * which is the same degradation the charts have.
  */
 export const useCameraShot = (missionId: number | null): CameraShot | null => {
     const photo = useLatestPhoto()
@@ -161,8 +162,9 @@ export const useCameraShot = (missionId: number | null): CameraShot | null => {
                 sizeBytes: photo.sizeBytes
             }
         }
-        // A frame with no fetchable pixels — filed under `unfiled/`, which the
-        // satellite's HTTP deliberately does not serve. Fall through to
+        // A frame with no fetchable pixels: a capture taken with no mission
+        // open is written to the satellite's tmpfs and deleted once its pixels
+        // are on the bus, so there is no URL to ask for. Fall through to
         // whatever the archive had rather than promising an image.
     }
     if (archived != null) {

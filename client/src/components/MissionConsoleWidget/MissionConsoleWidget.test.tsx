@@ -184,7 +184,10 @@ describe('MissionConsoleWidget', () => {
         expect(source.sent).toEqual([{ command: 'take_photo' }])
     })
 
-    it('takes the timelapse interval in seconds, like the radio does', async () => {
+    it('answers a verb the satellite no longer has like any other unknown line', async () => {
+        // `timelapse` was removed from the satellite on 2026-09-01 — a mission
+        // photographs itself now. Keeping a spelling the satellite would answer
+        // `err=unknown` to would be worse than not having it.
         render(
             <MissionConsoleWidget
                 live={mockLiveState}
@@ -192,8 +195,8 @@ describe('MissionConsoleWidget', () => {
             />
         )
         runCommand('timelapse 15')
-        expect(await screen.findByText(/start_timelapse published/)).toBeInTheDocument()
-        expect(source.sent).toEqual([{ command: 'start_timelapse', params: { interval_sec: 15 } }])
+        expect(await screen.findByText(/unknown/i)).toBeInTheDocument()
+        expect(source.sent).toEqual([])
     })
 
     it('answers bad arguments with a usage line instead of guessing', async () => {
@@ -203,8 +206,8 @@ describe('MissionConsoleWidget', () => {
                 latest={mockTelemetryRecord}
             />
         )
-        runCommand('timelapse soon')
-        expect(await screen.findByText('usage: timelapse <interval seconds>|stop')).toBeInTheDocument()
+        runCommand('science soon')
+        expect(await screen.findByText('usage: science start|stop')).toBeInTheDocument()
         expect(source.sent).toEqual([])
     })
 

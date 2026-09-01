@@ -35,10 +35,10 @@ const EMPTY: LiveState = {
  * `payload_status` exists as a topic, and it is worth showing as such.
  *
  * The old rows for image count, resolution and payload wattage are gone: the
- * satellite counts frames of a running timelapse, not images ever taken, and
- * nothing measures the payload's power draw. What it does report — and what
- * actually explains a satellite that stopped taking pictures — is free space
- * and the reason a timelapse ended.
+ * satellite counts the frames of the mission currently photographing itself,
+ * not images ever taken, and nothing measures the payload's power draw. What it
+ * does report — and what actually explains a satellite that stopped taking
+ * pictures — is free space and why the series ended.
  */
 const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, obc, isLoading }) => {
     const showSkeleton = isLoading && !payload
@@ -47,7 +47,7 @@ const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, obc, isLo
     // columns are evidence the device answered.
     const live: LiveState = { ...EMPTY, payload, science, obc }
     const status = applyObcVerdict(getPayloadStatus(live), live)
-    const timelapse = payload?.timelapse ?? null
+    const missionPhotos = payload?.missionPhotos ?? null
 
     return (
         <Container
@@ -108,18 +108,23 @@ const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, obc, isLo
                         }
                         mono={science?.uvIndex != null}
                     />
+                    {/* A mission photographs itself; there is no command for
+                        it, so this row is the only place its state shows. When
+                        it is idle the reason is the useful half — "the mission
+                        closed" and "the card is nearly full" look identical
+                        from the outside otherwise. */}
                     <StatRow
-                        label='Timelapse'
+                        label='Mission photos'
                         value={
-                            timelapse == null
+                            missionPhotos == null
                                 ? '—'
-                                : timelapse.active
-                                  ? `running, ${timelapse.frames} frames${
-                                        timelapse.intervalSec != null ? ` @ ${timelapse.intervalSec}s` : ''
+                                : missionPhotos.active
+                                  ? `running, ${missionPhotos.frames} frames${
+                                        missionPhotos.intervalSec != null ? ` @ ${missionPhotos.intervalSec}s` : ''
                                     }`
-                                  : (timelapse.reason ?? 'idle')
+                                  : (missionPhotos.reason ?? 'idle')
                         }
-                        accent={timelapse?.active ? 'green' : 'default'}
+                        accent={missionPhotos?.active ? 'green' : 'default'}
                     />
                     <StatRow
                         label='Card free'

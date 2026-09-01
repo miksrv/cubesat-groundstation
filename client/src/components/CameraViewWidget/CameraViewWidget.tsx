@@ -19,7 +19,7 @@ interface Props {
 /** What the caption calls each channel the image can have come by. */
 const KIND_LABELS: Record<CameraShot['kind'], string> = {
     photo: 'PHOTO',
-    timelapse: 'TIMELAPSE',
+    mission_frame: 'MISSION',
     archive: 'ARCHIVE'
 }
 
@@ -125,7 +125,7 @@ const CameraViewWidget: React.FC<Props> = React.memo(({ shot, photosAvailable, i
         ? 'This recording carries no photographs'
         : broken
           ? 'The photograph is gone from the satellite — retention removes a mission’s photos with the mission'
-          : 'No photograph yet — send take_photo, or start a timelapse'
+          : 'No photograph yet — send take_photo, or open a mission'
 
     return (
         <Container
@@ -160,7 +160,7 @@ const CameraViewWidget: React.FC<Props> = React.memo(({ shot, photosAvailable, i
                                 <span className={styles.captionText}>
                                     {[
                                         dateTime(shot.timestamp) ?? shot.file ?? '—',
-                                        shot.missionId != null ? `mission ${shot.missionId}` : 'unfiled',
+                                        shot.missionId != null ? `mission ${shot.missionId}` : 'no mission',
                                         shot.sizeBytes != null ? `${(shot.sizeBytes / 1024).toFixed(0)} KB` : null
                                     ]
                                         .filter((part) => part != null)

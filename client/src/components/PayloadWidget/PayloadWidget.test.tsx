@@ -35,12 +35,12 @@ describe('PayloadWidget', () => {
         expect(screen.getByText(/148 · last/)).toBeInTheDocument()
     })
 
-    it('shows the interval of a running timelapse alongside its frames', () => {
+    it('shows the interval of mission photography alongside its frames', () => {
         render(
             <PayloadWidget
                 payload={{
                     ...mockPayload,
-                    timelapse: { active: true, intervalSec: 30, frames: 7, reason: null }
+                    missionPhotos: { active: true, intervalSec: 30, frames: 7, reason: null }
                 }}
                 science={mockScience}
                 obc={null}
