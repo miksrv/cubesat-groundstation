@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Badge } from 'simple-react-ui-kit'
 
 import type { OrbitState } from '../../features/orbit/simulate'
+import type { ConnectionState } from '../../features/telemetry/source'
 import type { LiveState, TelemetryRecord } from '../../features/telemetry/types'
 import { getMissionStatus } from '../../utils/subsystemStatus'
 
@@ -14,7 +15,16 @@ interface Props {
     /** Simulated — the satellite has no orbit. See features/orbit/simulate.ts. */
     orbit: OrbitState | null
     isLoading: boolean
-    isError: boolean
+    /** The transport's own state — the one fact the page knows without the
+     *  satellite. A broker that is down must not look like a satellite that
+     *  has not published yet. */
+    connection: ConnectionState
+}
+
+const LINK_STATUS: Record<ConnectionState, { label: string; value: string; dot: string }> = {
+    connecting: { label: 'CONNECTING', value: styles.linkConnecting, dot: styles.dotConnecting },
+    online: { label: 'ACTIVE', value: styles.linkActive, dot: styles.dotLive },
+    offline: { label: 'OFFLINE', value: styles.linkOffline, dot: styles.dotError }
 }
 
 const pad = (n: number): string => n.toString().padStart(2, '0')
@@ -67,7 +77,7 @@ const obcBadgeClass = (state: string): string => {
     }
 }
 
-const MissionStatusBar: React.FC<Props> = ({ live, latest, orbit, isLoading, isError }) => {
+const MissionStatusBar: React.FC<Props> = ({ live, latest, orbit, isLoading, connection }) => {
     const [utcClock, setUtcClock] = useState('')
     const [nextPassSeconds, setNextPassSeconds] = useState<number | null>(null)
 
@@ -160,10 +170,13 @@ const MissionStatusBar: React.FC<Props> = ({ live, latest, orbit, isLoading, isE
                 </div>
 
                 <div className={styles.stat}>
+                    {/* The MQTT connection to the broker — not data freshness,
+                        and not the REST archive, which has a banner of its own.
+                        Only what the transport knows about itself. */}
                     <span className={styles.statLabel}>Link Status</span>
-                    <span className={`${styles.statValue} ${isError ? styles.linkOffline : styles.linkActive}`}>
-                        <span className={`${styles.liveDot} ${isError ? styles.dotError : styles.dotLive}`} />
-                        {isError ? 'OFFLINE' : 'ACTIVE'}
+                    <span className={`${styles.statValue} ${LINK_STATUS[connection].value}`}>
+                        <span className={`${styles.liveDot} ${LINK_STATUS[connection].dot}`} />
+                        {LINK_STATUS[connection].label}
                     </span>
                 </div>
 

@@ -168,12 +168,21 @@
     background: var(--color-red);
 }
 
+.dotConnecting {
+    background: var(--color-orange);
+    animation: livePulse 2s ease-in-out infinite;
+}
+
 .linkActive {
     color: var(--color-green);
 }
 
 .linkOffline {
     color: var(--color-red);
+}
+
+.linkConnecting {
+    color: var(--color-orange);
 }
 
 /* ---- Right: OBC badge ---- */

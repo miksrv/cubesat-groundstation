@@ -34,7 +34,7 @@ describe('MissionStatusBar', () => {
                 latest={mockRecord}
                 orbit={mockOrbit}
                 isLoading={false}
-                isError={false}
+                connection={'online'}
             />
         )
         expect(screen.getAllByText('NOMINAL').length).toBeGreaterThan(0)
@@ -47,7 +47,7 @@ describe('MissionStatusBar', () => {
                 latest={mockRecord}
                 orbit={mockOrbit}
                 isLoading={false}
-                isError={false}
+                connection={'online'}
             />
         )
         expect(screen.getByText('T+01:01:01:01')).toBeInTheDocument()
@@ -60,24 +60,53 @@ describe('MissionStatusBar', () => {
                 latest={mockRecord}
                 orbit={mockOrbit}
                 isLoading={false}
-                isError={false}
+                connection={'online'}
             />
         )
         expect(screen.getByText('#245')).toBeInTheDocument()
         expect(screen.getByText('Moscow')).toBeInTheDocument()
     })
 
-    it('shows OFFLINE link status when isError=true', () => {
+    it('shows OFFLINE when the broker connection is lost', () => {
+        // The point of the whole channel: a broker that is down must not look
+        // like a satellite that has not published yet — the (stale) live state
+        // still renders, but the link says what the transport knows.
         render(
             <MissionStatusBar
                 live={mockLiveState}
                 latest={mockRecord}
                 orbit={mockOrbit}
                 isLoading={false}
-                isError={true}
+                connection={'offline'}
             />
         )
         expect(screen.getByText('OFFLINE')).toBeInTheDocument()
+    })
+
+    it('shows CONNECTING before the first connect or failure', () => {
+        render(
+            <MissionStatusBar
+                live={mockLiveState}
+                latest={mockRecord}
+                orbit={mockOrbit}
+                isLoading={false}
+                connection={'connecting'}
+            />
+        )
+        expect(screen.getByText('CONNECTING')).toBeInTheDocument()
+    })
+
+    it('shows ACTIVE while the broker connection is up', () => {
+        render(
+            <MissionStatusBar
+                live={mockLiveState}
+                latest={mockRecord}
+                orbit={mockOrbit}
+                isLoading={false}
+                connection={'online'}
+            />
+        )
+        expect(screen.getByText('ACTIVE')).toBeInTheDocument()
     })
 
     it('renders placeholders when there is no data yet', () => {
@@ -87,7 +116,7 @@ describe('MissionStatusBar', () => {
                 latest={null}
                 orbit={null}
                 isLoading={false}
-                isError={false}
+                connection={'online'}
             />
         )
         expect(screen.getAllByText('UNKNOWN').length).toBeGreaterThan(0)
