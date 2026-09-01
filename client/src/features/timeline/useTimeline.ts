@@ -39,14 +39,21 @@ import { attitudeAt, epochOf, hasQuaternion, indexAtOrBefore } from './playback'
  *  never by this. */
 const TICK_MS = 250
 
-/** ×1 is the walk as it happened. Cycled rather than picked from a menu — three
- *  choices beat a slider nobody can set precisely.
+/** ×1 is the walk as it happened. Cycled rather than picked from a menu — a
+ *  short ladder beats a slider nobody can set precisely.
  *
- *  ×10/×60 were the first pair tried and are gone: a mission's telemetry rows
- *  are 30 s apart, so at ×60 the playhead crossed two of them per tick and the
- *  charts moved in jumps rather than playing. These three keep every recorded
- *  row on screen for at least a moment. */
-const SPEEDS = [1, 2, 4]
+ *  What bounds the ladder is arithmetic, not taste. A tick moves the playhead
+ *  TICK_MS × speed — 0.25 s × speed — and a recorded row is skipped whenever
+ *  that step grows longer than the spacing between rows. Telemetry is written
+ *  30 s apart in FLIGHT and about 6 s in DIAG (cadence_scale 0.2), so ×16 steps
+ *  4 s and still lands inside every gap in both. ×32 would step 8 s and begin
+ *  stepping over DIAG rows, which is where the ladder has to stop.
+ *
+ *  That rule is what ×10/×60 taught: they were the first pair tried, and at ×60
+ *  the playhead crossed two FLIGHT rows per tick, so the charts moved in jumps
+ *  rather than playing. Everything up to ×16 keeps every recorded row on screen
+ *  for at least a moment. */
+const SPEEDS = [1, 2, 4, 8, 16]
 
 export type TimelinePhase = 'idle' | 'picking' | 'loading' | 'ready' | 'error'
 

@@ -178,9 +178,12 @@ describe('useTimeline', () => {
     })
 
     it('cycles the speed and moves the playhead proportionally faster', async () => {
-        // x1, x2, x4: a mission's rows are 30 s apart, and the x10/x60 this
-        // replaced crossed several of them per tick, so the charts jumped
-        // rather than played.
+        // x1 to x16. A tick is 250 ms, so the step is 0.25 s x speed, and the
+        // ladder stops where that step would outrun the gap between recorded
+        // rows -- 30 s in FLIGHT, about 6 s in DIAG. x16 steps 4 s and skips
+        // nothing; x32 would. The x10/x60 this replaced is where the rule was
+        // learned: at x60 the playhead crossed two rows a tick and the charts
+        // jumped rather than played.
         const { result } = await readyTimeline()
         act(() => result.current.cycleSpeed())
         expect(result.current.speed).toBe(2)
@@ -189,7 +192,17 @@ describe('useTimeline', () => {
 
         act(() => result.current.cycleSpeed())
         expect(result.current.speed).toBe(4)
-        // And back round: three choices, cycled, not a menu.
+        act(() => result.current.cycleSpeed())
+        expect(result.current.speed).toBe(8)
+        act(() => result.current.cycleSpeed())
+        expect(result.current.speed).toBe(16)
+        // The playhead keeps pace at the top of the ladder too, which is the
+        // whole point of raising it.
+        const before = result.current.playhead
+        act(() => jest.advanceTimersByTime(1_000))
+        expect(result.current.playhead).toBeCloseTo(before + 16, 6)
+
+        // And back round: a cycled ladder, not a menu.
         act(() => result.current.cycleSpeed())
         expect(result.current.speed).toBe(1)
     })
