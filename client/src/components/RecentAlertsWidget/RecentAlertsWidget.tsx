@@ -10,21 +10,17 @@ interface Props {
     isLoading: boolean
 }
 
-const formatRelative = (epochSeconds: number): string => {
-    const diffMs = Date.now() - epochSeconds * 1000
-    const minutes = Math.floor(diffMs / 60000)
-    if (minutes < 1) {
-        return 'just now'
-    }
-    if (minutes < 60) {
-        return `${minutes}m ago`
-    }
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) {
-        return `${hours}h ago`
-    }
-    return `${Math.floor(hours / 24)}d ago`
-}
+/**
+ * The clock time, not "Nd ago": the timestamps come from the payloads
+ * themselves, so on a replayed recording a relative age counts from the
+ * recording's own past and reads as nonsense. The full date lives in the
+ * row's tooltip for exactly that case.
+ */
+const formatTime = (epochSeconds: number): string =>
+    new Date(epochSeconds * 1000).toLocaleTimeString(undefined, { hour12: false })
+
+const formatFull = (epochSeconds: number): string =>
+    new Date(epochSeconds * 1000).toLocaleString(undefined, { hour12: false })
 
 const RecentAlertsWidget: React.FC<Props> = React.memo(({ events, isLoading }) => {
     const alerts = useMemo(() => events.filter((e) => e.severity === 'warning' || e.severity === 'critical'), [events])
@@ -45,7 +41,12 @@ const RecentAlertsWidget: React.FC<Props> = React.memo(({ events, isLoading }) =
                         >
                             <span className={styles.icon}>{alert.severity === 'critical' ? '⛔' : '⚠'}</span>
                             <span className={styles.message}>{alert.message}</span>
-                            <span className={styles.time}>{formatRelative(alert.at)}</span>
+                            <span
+                                className={styles.time}
+                                title={formatFull(alert.at)}
+                            >
+                                {formatTime(alert.at)}
+                            </span>
                         </li>
                     ))}
                     {alerts.length === 0 && <li className={styles.empty}>No active alerts</li>}
