@@ -14,7 +14,9 @@
  * Anything older lives in the satellite's own logs.
  */
 
-import type { LiveState } from '../telemetry/types'
+import type { StatusLevel, SubsystemKey } from '../../utils/subsystemStatus'
+import { getSubsystemStatuses } from '../../utils/subsystemStatus'
+import type { LiveState, PhotoRefusal, RadioEvent } from '../telemetry/types'
 
 export type EventSeverity = 'info' | 'success' | 'warning' | 'critical'
 
@@ -151,5 +153,97 @@ export const diffStates = (previous: LiveState | null, next: LiveState): Observe
         }
     }
 
+    for (const alert of subsystemAlerts(previous, next)) {
+        out.push(event(alert.at, alert.severity, alert.message, (seq += 1)))
+    }
+
     return out
 }
+
+/** The two levels worth alerting on — everything below them is routine. */
+const ALERTING: ReadonlySet<StatusLevel> = new Set<StatusLevel>(['WARN', 'FAIL'])
+
+const SEVERITY_BY_LEVEL: Record<StatusLevel, EventSeverity> = {
+    FAIL: 'critical',
+    WARN: 'warning',
+    // Reaching OK out of WARN or FAIL is a recovery, worth a green line.
+    OK: 'success',
+    // A degraded service going OFF or silent is a profile change or a vanished
+    // message, not a new fault — logged so the WARN does not just evaporate,
+    // but quietly.
+    OFF: 'info',
+    UNKNOWN: 'info'
+}
+
+/**
+ * Subsystem health transitions, judged by the same rules the Subsystem Status
+ * widget renders — one verdict, wherever it is shown.
+ *
+ * Only transitions that touch WARN or FAIL make the log: the panel is called
+ * Recent Alerts, and six green "OK" lines on every page load would bury the
+ * one line that matters. OBC is skipped here because its degradations *are*
+ * mission states, and the state transition above already logs them.
+ */
+const subsystemAlerts = (
+    previous: LiveState | null,
+    next: LiveState
+): Array<{ at: number; severity: EventSeverity; message: string }> => {
+    if (previous == null) {
+        // The log starts when the page does: the first snapshot is a fact, not
+        // a transition — the widget's own colours already show it.
+        return []
+    }
+    const before = new Map(getSubsystemStatuses(previous).map((status) => [status.key, status.status]))
+    const out: Array<{ at: number; severity: EventSeverity; message: string }> = []
+    for (const status of getSubsystemStatuses(next)) {
+        if (status.key === 'OBC') {
+            continue
+        }
+        const was = before.get(status.key) ?? 'UNKNOWN'
+        if (was === status.status || (!ALERTING.has(was) && !ALERTING.has(status.status))) {
+            continue
+        }
+        out.push({
+            at: subsystemTimestamp(status.key, next),
+            severity: SEVERITY_BY_LEVEL[status.status],
+            message: `${status.label} ${status.status} - ${status.detail}`
+        })
+    }
+    return out
+}
+
+const subsystemTimestamp = (key: SubsystemKey, next: LiveState): number => {
+    const source = {
+        OBC: next.obc,
+        EPS: next.eps,
+        ADCS: next.adcs,
+        PAYLOAD: next.payload,
+        DHS: next.dhs,
+        COMMS: next.comms
+    }[key]
+    return source?.timestamp ?? next.obc?.timestamp ?? 0
+}
+
+/**
+ * The alert hiding in the radio stream: a transmission that never left the
+ * radio. The Radio Link Log paints that row red, and a red row that scrolls
+ * out of a bounded table without a trace in Recent Alerts is a fault the
+ * operator can miss by looking away. Everything else in the stream is routine
+ * traffic — received commands already surface as "uplink received".
+ */
+export const radioAlert = (radio: RadioEvent, seq: number): ObservedEvent | null => {
+    if (radio.direction !== 'tx' || radio.sent !== false) {
+        return null
+    }
+    return event(radio.timestamp, 'warning', `radio transmit failed${radio.kind ? ` (${radio.kind})` : ''}`, seq)
+}
+
+/**
+ * The other alert that lives in a stream rather than in state: the camera
+ * refusing a command. A refusal is one unretained message on
+ * `cubesat/payload/photo` — the button press it answers otherwise produces
+ * nothing visible at all, which reads as a dead camera rather than a
+ * deliberate no.
+ */
+export const photoRefusalAlert = (refusal: PhotoRefusal, seq: number): ObservedEvent =>
+    event(refusal.timestamp, 'warning', `capture refused - ${refusal.reason ?? 'no reason given'}`, seq)

@@ -24,12 +24,24 @@ import type {
     MissionSummary,
     Photo,
     PhotoFile,
+    PhotoRefusal,
     RadioEvent,
     TelemetryRecord,
     TelemetrySnapshot
 } from './types'
 
 export type SourceKind = 'live' | 'replay'
+
+/**
+ * The state of the transport itself — not of the satellite. `connecting` is
+ * the moment after the page opened, before the first connect or failure;
+ * after that it is `online`/`offline` as the connection comes and goes. This
+ * is the only fact the transport knows with certainty about itself, which is
+ * why the channel carries nothing more: "the broker is unreachable" and "the
+ * satellite is silent" are different findings, and only the first one is the
+ * transport's to make.
+ */
+export type ConnectionState = 'connecting' | 'online' | 'offline'
 
 /** What a source can do. Capabilities differ; the UI asks rather than assumes. */
 export interface SourceCapabilities {
@@ -62,6 +74,15 @@ export interface TelemetrySource {
     subscribe(listener: (state: LiveState) => void): () => void
 
     /**
+     * The transport's own state, called immediately with the current value and
+     * then on every change. Deliberately outside {@link LiveState}: everything
+     * there is something the satellite published, and this is the one fact the
+     * page knows without the satellite — a broker that is down must be
+     * distinguishable from a satellite that has not published yet.
+     */
+    subscribeConnection(listener: (state: ConnectionState) => void): () => void
+
+    /**
      * Attitude, at the rate it is measured, **outside the state object**.
      *
      * Deliberately its own channel. Orientation arrives at 2 Hz, and putting it
@@ -73,6 +94,14 @@ export interface TelemetrySource {
 
     /** Photographs as they arrive. */
     subscribePhotos(listener: (photo: Photo) => void): () => void
+
+    /**
+     * The camera saying no, from the same topic the photographs arrive on.
+     * A response, not a state: a refusal answers one button press, and whoever
+     * pressed it is the thing waiting — without this channel a refused
+     * `take_photo` produces no feedback at all and reads as a dead camera.
+     */
+    subscribePhotoRefusals(listener: (refusal: PhotoRefusal) => void): () => void
 
     /**
      * COMMS' answers to `get_telemetry`, as they arrive on `cubesat/comms/data`.

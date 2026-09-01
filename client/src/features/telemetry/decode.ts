@@ -21,13 +21,13 @@ import type {
     EpsStatus,
     GnssFix,
     HostStatus,
-    MissionState,
     MissionSummary,
     NetworkMode,
     ObcStatus,
     PayloadStatus,
     Photo,
     PhotoOverlay,
+    PhotoRefusal,
     Profile,
     Quaternion,
     RadioEvent,
@@ -82,7 +82,6 @@ const gnss = (value: unknown): GnssFix => {
 }
 
 const PROFILES: Profile[] = ['HOSTED', 'DEMO', 'EXPO', 'FLIGHT', 'DIAG', 'MAINTENANCE']
-const STATES: MissionState[] = ['BOOT', 'STANDBY', 'DEPLOY', 'NOMINAL', 'SCIENCE', 'LOW_POWER', 'SAFE', 'CRITICAL']
 
 /**
  * A profile name this build knows, or null.
@@ -94,8 +93,18 @@ const STATES: MissionState[] = ['BOOT', 'STANDBY', 'DEPLOY', 'NOMINAL', 'SCIENCE
 export const profile = (value: unknown): Profile | null =>
     PROFILES.includes(value as Profile) ? (value as Profile) : null
 
-export const missionState = (value: unknown): MissionState | null =>
-    STATES.includes(value as MissionState) ? (value as MissionState) : null
+/**
+ * A mission-state name, verbatim — deliberately the opposite treatment from
+ * {@link profile}. The state machine lives on the satellite and it is the
+ * authority on its own vocabulary; a build that validated the name would
+ * freeze on the previous state the day the satellite grows a new one. The
+ * classifiers judge an unrecognized name UNKNOWN (see `MISSION_STATES`), but
+ * the page still shows what the satellite actually said.
+ */
+export const missionState = (value: unknown): string | null => {
+    const state = str(value)
+    return state !== '' ? state : null
+}
 
 // ── the status topics ───────────────────────────────────────────────────────
 
@@ -190,7 +199,7 @@ export const decodePayload = (raw: Raw): PayloadStatus => {
                   reason: str(timelapse.reason)
               }
             : null,
-        missionId: str(raw.mission_id),
+        missionId: num(raw.mission_id),
         photoDir: str(raw.photo_dir)
     }
 }
@@ -355,7 +364,7 @@ export const decodePhoto = (raw: Raw): Photo | null => {
         file: str(raw.file),
         path: str(raw.path) ?? '',
         sizeBytes: num(raw.size_bytes),
-        missionId: str(raw.mission_id),
+        missionId: num(raw.mission_id),
         overlay: photoOverlay(raw.overlay)
     }
     if (kind === 'photo') {
@@ -372,10 +381,21 @@ export const decodePhoto = (raw: Raw): Photo | null => {
         return { ...common, kind: 'timelapse', sequence: num(raw.sequence) }
     }
     // Branch on `kind`, never on the presence of a blob — a variant this build
-    // has not heard of is dropped rather than guessed at. That covers the
-    // refusal shape too (`status: "ERROR"`, no kind): the retained
-    // payload_status already carries why the camera said no.
+    // has not heard of is dropped rather than guessed at. The refusal shape
+    // (`status: "ERROR"`, no kind) is not a photograph and leaves by
+    // `decodePhotoRefusal` instead.
     return null
+}
+
+export const decodePhotoRefusal = (raw: Raw): PhotoRefusal | null => {
+    if (str(raw.status) !== 'ERROR') {
+        return null
+    }
+    return {
+        timestamp: num(raw.timestamp) ?? 0,
+        requestId: str(raw.request_id),
+        reason: str(raw.reason)
+    }
 }
 
 // ── the archive ─────────────────────────────────────────────────────────────

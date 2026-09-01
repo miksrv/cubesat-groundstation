@@ -18,7 +18,7 @@
  */
 
 import { liveStateFromRow } from '../fromRow'
-import type { AttitudeUpdate, SourceCapabilities, TelemetrySource } from '../source'
+import type { AttitudeUpdate, ConnectionState, SourceCapabilities, TelemetrySource } from '../source'
 import type {
     Command,
     LiveState,
@@ -26,6 +26,7 @@ import type {
     MissionSummary,
     Photo,
     PhotoFile,
+    PhotoRefusal,
     RadioEvent,
     TelemetryRecord,
     TelemetrySnapshot
@@ -122,6 +123,18 @@ export class ReplaySource implements TelemetrySource {
     public subscribeSnapshots(_listener: (snapshot: TelemetrySnapshot) => void): () => void {
         // Snapshots are answers to `get_telemetry`, and a recording cannot be
         // asked — `send` rejects, so nothing can be waiting on this channel.
+        return () => undefined
+    }
+
+    public subscribePhotoRefusals(_listener: (refusal: PhotoRefusal) => void): () => void {
+        // A refusal answers a command, and a recording cannot be commanded —
+        // same reasoning as subscribeSnapshots.
+        return () => undefined
+    }
+
+    public subscribeConnection(listener: (state: ConnectionState) => void): () => void {
+        // A recording has no transport to lose: the answer is online, once.
+        listener('online')
         return () => undefined
     }
 

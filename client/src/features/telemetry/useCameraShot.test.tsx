@@ -13,7 +13,7 @@ const photo = (overrides: Partial<Extract<Photo, { kind: 'photo' }>> = {}): Phot
     file: 'photo_20260830_120000.jpg',
     path: '/var/lib/cubesat/photos/42/photo_20260830_120000.jpg',
     sizeBytes: 245760,
-    missionId: '42',
+    missionId: 42,
     photoBase64: 'abc123',
     overlay: null,
     ...overrides
@@ -29,7 +29,7 @@ describe('useCameraShot', () => {
         expect(result.current).toMatchObject({
             kind: 'photo',
             src: 'data:image/jpeg;base64,abc123',
-            missionId: '42'
+            missionId: 42
         })
     })
 
@@ -43,7 +43,7 @@ describe('useCameraShot', () => {
                 file: 'timelapse_20260830_120000_0007.jpg',
                 path: '/var/lib/cubesat/photos/42/timelapse_20260830_120000_0007.jpg',
                 sizeBytes: 204800,
-                missionId: '42',
+                missionId: 42,
                 sequence: 7,
                 overlay: null
             })
@@ -66,9 +66,18 @@ describe('useCameraShot', () => {
                 kind: 'archive',
                 src: '/api/photos/42/photo_20260830_120000.jpg',
                 file: 'photo_20260830_120000.jpg',
-                missionId: '42'
+                missionId: 42,
+                // Recovered from the file name, which embeds the UTC capture time.
+                timestamp: Date.UTC(2026, 7, 30, 12, 0, 0) / 1000
             })
         )
+    })
+
+    it('declares no capture time for an archive name that does not embed one', async () => {
+        const fake = installFakeSource()
+        fake.photos = [{ name: 'snapshot.jpg', url: '/api/photos/42/snapshot.jpg' }]
+        const { result } = renderHook(() => useCameraShot(42))
+        await waitFor(() => expect(result.current).toMatchObject({ kind: 'archive', timestamp: null }))
     })
 
     it('shows nothing for an unfiled frame: the satellite serves only filed photos', () => {

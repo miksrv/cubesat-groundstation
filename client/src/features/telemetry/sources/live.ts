@@ -35,6 +35,7 @@ import {
     decodeObc,
     decodePayload,
     decodePhoto,
+    decodePhotoRefusal,
     decodeRadio,
     decodeScience,
     decodeSnapshot,
@@ -42,7 +43,7 @@ import {
     num,
     str
 } from '../decode'
-import type { AttitudeUpdate, SourceCapabilities, TelemetrySource } from '../source'
+import type { AttitudeUpdate, ConnectionState, SourceCapabilities, TelemetrySource } from '../source'
 import type {
     Command,
     LiveState,
@@ -50,6 +51,7 @@ import type {
     MissionSummary,
     Photo,
     PhotoFile,
+    PhotoRefusal,
     RadioEvent,
     TelemetryRecord,
     TelemetrySnapshot
@@ -58,7 +60,13 @@ import { EMPTY_LIVE_STATE } from '../types'
 
 /** Mirrors `cubesat/common/topics.py`. Kept as one table for the same reason it
  *  is one table there: a topic spelled out at a call site is a topic that
- *  eventually gets spelled differently at another one. */
+ *  eventually gets spelled differently at another one.
+ *
+ *  `cubesat/heartbeat` is deliberately absent. It is OBC's raw material, and
+ *  OBC's finished verdict already arrives on `obc_status.subsystems`
+ *  (`watched`/`lost`); a dashboard reading the heartbeats too would be a
+ *  second, competing opinion about liveness — one with worse information,
+ *  since it cannot know the profile's grace periods. */
 const TOPICS = {
     command: 'cubesat/command',
     hostStatus: 'cubesat/host/status',
@@ -71,8 +79,7 @@ const TOPICS = {
     dhsStatus: 'cubesat/dhs/status',
     commsStatus: 'cubesat/comms/status',
     commsData: 'cubesat/comms/data',
-    commsRadio: 'cubesat/comms/radio',
-    heartbeat: 'cubesat/heartbeat'
+    commsRadio: 'cubesat/comms/radio'
 } as const
 
 const SUBSCRIBED = Object.values(TOPICS).filter((topic) => topic !== TOPICS.command)
@@ -96,9 +103,12 @@ export class LiveSource implements TelemetrySource {
 
     private client: MqttClient | null = null
     private state: LiveState = { ...EMPTY_LIVE_STATE }
+    private connection: ConnectionState = 'connecting'
     private readonly listeners = new Set<(state: LiveState) => void>()
+    private readonly connectionListeners = new Set<(state: ConnectionState) => void>()
     private readonly attitudeListeners = new Set<(sample: AttitudeUpdate) => void>()
     private readonly photoListeners = new Set<(photo: Photo) => void>()
+    private readonly photoRefusalListeners = new Set<(refusal: PhotoRefusal) => void>()
     private readonly radioListeners = new Set<(event: RadioEvent) => void>()
     private readonly snapshotListeners = new Set<(snapshot: TelemetrySnapshot) => void>()
 
@@ -116,6 +126,15 @@ export class LiveSource implements TelemetrySource {
         }
     }
 
+    public subscribeConnection(listener: (state: ConnectionState) => void): () => void {
+        this.connectionListeners.add(listener)
+        this.connect()
+        listener(this.connection)
+        return () => {
+            this.connectionListeners.delete(listener)
+        }
+    }
+
     public subscribeAttitude(listener: (sample: AttitudeUpdate) => void): () => void {
         this.attitudeListeners.add(listener)
         this.connect()
@@ -129,6 +148,14 @@ export class LiveSource implements TelemetrySource {
         this.connect()
         return () => {
             this.photoListeners.delete(listener)
+        }
+    }
+
+    public subscribePhotoRefusals(listener: (refusal: PhotoRefusal) => void): () => void {
+        this.photoRefusalListeners.add(listener)
+        this.connect()
+        return () => {
+            this.photoRefusalListeners.delete(listener)
         }
     }
 
@@ -228,10 +255,29 @@ export class LiveSource implements TelemetrySource {
             reconnectPeriod: 2000,
             clean: true
         })
-        client.on('connect', () => client.subscribe(SUBSCRIBED, { qos: 0 }))
+        client.on('connect', () => {
+            client.subscribe(SUBSCRIBED, { qos: 0 })
+            this.setConnection('online')
+        })
+        // `close` fires on every failed reconnect attempt too, which is what
+        // keeps the state honest while the broker stays away; setConnection
+        // only notifies on an actual change.
+        client.on('close', () => this.setConnection('offline'))
+        client.on('offline', () => this.setConnection('offline'))
+        // Listened to so a transport error is never an unhandled event; the
+        // `close` that follows it is what drives the state.
+        client.on('error', () => undefined)
         client.on('message', (topic, payload) => this.onMessage(topic, payload))
         this.client = client
         return client
+    }
+
+    private setConnection(next: ConnectionState): void {
+        if (this.connection === next) {
+            return
+        }
+        this.connection = next
+        this.connectionListeners.forEach((listener) => listener(next))
     }
 
     private onMessage(topic: string, payload: Uint8Array): void {
@@ -246,9 +292,10 @@ export class LiveSource implements TelemetrySource {
         switch (topic) {
             case TOPICS.obcStatus: {
                 const obc = decodeObc(raw)
-                // decodeObc returns null for a state this build cannot name.
-                // Keeping the previous one beats rendering a satellite with no
-                // state at all.
+                // Null only for a payload with no status string at all — a
+                // state name this build has not heard of decodes fine and
+                // renders verbatim; the satellite is the authority on its own
+                // state machine.
                 if (obc) {
                     this.patch({ obc })
                 }
@@ -299,15 +346,11 @@ export class LiveSource implements TelemetrySource {
                 const photo = decodePhoto(raw)
                 if (photo) {
                     this.photoListeners.forEach((listener) => listener(photo))
+                    return
                 }
-                return
-            }
-            case TOPICS.heartbeat: {
-                const service = str(raw.service) ?? str(raw.client_id)
-                if (service) {
-                    this.patch({
-                        heartbeats: { ...this.state.heartbeats, [service]: num(raw.timestamp) ?? 0 }
-                    })
+                const refusal = decodePhotoRefusal(raw)
+                if (refusal) {
+                    this.photoRefusalListeners.forEach((listener) => listener(refusal))
                 }
                 return
             }

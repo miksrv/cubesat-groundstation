@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import type { AttitudeUpdate, TelemetrySource } from './source'
+import type { AttitudeUpdate, ConnectionState, TelemetrySource } from './source'
 import { createSource } from './sources'
 import type { CameraShot, LiveState, Photo, PhotoFile, RadioEvent } from './types'
 import { EMPTY_LIVE_STATE } from './types'
@@ -31,6 +31,14 @@ export const setSource = (source: TelemetrySource | null): void => {
 export const useLiveState = (): LiveState => {
     const [state, setState] = useState<LiveState>(EMPTY_LIVE_STATE)
     useEffect(() => getSource().subscribe(setState), [])
+    return state
+}
+
+/** The transport's own state. `connecting` only until the subscription's
+ *  immediate callback lands, which is the same render. */
+export const useConnection = (): ConnectionState => {
+    const [state, setState] = useState<ConnectionState>('connecting')
+    useEffect(() => getSource().subscribeConnection(setState), [])
     return state
 }
 
@@ -81,6 +89,22 @@ export const useLatestPhoto = (): Photo | null => {
     const [photo, setPhoto] = useState<Photo | null>(null)
     useEffect(() => getSource().subscribePhotos(setPhoto), [])
     return photo
+}
+
+/**
+ * The archive listing carries names alone, but the satellite embeds the UTC
+ * capture time in each name (`photo_20260830_120000.jpg`,
+ * `timelapse_20260830_120000_0007.jpg`) — so an archived shot's timestamp is
+ * recovered from its name rather than declared unknown. A name that does not
+ * match the pattern honestly yields null.
+ */
+const captureTimeFromName = (name: string): number | null => {
+    const match = /_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/.exec(name)
+    if (match == null) {
+        return null
+    }
+    const [, year, month, day, hour, minute, second] = match.map(Number)
+    return Date.UTC(year, month - 1, day, hour, minute, second) / 1000
 }
 
 /**
@@ -146,8 +170,8 @@ export const useCameraShot = (missionId: number | null): CameraShot | null => {
             src: archived.url,
             kind: 'archive',
             file: archived.name,
-            timestamp: null,
-            missionId: missionId != null ? String(missionId) : null,
+            timestamp: captureTimeFromName(archived.name),
+            missionId,
             sizeBytes: null
         }
     }

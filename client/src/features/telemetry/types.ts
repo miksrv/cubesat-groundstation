@@ -29,6 +29,25 @@ export type Profile = 'HOSTED' | 'DEMO' | 'EXPO' | 'FLIGHT' | 'DIAG' | 'MAINTENA
 /** What the satellite is doing inside that envelope. Chosen from its own telemetry. */
 export type MissionState = 'BOOT' | 'STANDBY' | 'DEPLOY' | 'NOMINAL' | 'SCIENCE' | 'LOW_POWER' | 'SAFE' | 'CRITICAL'
 
+/**
+ * The states this build can classify. A state name on the wire is **not**
+ * validated against this list — the satellite is the authority on its own
+ * state machine, and one it grew after this build shipped still renders under
+ * its real name with neutral styling. This list exists for the classifiers
+ * (severity, badge colour, headline): anything not on it is rendered verbatim
+ * and judged UNKNOWN, never assumed healthy.
+ */
+export const MISSION_STATES: readonly MissionState[] = [
+    'BOOT',
+    'STANDBY',
+    'DEPLOY',
+    'NOMINAL',
+    'SCIENCE',
+    'LOW_POWER',
+    'SAFE',
+    'CRITICAL'
+]
+
 export type Persistence = 'none' | 'mission_db' | 'diag_db'
 
 export type EndReason = 'profile_change' | 'shutdown' | 'battery_critical' | 'interrupted'
@@ -93,7 +112,9 @@ export interface TelemetryRecord {
     timestamp: string
     missionId: number
     profile: Profile | null
-    obcState: MissionState | null
+    /** Verbatim, like {@link ObcStatus.status}: null only when the row never
+     *  recorded one. */
+    obcState: string | null
 
     /** Percent, from the MAX17048 fuel gauge. */
     battery: number | null
@@ -216,8 +237,6 @@ export interface LiveState {
     science: ScienceData | null
     dhs: DhsStatus | null
     comms: CommsStatus | null
-    /** Client id → the epoch seconds of its last heartbeat. */
-    heartbeats: Record<string, number>
 }
 
 export const EMPTY_LIVE_STATE: LiveState = {
@@ -228,8 +247,7 @@ export const EMPTY_LIVE_STATE: LiveState = {
     payload: null,
     science: null,
     dhs: null,
-    comms: null,
-    heartbeats: {}
+    comms: null
 }
 
 /**
@@ -248,8 +266,11 @@ export interface SubsystemHealth {
 
 export interface ObcStatus {
     timestamp: number
-    /** The mission state. Named `status` on the wire, not `state`. */
-    status: MissionState
+    /** The mission state's name, verbatim. Named `status` on the wire, not
+     *  `state`. Usually one of {@link MissionState}, but deliberately open: a
+     *  state this build has not heard of must show up under its own name, not
+     *  freeze the whole panel on the previous message. */
+    status: string
     profile: Profile | null
     cadenceScale: number | null
     persistence: Persistence | null
@@ -305,7 +326,9 @@ export interface PayloadStatus {
     /** Why the satellite may have stopped taking photographs. */
     storage: { freeMb: number | null; minFreeMb: number | null; blocked: boolean } | null
     timelapse: { active: boolean; intervalSec: number | null; frames: number; reason: string | null } | null
-    missionId: string | null
+    /** The integer row id DHS owns — one type on every topic that names a
+     *  mission. Its string form exists only as the photo directory's name. */
+    missionId: number | null
     photoDir: string | null
 }
 
@@ -378,8 +401,11 @@ export interface CommsStatus {
  */
 export interface TelemetrySnapshot {
     timestamp: number
+    /** Whatever the asking client sent, echoed back — always null for asks
+     *  from this UI, which never sets one; see {@link Command.requestId}. */
     requestId: string | null
-    obcState: MissionState | null
+    /** Verbatim, like {@link ObcStatus.status}. */
+    obcState: string | null
     profile: Profile | null
     missionId: number | null
     /** Null where COMMS has heard nothing yet — the satellite sends `{}`. */
@@ -449,7 +475,7 @@ export type Photo =
           file: string | null
           path: string
           sizeBytes: number | null
-          missionId: string | null
+          missionId: number | null
           photoBase64: string
           overlay: PhotoOverlay | null
       }
@@ -459,10 +485,26 @@ export type Photo =
           file: string | null
           path: string
           sizeBytes: number | null
-          missionId: string | null
+          missionId: number | null
           sequence: number | null
           overlay: PhotoOverlay | null
       }
+
+/**
+ * The camera saying no, on the same `cubesat/payload/photo` topic: a
+ * `take_photo` or `start_timelapse` the satellite refused — wrong mission
+ * state, a full card, a capture that failed. It carries no `kind` and no
+ * image; `reason` is the satellite's own sentence. This message is the only
+ * feedback a refused button press produces — the retained `payload_status`
+ * says the camera is blocked in general, never that *this* press did nothing.
+ */
+export interface PhotoRefusal {
+    timestamp: number
+    /** Echoed from the refused command — null for this UI's own asks; see
+     *  {@link Command.requestId}. */
+    requestId: string | null
+    reason: string | null
+}
 
 /** One photograph in a mission's directory, as the archive lists it. */
 export interface PhotoFile {
@@ -483,10 +525,11 @@ export interface CameraShot {
     src: string
     kind: 'photo' | 'timelapse' | 'archive'
     file: string | null
-    /** Epoch seconds of the capture, or null where only the archive listing —
-     *  which carries names alone — knows of the image. */
+    /** Epoch seconds of the capture. Live messages carry it; an archive shot
+     *  recovers it from its file name, which embeds the UTC capture time.
+     *  Null only where neither could say. */
     timestamp: number | null
-    missionId: string | null
+    missionId: number | null
     sizeBytes: number | null
 }
 
@@ -515,5 +558,15 @@ export type CommandName =
 export interface Command {
     command: CommandName
     params?: Record<string, unknown>
+    /**
+     * Deliberately never set by this UI. The satellite echoes it on only two
+     * topics (`comms/data` and `payload/photo`) — OBC answers nothing, its
+     * feedback is the next retained `obc_status` — so request/response
+     * correlation cannot be built for most of the vocabulary anyway. The one
+     * console prints every snapshot and every refusal regardless of who asked,
+     * which is the right behaviour for a single-operator page. Kept in the
+     * type because `send()` supports it and the wire accepts it: the day two
+     * ground clients need to tell their answers apart, this is the field.
+     */
     requestId?: string
 }
