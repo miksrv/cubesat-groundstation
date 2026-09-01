@@ -10,7 +10,7 @@ const shot = (overrides: Partial<CameraShot> = {}): CameraShot => ({
     kind: 'photo',
     file: 'photo_20260830_120000.jpg',
     timestamp: 1741863600,
-    missionId: '42',
+    missionId: 42,
     sizeBytes: 245760,
     ...overrides
 })
@@ -26,6 +26,9 @@ describe('CameraViewWidget', () => {
         )
         expect(screen.getByText(/No photograph yet/)).toBeInTheDocument()
         expect(screen.queryByRole('img')).not.toBeInTheDocument()
+        // The caption row stays, saying in words what is missing — the card
+        // keeps its shape.
+        expect(screen.getByText('no photo data')).toBeInTheDocument()
     })
 
     it('says a recording carries no photographs, which is not a silent camera', () => {
@@ -52,6 +55,9 @@ describe('CameraViewWidget', () => {
         expect(screen.getByText('PHOTO')).toBeInTheDocument()
         expect(screen.getByText(/mission 42/)).toBeInTheDocument()
         expect(screen.getByText(/240 KB/)).toBeInTheDocument()
+        // The caption carries the capture date, not the time alone: the
+        // archive fallback can surface a photograph days old.
+        expect(screen.getByText(/2025/)).toBeInTheDocument()
     })
 
     it('labels an archive image by its file name when no capture time is known', () => {
