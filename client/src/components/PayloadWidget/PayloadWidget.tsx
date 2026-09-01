@@ -1,8 +1,8 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { LiveState, PayloadStatus, ScienceData } from '../../features/telemetry/types'
-import { getPayloadStatus } from '../../utils/subsystemStatus'
+import type { LiveState, ObcStatus, PayloadStatus, ScienceData } from '../../features/telemetry/types'
+import { applyObcVerdict, getPayloadStatus } from '../../utils/subsystemStatus'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
 
@@ -11,6 +11,9 @@ import styles from './PayloadWidget.module.scss'
 interface Props {
     payload: PayloadStatus | null
     science: ScienceData | null
+    /** For OBC's verdict on the service itself: a subsystem the profile never
+     *  started earns "OFF", not the dash of a page still waiting for data. */
+    obc: ObcStatus | null
     isLoading: boolean
 }
 
@@ -22,8 +25,7 @@ const EMPTY: LiveState = {
     payload: null,
     science: null,
     dhs: null,
-    comms: null,
-    heartbeats: {}
+    comms: null
 }
 
 /**
@@ -38,9 +40,13 @@ const EMPTY: LiveState = {
  * actually explains a satellite that stopped taking pictures — is free space
  * and the reason a timelapse ended.
  */
-const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, isLoading }) => {
+const PayloadWidget: React.FC<Props> = React.memo(({ payload, science, obc, isLoading }) => {
     const showSkeleton = isLoading && !payload
-    const status = getPayloadStatus({ ...EMPTY, payload })
+    // `science` rides along for the same reason the Subsystem Status widget
+    // sees it: a replayed row carries no payload_status, but its science
+    // columns are evidence the device answered.
+    const live: LiveState = { ...EMPTY, payload, science, obc }
+    const status = applyObcVerdict(getPayloadStatus(live), live)
     const timelapse = payload?.timelapse ?? null
 
     return (

@@ -13,6 +13,7 @@ describe('PayloadWidget', () => {
             <PayloadWidget
                 payload={mockPayload}
                 science={mockScience}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -27,6 +28,7 @@ describe('PayloadWidget', () => {
             <PayloadWidget
                 payload={mockPayload}
                 science={mockScience}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -41,6 +43,7 @@ describe('PayloadWidget', () => {
                     timelapse: { active: true, intervalSec: 30, frames: 7, reason: null }
                 }}
                 science={mockScience}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -55,6 +58,7 @@ describe('PayloadWidget', () => {
             <PayloadWidget
                 payload={mockPayload}
                 science={mockScience}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -69,6 +73,7 @@ describe('PayloadWidget', () => {
                     storage: { freeMb: 41.2, minFreeMb: 512, blocked: true }
                 }}
                 science={mockScience}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -80,6 +85,7 @@ describe('PayloadWidget', () => {
             <PayloadWidget
                 payload={null}
                 science={null}
+                obc={null}
                 isLoading={true}
             />
         )
