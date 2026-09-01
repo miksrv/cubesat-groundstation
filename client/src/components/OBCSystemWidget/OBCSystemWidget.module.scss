@@ -1,10 +1,16 @@
+/* The ui-kit Container renders a plain <section>, so the flex column must
+   start here for .body to absorb the leftover height — that is what lets
+   the footer's margin-top: auto pin it to the card's bottom edge. */
 .panel {
     height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .body {
     display: flex;
     flex-direction: column;
+    flex: 1;
     gap: 8px;
 }
 
@@ -91,7 +97,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 6px;
+    margin-top: auto;
     padding-top: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }

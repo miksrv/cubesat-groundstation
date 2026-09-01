@@ -22,7 +22,11 @@ const defaultLabel: Record<StatusLevel, string> = {
     WARN: 'WARN',
     FAIL: 'FAIL',
     OFF: 'OFF',
-    UNKNOWN: '—'
+    // In words, not a dash: UNKNOWN is a finding too ("nothing reported yet"),
+    // and it must not be confusable with OFF, which claims the profile never
+    // started the service. A replayed mission shows this for COMMS — the
+    // export records the link's process, never its device.
+    UNKNOWN: 'NO DATA'
 }
 
 const StatusBadge: React.FC<Props> = ({ status, label }) => (

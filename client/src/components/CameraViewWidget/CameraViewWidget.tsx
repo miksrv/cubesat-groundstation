@@ -23,8 +23,22 @@ const KIND_LABELS: Record<CameraShot['kind'], string> = {
     archive: 'ARCHIVE'
 }
 
-const time = (epoch: number | null): string | null =>
-    epoch != null && epoch > 0 ? new Date(epoch * 1000).toLocaleTimeString(undefined, { hour12: false }) : null
+/**
+ * Date and time, not time alone: the archive fallback can surface a photograph
+ * days old, and "12:00:00" on last Tuesday's frame reads as today's.
+ */
+const dateTime = (epoch: number | null): string | null =>
+    epoch != null && epoch > 0
+        ? new Date(epoch * 1000).toLocaleString(undefined, {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+          })
+        : null
 
 /**
  * The placeholder is drawn, not shipped: an inline SVG needs no asset in the
@@ -133,20 +147,30 @@ const CameraViewWidget: React.FC<Props> = React.memo(({ shot, photosAvailable, i
                             <Placeholder message={emptyMessage} />
                         )}
                     </div>
-                    {showImage && (
-                        <div className={styles.caption}>
-                            <span className={styles.kind}>{KIND_LABELS[shot.kind]}</span>
-                            <span className={styles.captionText}>
-                                {[
-                                    time(shot.timestamp) ?? shot.file ?? '—',
-                                    shot.missionId != null ? `mission ${shot.missionId}` : 'unfiled',
-                                    shot.sizeBytes != null ? `${(shot.sizeBytes / 1024).toFixed(0)} KB` : null
-                                ]
-                                    .filter((part) => part != null)
-                                    .join(' · ')}
-                            </span>
-                        </div>
-                    )}
+                    {/* The caption row is always there, so the card keeps its
+                        shape whether a photograph exists or not. It says "no
+                        photo data" in words rather than a dash — a bare dash
+                        does not tell the reader what would have been here. It
+                        also outlives the image itself: a shot retention has
+                        deleted still truthfully had its capture time. */}
+                    <div className={styles.caption}>
+                        {shot != null ? (
+                            <>
+                                <span className={styles.kind}>{KIND_LABELS[shot.kind]}</span>
+                                <span className={styles.captionText}>
+                                    {[
+                                        dateTime(shot.timestamp) ?? shot.file ?? '—',
+                                        shot.missionId != null ? `mission ${shot.missionId}` : 'unfiled',
+                                        shot.sizeBytes != null ? `${(shot.sizeBytes / 1024).toFixed(0)} KB` : null
+                                    ]
+                                        .filter((part) => part != null)
+                                        .join(' · ')}
+                                </span>
+                            </>
+                        ) : (
+                            <span className={styles.captionText}>no photo data</span>
+                        )}
+                    </div>
                 </div>
             )}
         </Container>
