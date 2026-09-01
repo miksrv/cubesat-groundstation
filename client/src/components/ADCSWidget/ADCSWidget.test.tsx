@@ -1,4 +1,4 @@
-import { mockAdcs } from '../../test-fixtures'
+import { mockAdcs, mockObc } from '../../test-fixtures'
 import { render, screen } from '../../test-utils'
 
 import ADCSWidget from './ADCSWidget'
@@ -10,6 +10,7 @@ describe('ADCSWidget', () => {
         render(
             <ADCSWidget
                 adcs={mockAdcs}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -25,6 +26,7 @@ describe('ADCSWidget', () => {
         render(
             <ADCSWidget
                 adcs={{ ...mockAdcs, yaw: null, calibStatus: { sys: 3, gyro: 3, accel: 3, mag: 1 } }}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -36,6 +38,7 @@ describe('ADCSWidget', () => {
         render(
             <ADCSWidget
                 adcs={mockAdcs}
+                obc={null}
                 isLoading={false}
             />
         )
@@ -47,16 +50,32 @@ describe('ADCSWidget', () => {
         render(
             <ADCSWidget
                 adcs={{ ...mockAdcs, gnss: { ...mockAdcs.gnss, fix: false } }}
+                obc={null}
                 isLoading={false}
             />
         )
         expect(screen.getByText('no fix — last known')).toBeInTheDocument()
     })
 
+    it('says OFF, not a dash, for a service the profile never started', () => {
+        // Silence from a service absent from OBC's watch list is correct
+        // behaviour, and the footer must not dress it as missing data.
+        render(
+            <ADCSWidget
+                adcs={null}
+                obc={{ ...mockObc, profile: 'HOSTED', subsystems: { watched: ['eps', 'comms'], lost: [] } }}
+                isLoading={false}
+            />
+        )
+        expect(screen.getByText('OFF')).toBeInTheDocument()
+        expect(screen.getByText('not started by HOSTED')).toBeInTheDocument()
+    })
+
     it('shows skeleton when loading with no data', () => {
         const { container } = render(
             <ADCSWidget
                 adcs={null}
+                obc={null}
                 isLoading={true}
             />
         )

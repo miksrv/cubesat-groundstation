@@ -1,8 +1,8 @@
 import React from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
-import type { AdcsStatus } from '../../features/telemetry/types'
-import { getAdcsStatus } from '../../utils/subsystemStatus'
+import type { AdcsStatus, LiveState, ObcStatus } from '../../features/telemetry/types'
+import { applyObcVerdict, getAdcsStatus } from '../../utils/subsystemStatus'
 import StatRow from '../common/StatRow/StatRow'
 import StatusBadge from '../common/StatusBadge/StatusBadge'
 
@@ -10,25 +10,28 @@ import styles from './ADCSWidget.module.scss'
 
 interface Props {
     adcs: AdcsStatus | null
+    /** For OBC's verdict on the service itself: a subsystem the profile never
+     *  started earns "OFF", not the dash of a page still waiting for data. */
+    obc: ObcStatus | null
     isLoading: boolean
 }
 
 const fmtDeg = (v: number | null | undefined): string => (v != null ? `${v.toFixed(2)}°` : '—')
 const fmtRate = (v: number | null | undefined): string => (v != null ? `${v.toFixed(2)}°/s` : '—')
 
-const ADCSWidget: React.FC<Props> = React.memo(({ adcs, isLoading }) => {
+const ADCSWidget: React.FC<Props> = React.memo(({ adcs, obc, isLoading }) => {
     const showSkeleton = isLoading && !adcs
-    const status = getAdcsStatus({
+    const live: LiveState = {
         host: null,
-        obc: null,
+        obc,
         eps: null,
         adcs,
         payload: null,
         science: null,
         dhs: null,
-        comms: null,
-        heartbeats: {}
-    })
+        comms: null
+    }
+    const status = applyObcVerdict(getAdcsStatus(live), live)
     const mag = adcs?.calibStatus?.mag ?? null
 
     return (
