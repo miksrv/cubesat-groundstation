@@ -2,10 +2,24 @@
     height: 100%;
 }
 
+/* Capped like its row-mates' logs (console 220px, alerts 260px): without a
+   ceiling this widget's button stack is what set the whole row's height. */
+.scroll {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
 .grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
+}
+
+/* The seam between the vocabularies: commands above, profiles below. The
+   destructive tint they all share already reads as a group, so a gap is
+   enough — no line. */
+.profiles {
+    margin-top: 8px;
 }
 
 .button {

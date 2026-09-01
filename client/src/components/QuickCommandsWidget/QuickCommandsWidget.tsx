@@ -38,18 +38,12 @@ const QuickCommandsWidget: React.FC = () => {
     const [pending, setPending] = useState<CommandName | null>(null)
     const [lastMessage, setLastMessage] = useState<string | null>(null)
 
-    // A recording cannot be commanded. Asked rather than assumed, and the panel
-    // is hidden rather than shown with buttons that quietly do nothing.
-    if (!source.capabilities.commands) {
-        return (
-            <Container
-                title='Quick Commands'
-                className={styles.panel}
-            >
-                <div className={styles.feedback}>This is a recorded mission — there is no satellite to command.</div>
-            </Container>
-        )
-    }
+    // A recording cannot be commanded. The vocabulary still renders — the
+    // panel shows what an operator of the live satellite could do — but every
+    // button is disabled. Disabled is honest where hidden was mute and enabled
+    // would be a button that quietly does nothing.
+    const commandable = source.capabilities.commands
+    const locked = !commandable || pending != null
 
     const send = async (command: Command) => {
         setPending(command.command)
@@ -68,39 +62,41 @@ const QuickCommandsWidget: React.FC = () => {
             title='Quick Commands'
             className={styles.panel}
         >
-            <div className={styles.grid}>
-                {COMMANDS.map(({ label, command, destructive }) => (
-                    <button
-                        key={label}
-                        type='button'
-                        className={`${styles.button} ${destructive ? styles.destructive : ''}`}
-                        disabled={pending != null}
-                        onClick={() => send(command)}
-                    >
-                        {pending === command.command ? '…' : label.toUpperCase()}
-                    </button>
-                ))}
+            <div className={styles.scroll}>
+                <div className={styles.grid}>
+                    {COMMANDS.map(({ label, command, destructive }) => (
+                        <button
+                            key={label}
+                            type='button'
+                            className={`${styles.button} ${destructive ? styles.destructive : ''}`}
+                            disabled={locked}
+                            onClick={() => send(command)}
+                        >
+                            {pending === command.command ? '…' : label.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
+                <div className={`${styles.grid} ${styles.profiles}`}>
+                    {PROFILES.map((profile) => (
+                        <button
+                            key={profile}
+                            type='button'
+                            /*
+                              set_profile is the one that can end a demonstration: in
+                              EXPO the satellite is its own access point, and moving to
+                              HOSTED takes it down along with whoever pressed the
+                              button. Marked destructive so it looks like what it is.
+                            */
+                            className={`${styles.button} ${styles.destructive}`}
+                            disabled={locked}
+                            onClick={() => send({ command: 'set_profile', params: { profile } })}
+                        >
+                            {profile}
+                        </button>
+                    ))}
+                </div>
             </div>
-            <div className={styles.grid}>
-                {PROFILES.map((profile) => (
-                    <button
-                        key={profile}
-                        type='button'
-                        /*
-                          set_profile is the one that can end a demonstration: in
-                          EXPO the satellite is its own access point, and moving to
-                          HOSTED takes it down along with whoever pressed the
-                          button. Marked destructive so it looks like what it is.
-                        */
-                        className={`${styles.button} ${styles.destructive}`}
-                        disabled={pending != null}
-                        onClick={() => send({ command: 'set_profile', params: { profile } })}
-                    >
-                        {profile}
-                    </button>
-                ))}
-            </div>
-            {lastMessage && <div className={styles.feedback}>{lastMessage}</div>}
+            {commandable && lastMessage && <div className={styles.feedback}>{lastMessage}</div>}
         </Container>
     )
 }

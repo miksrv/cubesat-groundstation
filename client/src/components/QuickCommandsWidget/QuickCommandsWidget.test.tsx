@@ -36,12 +36,15 @@ describe('QuickCommandsWidget', () => {
         await waitFor(() => expect(source.sent).toEqual([{ command: 'set_profile', params: { profile: 'EXPO' } }]))
     })
 
-    it('hides the buttons entirely when the source cannot be commanded', () => {
-        // A recording has no satellite behind it. Buttons that silently do
-        // nothing are worse than buttons that are not there.
+    it('shows the vocabulary disabled when the source cannot be commanded', () => {
+        // A recording has no satellite behind it. The buttons stay visible —
+        // the panel still teaches what an operator could do — but disabled.
         source.capabilities = { commands: false, archive: true, photos: false, radio: false }
         render(<QuickCommandsWidget />)
-        expect(screen.getByText(/no satellite to command/)).toBeInTheDocument()
-        expect(screen.queryByText('TAKE PHOTO')).not.toBeInTheDocument()
+        const takePhoto = screen.getByText('TAKE PHOTO')
+        expect(takePhoto).toBeDisabled()
+        expect(screen.getByText('EXPO')).toBeDisabled()
+        takePhoto.click()
+        expect(source.sent).toEqual([])
     })
 })
