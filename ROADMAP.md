@@ -61,6 +61,19 @@ scene's up. When it does not, the horizon dims and says so rather than drawing a
 plane. **Nothing here has been confirmed against the real chip yet** — the bundled recording is
 synthetic, so the check exists precisely to speak up when a real walk finally arrives.
 
+**`Mission Events` should be a ship's log, and it is missing the entries an operator looks for
+first — requested 2026-09-01.** Four transitions, all already on the bus and all derivable in
+`features/events/observed.ts` the way the existing entries are: `eps_status.external_power` flipping
+("mains lost" / "mains restored" — the charging investigation kept wanting that timestamp);
+`payload_photo` arriving (an on-demand `photo` and a mission `mission_frame` are different lines, with
+file name and sequence); `adcs_status.gnss.fix` flipping, with the satellite count; and
+`comms_status.lora_enabled` flipping ("beacon on" / "beacon off"). Rename the widget to what it is —
+a ship's log, *бортовой журнал*. The honest limitation stays: this log starts when the page does.
+Whether the satellite should keep an `events` table of its own — the same transitions recorded by DHS
+beside `radio_log`, exported and replayed with the mission — is a decision filed in `cubesat-sim`'s
+`ROADMAP.md`; if it lands, the widget reads that table for history and keeps deriving live lines as
+now.
+
 **The LoRa antenna is not drawn on the satellite model.** The BNO055 notes fix the camera face
 (`+X points away from the camera`), which is what anchors the drawing to the real object, but no
 document in `cubesat-sim` — hardware notes, README or the frame STLs — records which face the

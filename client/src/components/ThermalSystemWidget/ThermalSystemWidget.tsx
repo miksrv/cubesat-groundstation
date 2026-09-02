@@ -100,10 +100,12 @@ const ThermalSystemWidget: React.FC<Props> = React.memo(({ latest, history, adcs
                     {/* Cyan, deliberately not orange or red: in this card those
                         are the WARN/FAIL accents, and a trend line wearing a
                         status colour would read as an alarm that is not there. */}
-                    <Sparkline
-                        values={cpuTrend}
-                        color={chartColors.cyan[0]}
-                    />
+                    <div className={styles.trend}>
+                        <Sparkline
+                            values={cpuTrend}
+                            color={chartColors.cyan[0]}
+                        />
+                    </div>
                     <div className={styles.footer}>
                         <span className={styles.footerLabel}>
                             {cpu != null ? 'SoC throttles at 80°C' : 'no recorded row yet'}

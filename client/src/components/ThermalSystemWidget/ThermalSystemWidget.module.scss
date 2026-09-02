@@ -1,6 +1,7 @@
 /* The ui-kit Container renders a plain <section>, so the flex column must
    start here for .body to absorb the leftover height — that is what lets
-   the footer's margin-top: auto pin it to the card's bottom edge. */
+   .trend's margin-top: auto push the sparkline, and the footer under it,
+   down to the card's bottom edge. */
 .panel {
     height: 100%;
     display: flex;
@@ -13,11 +14,17 @@
     flex: 1;
 }
 
+/* Holds the slack for the whole card: Sparkline returns null under two
+   points, and a wrapper that is always in the tree keeps the footer at the
+   bottom in that case too. */
+.trend {
+    margin-top: auto;
+}
+
 .footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: auto;
     padding-top: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }

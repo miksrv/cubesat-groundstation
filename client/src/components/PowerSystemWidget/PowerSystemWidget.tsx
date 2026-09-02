@@ -165,10 +165,12 @@ const PowerSystemWidget: React.FC<Props> = React.memo(({ eps, obc, history, isLo
                     {/* Blue is the Battery Voltage series' own hue in Telemetry
                         Graphs — colour follows the entity across widgets. Last
                         in the card, mirroring the Temperatures layout. */}
-                    <Sparkline
-                        values={voltageTrend}
-                        color={chartColors.blue[0]}
-                    />
+                    <div className={styles.trend}>
+                        <Sparkline
+                            values={voltageTrend}
+                            color={chartColors.blue[0]}
+                        />
+                    </div>
                     <div className={styles.footer}>
                         <span className={styles.footerLabel}>{footerLine(status, eps)}</span>
                         <StatusBadge
