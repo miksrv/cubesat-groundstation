@@ -11,13 +11,15 @@ interface Props {
     latest: TelemetryRecord | null
     history: TelemetryRecord[]
     orbit: OrbitState | null
+    /** Epoch seconds — the moment the daylight is drawn for. See `useSunInstant`. */
+    sunInstant: number
 }
 
 // Canvas is created only once this whole chunk (Canvas + EarthScene + three.js)
 // has finished loading, instead of mounting Canvas eagerly and suspending on
 // EarthScene inside it — the latter is what triggered WebGL context loss under
 // React.StrictMode's mount/cleanup/remount cycle in development.
-const Orbit3DScene: React.FC<Props> = ({ latest, history, orbit }) => (
+const Orbit3DScene: React.FC<Props> = ({ latest, history, orbit, sunInstant }) => (
     <Canvas
         camera={{ position: [0, 1.5, 5.5], fov: 45 }}
         gl={{ powerPreference: 'default' }}
@@ -27,6 +29,7 @@ const Orbit3DScene: React.FC<Props> = ({ latest, history, orbit }) => (
                 latest={latest}
                 history={history}
                 orbit={orbit}
+                sunInstant={sunInstant}
             />
         </Suspense>
     </Canvas>

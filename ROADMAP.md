@@ -93,6 +93,25 @@ no longer narrates its own buttons. The console prints what crosses `cubesat/com
 covers a phone, the `cubesat` CLI and an uplink relayed off the radio as well; a publish that failed
 has no echo, so it is posted into the console explicitly.
 
+**The globe's day and night are real as of 2026-09-02, and were not before.** The terminator was
+the constant `THREE.Vector3(1, 0.3, 0.5)` in `client/src/three/earthMaterial.ts` — a subsolar point
+of 15.0° N, 26.6° W, about 13:46 UTC in mid-June — and the sphere never rotated, so Moscow was
+permanently in daylight and Vladivostok permanently in the dark whatever the clock said. `eclipse`
+in `features/orbit/simulate.ts` was a *second*, unrelated fiction (`cos(trueAnomaly) < 0` against a
+Sun assumed to sit at longitude 0), so the panel could read `Eclipse: YES` with the satellite marker
+sitting in daylight. Both now come from one Sun, computed in `features/orbit/sun.ts` from the clock
+alone by the Astronomical Almanac's low-precision formulae — including the equation of time and the
+declination, which is what tilts the terminator with the season. **The orbit stays a fiction and the
+sunlight does not**: where the Sun stands over the Earth needs nothing measured, so it is exact for
+the real planet even though the satellite drawn against it is not, and the widget prints the
+subsolar point so the shading is checkable rather than decorative. Which instant to draw is
+`features/orbit/useSunInstant.ts`, and that split is the one judgement call in the change: the live
+page and the `yarn demo` replay draw **now** (the demo replays a past afternoon, but the viewer is
+looking at a globe, and a night somewhere other than their own reads as broken), while a mission
+opened from the timeline draws **its own instant**, because there the past afternoon is the point and
+the scrubber already says so. `sun.test.ts` asserts against the almanac rather than against a
+previous run — solstice declinations, equinoxes, and the equation of time at its annual extremes.
+
 **The bundled recording is a placeholder.** `client/scripts/make-placeholder-recording.mjs` generates
 it and it is meant to be thrown away — the demo should replay a real walk exported from the
 satellite. The stack has run on the Pi twice, and there are recorded missions, so what Stage 7 waits

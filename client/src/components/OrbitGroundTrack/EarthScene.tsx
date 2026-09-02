@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 
 import { Line, OrbitControls, Stars, useTexture } from '@react-three/drei'
@@ -6,6 +6,7 @@ import { Line, OrbitControls, Stars, useTexture } from '@react-three/drei'
 import earthDayUrl from '../../assets/earth/earth_day.jpg'
 import earthNightUrl from '../../assets/earth/earth_night.png'
 import type { OrbitState } from '../../features/orbit/simulate'
+import { subsolarPoint } from '../../features/orbit/sun'
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { createEarthMaterial } from '../../three/earthMaterial'
 import { latLonToVector3 } from '../../three/geo'
@@ -14,14 +15,25 @@ interface Props {
     latest: TelemetryRecord | null
     history: TelemetryRecord[]
     orbit: OrbitState | null
+    /** Epoch seconds — the moment the daylight is drawn for. Chosen by
+     *  `useSunInstant`, which is where the live/replay rule is written down. */
+    sunInstant: number
 }
 
 const EARTH_RADIUS = 2
 const EARTH_REAL_RADIUS_KM = 6371
 
-const Earth: React.FC = () => {
+const Earth: React.FC<{ sunDirection: THREE.Vector3 }> = ({ sunDirection }) => {
     const [dayMap, nightMap] = useTexture([earthDayUrl, earthNightUrl])
     const material = useMemo(() => createEarthMaterial(dayMap, nightMap), [dayMap, nightMap])
+
+    // The uniform is written, not baked in: the material depends on the
+    // textures alone, so moving the terminator does not recompile the shader.
+    // An effect runs after commit and before the next animation frame, so no
+    // frame is ever drawn with the placeholder direction.
+    useEffect(() => {
+        material.uniforms.sunDirection.value.copy(sunDirection)
+    }, [material, sunDirection])
 
     return (
         <mesh material={material}>
@@ -158,37 +170,51 @@ const SatelliteMarker: React.FC<{ latest: TelemetryRecord | null }> = ({ latest 
     )
 }
 
-const EarthScene: React.FC<Props> = ({ latest, history, orbit }) => (
-    <>
-        <ambientLight intensity={0.15} />
-        <directionalLight
-            position={[3, 1, 1.5]}
-            intensity={1.2}
-        />
-        <Stars
-            radius={50}
-            depth={30}
-            count={2000}
-            factor={2}
-            fade
-        />
-        <Earth />
-        <OrbitRing
-            orbit={orbit}
-            latest={latest}
-            history={history}
-        />
-        <GroundTrack history={history} />
-        <SatelliteMarker latest={latest} />
-        <OrbitControls
-            autoRotate
-            autoRotateSpeed={0.4}
-            enableZoom
-            enablePan={false}
-            minDistance={3}
-            maxDistance={10}
-        />
-    </>
-)
+const EarthScene: React.FC<Props> = ({ latest, history, orbit, sunInstant }) => {
+    // Built with the same function the ground track and the satellite marker
+    // use, so the lit half and the geography share one convention by
+    // construction rather than by two matching comments.
+    const sunDirection = useMemo(() => {
+        const { latDeg, lonDeg } = subsolarPoint(sunInstant)
+        return latLonToVector3(latDeg, lonDeg, 1)
+    }, [sunInstant])
+
+    return (
+        <>
+            <ambientLight intensity={0.15} />
+            {/* Aimed at the Sun as well. Nothing in this scene is lit — the
+                globe is a ShaderMaterial and everything else is unlit — but a
+                light pointing somewhere the Sun is not is a contradiction
+                waiting for the first object that does take lighting. */}
+            <directionalLight
+                position={sunDirection.clone().multiplyScalar(5)}
+                intensity={1.2}
+            />
+            <Stars
+                radius={50}
+                depth={30}
+                count={2000}
+                factor={2}
+                fade
+            />
+            <Earth sunDirection={sunDirection} />
+            <OrbitRing
+                orbit={orbit}
+                latest={latest}
+                history={history}
+            />
+            <GroundTrack history={history} />
+            <SatelliteMarker latest={latest} />
+            <OrbitControls
+                autoRotate
+                autoRotateSpeed={0.4}
+                enableZoom
+                enablePan={false}
+                minDistance={3}
+                maxDistance={10}
+            />
+        </>
+    )
+}
 
 export default EarthScene

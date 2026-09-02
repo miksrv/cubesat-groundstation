@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react'
 import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { OrbitState } from '../../features/orbit/simulate'
+import { subsolarPoint } from '../../features/orbit/sun'
 import type { TelemetryRecord } from '../../features/telemetry/types'
 
 import styles from './OrbitGroundTrack.module.scss'
@@ -10,6 +11,10 @@ interface Props {
     latest: TelemetryRecord | null
     history: TelemetryRecord[]
     orbit: OrbitState | null
+    /** Epoch seconds — the moment the globe's daylight is drawn for: now while
+     *  the page is live (and in the `yarn demo` replay), the playhead while a
+     *  mission is being replayed. `useSunInstant` is where that rule lives. */
+    sunInstant: number
     isLoading: boolean
 }
 
@@ -21,8 +26,17 @@ const Orbit3DScene = lazy(() => import('./Orbit3DScene'))
 
 const fmtDeg = (v: number | null | undefined): string => (v != null ? `${v.toFixed(4)}°` : '—')
 
-const OrbitGroundTrack: React.FC<Props> = React.memo(({ latest, history, orbit, isLoading }) => {
+/** A point as a navigator writes it: hemispheres rather than signs, which is
+ *  what makes a subsolar readout checkable against an almanac at a glance. */
+const fmtPoint = (latDeg: number, lonDeg: number): string =>
+    `${Math.abs(latDeg).toFixed(1)}°${latDeg >= 0 ? 'N' : 'S'} ${Math.abs(lonDeg).toFixed(1)}°${lonDeg >= 0 ? 'E' : 'W'}`
+
+const OrbitGroundTrack: React.FC<Props> = React.memo(({ latest, history, orbit, sunInstant, isLoading }) => {
     const showSkeleton = isLoading && !latest
+    // Printed so the shading on the globe is checkable rather than decorative:
+    // this is where the Sun stands at the instant on display, and it is the
+    // same number the terminator is drawn from.
+    const sun = subsolarPoint(sunInstant)
 
     return (
         <Container
@@ -38,6 +52,7 @@ const OrbitGroundTrack: React.FC<Props> = React.memo(({ latest, history, orbit, 
                                 latest={latest}
                                 history={history}
                                 orbit={orbit}
+                                sunInstant={sunInstant}
                             />
                         </Suspense>
                     </div>
@@ -68,10 +83,23 @@ const OrbitGroundTrack: React.FC<Props> = React.memo(({ latest, history, orbit, 
                         </div>
                         <div className={styles.coords}>
                             <div className={styles.coord}>
-                                <span>Eclipse</span>
+                                {/* The Sun is real; the position it is tested
+                                    against is the simulated one, so this says
+                                    (sim) like the anomaly beside it. */}
+                                <span>Eclipse (sim)</span>
                                 <b className={orbit?.eclipse ? styles.eclipseOn : ''}>
-                                    {orbit?.eclipse ? 'YES' : 'NO'}
+                                    {orbit ? (orbit.eclipse ? 'YES' : 'NO') : '—'}
                                 </b>
+                            </div>
+                            <div className={styles.coord}>
+                                {/* Not simulated and not telemetry either:
+                                    where the Sun stands over the Earth is
+                                    arithmetic on the clock, so it is exact for
+                                    the real planet even though the satellite
+                                    drawn against it is a fiction. It is also
+                                    what shades the globe — one Sun, not two. */}
+                                <span>Subsolar (calc)</span>
+                                <b>{fmtPoint(sun.latDeg, sun.lonDeg)}</b>
                             </div>
                             <div className={styles.coord}>
                                 {/* The simulation propagates a circular orbit from the

@@ -20,7 +20,13 @@
  *
  * The real position — the one from the receiver — belongs on the map, from
  * `gnss`, and only from rows where `fix` is true.
+ *
+ * One thing on this view is *not* simulated: the sunlight. Where the Sun stands
+ * over the Earth at a given instant is a fact, it needs nothing measured, and it
+ * is what shades the globe and decides `eclipse` below. See `sun.ts`.
  */
+
+import { inEclipse } from './sun'
 
 /** A simulated orbital state. Nothing here was measured. */
 export interface OrbitState {
@@ -35,6 +41,9 @@ export interface OrbitState {
     /** Sub-satellite point, for the ground track. */
     latDeg: number
     lonDeg: number
+    /** Whether the sub-satellite point above is in the Earth's shadow, from the
+     *  **real** Sun at this instant — the one thing here that is not invented.
+     *  See `sun.ts`. */
     eclipse: boolean
     orbitNumber: number
     /** Seconds until the simulated pass over the ground station below. */
@@ -79,10 +88,13 @@ export const simulateOrbit = (nowSeconds: number = Date.now() / 1000): OrbitStat
     const argument = Math.atan2(Math.cos(inclinationRad) * Math.sin(anomalyRad), Math.cos(anomalyRad))
     const lonDeg = wrap180((argument * 180) / Math.PI + RAAN_DEG - minutes * EARTH_ROTATION_DEG_PER_MIN)
 
-    // Eclipse: crudely, the half of the orbit facing away from a Sun fixed at
-    // longitude 0. Crude on purpose — a real terminator model would be
-    // precision about a fiction.
-    const eclipse = Math.cos(anomalyRad) < 0
+    // From the real Sun at this instant, and the same Sun the globe is shaded
+    // with — see `sun.ts`. The orbit is a fiction; where the sunlight falls on
+    // the Earth is not, and computing it is cheaper than the constant it
+    // replaced was wrong. This used to be `cos(anomalyRad) < 0` against a Sun
+    // assumed to sit at longitude 0, which agreed with the shading on the globe
+    // at no time of any day.
+    const eclipse = inEclipse(latDeg, lonDeg, ALTITUDE_KM, nowSeconds)
 
     const separation = Math.abs(wrap180(GROUND_STATION.lon - lonDeg)) / 360
     return {

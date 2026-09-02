@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 
 import { useObservedEvents } from '../../features/events/useObservedEvents'
 import { useOrbit } from '../../features/orbit/useOrbit'
+import { useSunInstant } from '../../features/orbit/useSunInstant'
 import type { TelemetryRecord } from '../../features/telemetry/types'
 import { EMPTY_LIVE_STATE } from '../../features/telemetry/types'
 import { getSource, useCameraShot, useConnection, useLiveState, useRadioLog } from '../../features/telemetry/useSource'
@@ -139,6 +140,11 @@ const Dashboard: React.FC = () => {
     }, [])
 
     const replaying = timeline.phase === 'ready'
+    // Which sky the globe is shaded with. The live view and the `yarn demo`
+    // replay draw the viewer's present; a mission off the timeline draws its own
+    // afternoon, so the terminator crosses its track where it actually did.
+    // `useSunInstant` carries the argument for that split.
+    const sunInstant = useSunInstant(replaying ? timeline.playhead : null)
     // One clock: while the timeline is active every widget reads its instant.
     // Before the mission's first row the replayed state is honestly empty —
     // nothing had been recorded yet — never the live satellite's present.
@@ -188,6 +194,7 @@ const Dashboard: React.FC = () => {
                         latest={latest}
                         history={shownHistory}
                         orbit={replaying ? null : orbit}
+                        sunInstant={sunInstant}
                         isLoading={connecting}
                     />
                     {/* The mission's own position, and — in a replay — nothing
