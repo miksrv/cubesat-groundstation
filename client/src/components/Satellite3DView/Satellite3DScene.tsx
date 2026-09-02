@@ -29,13 +29,31 @@ interface Props {
      *  and the wrapper's title reads it there. */
     heading: HeadingFix
     onHeading: (fix: HeadingFix) => void
+    /** Owned by the widget, where the switch for it is. Off means the corner
+     *  triad is not drawn — and with it goes the only way back to an
+     *  axis-aligned camera station, which is why it is on until asked. */
+    showGizmo: boolean
+    /** Owned by the widget for the same reason. Off means no floor, no grid, no
+     *  horizon rim and no compass letters — and so no *picture* of either
+     *  verdict. The words for both stay on the canvas wrapper, which is why
+     *  hiding it withholds nothing. */
+    showGround: boolean
 }
 
 // Canvas lives inside this component (not the other way around) so the whole
 // chunk mounts as one unit once loaded — see the OrbitGroundTrack widget for
 // why mounting Canvas eagerly with a lazy child behind Suspense causes WebGL
 // context loss under React.StrictMode in development.
-const Satellite3DScene: React.FC<Props> = ({ attitudeRef, adcs, frameCheck, onFrameCheck, heading, onHeading }) => {
+const Satellite3DScene: React.FC<Props> = ({
+    attitudeRef,
+    adcs,
+    frameCheck,
+    onFrameCheck,
+    heading,
+    onHeading,
+    showGizmo,
+    showGround
+}) => {
     return (
         <>
             {/* Outside the Canvas on purpose: both audits are arithmetic on
@@ -70,10 +88,12 @@ const Satellite3DScene: React.FC<Props> = ({ attitudeRef, adcs, frameCheck, onFr
                         plane is here to give. A plain dark background loses
                         nothing, and the horizon reads.
                     */}
-                    <WorldReference
-                        status={frameCheck.status}
-                        heading={heading}
-                    />
+                    {showGround && (
+                        <WorldReference
+                            status={frameCheck.status}
+                            heading={heading}
+                        />
+                    )}
                     <CubeSatModel
                         attitudeRef={attitudeRef}
                         accel={adcs?.accel ?? null}
@@ -90,24 +110,27 @@ const Satellite3DScene: React.FC<Props> = ({ attitudeRef, adcs, frameCheck, onFr
                         colours, so the corner triad and the triad on the body
                         are the same three axes seen twice. `WorldAxesGizmo` says
                         why that cannot be drei's `GizmoViewport`. */}
-                    <GizmoHelper
-                        alignment='top-right'
-                        // Unequal on purpose, to come out equal on screen. The
-                        // margin places the gizmo's *origin*, and only the three
-                        // positive ends are drawn, so the cluster is not centred
-                        // on that origin: from the default station the topmost
-                        // head (Z) reaches 37 px up while the rightmost (X)
-                        // reaches 31 px across, so equal margins leave the right
-                        // gap ~6 px wider than the top one — which reads as the
-                        // gizmo floating away from the right edge. Taking that
-                        // 6 px off the horizontal margin squares them up. Exact
-                        // only for the station the widget opens on: the heads
-                        // swing once the viewer drags, and no fixed margin can
-                        // follow them.
-                        margin={[46, 52]}
-                    >
-                        <WorldAxesGizmo />
-                    </GizmoHelper>
+                    {showGizmo && (
+                        <GizmoHelper
+                            alignment='top-right'
+                            // Unequal on purpose, to come out equal on screen.
+                            // The margin places the gizmo's *origin*, and only
+                            // the three positive ends are drawn, so the cluster
+                            // is not centred on that origin: from the default
+                            // station the topmost head (Z) reaches 37 px up
+                            // while the rightmost (X) reaches 31 px across, so
+                            // equal margins leave the right gap ~6 px wider than
+                            // the top one — which reads as the gizmo floating
+                            // away from the right edge. Taking that 6 px off the
+                            // horizontal margin squares them up. Exact only for
+                            // the station the widget opens on: the heads swing
+                            // once the viewer drags, and no fixed margin can
+                            // follow them.
+                            margin={[46, 52]}
+                        >
+                            <WorldAxesGizmo />
+                        </GizmoHelper>
+                    )}
                     {/* The only camera control besides the gizmo's heads: drag
                         to orbit, wheel to zoom. Nothing puts the camera back to
                         where it opened — the gizmo's three stations are the way

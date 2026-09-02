@@ -7,7 +7,7 @@ import { useAttitudeRef } from '../../features/telemetry/useSource'
 
 import AttitudeIndicator from './AttitudeIndicator'
 import type { FrameCheck, HeadingFix } from './sceneContract'
-import { ACCEL_COLOR, AXIS_COLOR, INITIAL_FRAME_CHECK, INITIAL_HEADING_FIX, sceneNotes } from './sceneContract'
+import { INITIAL_FRAME_CHECK, INITIAL_HEADING_FIX, sceneNotes } from './sceneContract'
 
 import styles from './Satellite3DView.module.scss'
 
@@ -25,6 +25,44 @@ interface Props {
 const Satellite3DScene = lazy(() => import('./Satellite3DScene'))
 
 const fmtRate = (n: number | null | undefined): string => (n != null ? n.toFixed(2) : '—')
+
+interface ToggleProps {
+    label: string
+    /** Why a viewer would turn it off — the overlays are legible, not obvious. */
+    hint: string
+    checked: boolean
+    onChange: (next: boolean) => void
+}
+
+/**
+ * One switch over the canvas' two overlays.
+ *
+ * A real checkbox with `role='switch'`, not a div that listens for clicks: the
+ * label is the accessible name, the space bar works, and the focus ring is the
+ * browser's. It is local to this widget because it is the only place in the
+ * dashboard that has anything to switch.
+ */
+const SceneToggle: React.FC<ToggleProps> = ({ label, hint, checked, onChange }) => (
+    <label
+        className={styles.toggle}
+        title={hint}
+    >
+        <input
+            type='checkbox'
+            role='switch'
+            className={styles.toggleInput}
+            checked={checked}
+            onChange={(event) => onChange(event.target.checked)}
+        />
+        <span
+            className={styles.toggleTrack}
+            aria-hidden='true'
+        >
+            <span className={styles.toggleThumb} />
+        </span>
+        <span className={styles.toggleLabel}>{label}</span>
+    </label>
+)
 
 const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude }) => {
     const showSkeleton = isLoading && !adcs
@@ -54,6 +92,31 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
       uncalibrated.
     */
     const [heading, setHeading] = useState<HeadingFix>(INITIAL_HEADING_FIX)
+
+    /*
+      What is drawn *around* the satellite, rather than what is known about it.
+      All three are annotations on the same small canvas — the artificial
+      horizon holds one corner, the orientation gizmo the other, the ground disc
+      the space the cube stands in — and on the narrowest column of the top row
+      they cover a fair share of the thing they annotate. So they are
+      switchable, and on by default: a viewer who has not touched anything still
+      gets all three.
+
+      No switch here withholds telemetry. Every one of the three hides something
+      the widget also says in words — roll and pitch under the canvas, the axis
+      names on the gizmo's own heads, both scene verdicts on the wrapper — so
+      turning one off hides an annotation and never a measurement.
+    */
+    const [showHorizon, setShowHorizon] = useState(true)
+    const [showGizmo, setShowGizmo] = useState(true)
+    /*
+      The ground disc is the third, and the one with a caveat: it is also where
+      the scene *draws* its two verdicts — the rim dims when the frame is
+      unconfirmed, the rim goes unlettered when there is no north. Taking it off
+      does not silence them, because the words for both are on the canvas
+      wrapper either way; it only takes away the picture of them.
+    */
+    const [showGround, setShowGround] = useState(true)
 
     /*
       No camera control in the header. The orientation gizmo inside the canvas
@@ -87,12 +150,14 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
                                 onFrameCheck={setFrameCheck}
                                 heading={heading}
                                 onHeading={setHeading}
+                                showGizmo={showGizmo}
+                                showGround={showGround}
                             />
                         </Suspense>
                         {/* Plain DOM over the WebGL surface: roll and pitch
                             without orbiting the camera, and with no scene to
                             lose if the context goes. */}
-                        <AttitudeIndicator adcs={adcs} />
+                        {showHorizon && <AttitudeIndicator adcs={adcs} />}
                     </div>
                     <div className={styles.values}>
                         <div className={styles.axis}>
@@ -125,44 +190,30 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
                             ω<sub>z</sub> {fmtRate(adcs?.gyro.z)}°/s
                         </span>
                     </div>
-                    {/* Named for what is on the frame, not for a mission role
-                        this craft does not have. The axis directions are the
-                        BNO055's, bench-verified on the assembled satellite. */}
-                    <div className={styles.legend}>
-                        <div className={styles.legendItem}>
-                            <span
-                                className={styles.legendColor}
-                                style={{ background: AXIS_COLOR.x }}
-                            />
-                            <span>X — camera looks −X</span>
-                        </div>
-                        <div className={styles.legendItem}>
-                            <span
-                                className={styles.legendColor}
-                                style={{ background: AXIS_COLOR.y }}
-                            />
-                            <span>Y — right side</span>
-                        </div>
-                        <div className={styles.legendItem}>
-                            <span
-                                className={styles.legendColor}
-                                style={{ background: AXIS_COLOR.z }}
-                            />
-                            <span>Z — top of frame</span>
-                        </div>
-                        <div className={styles.legendItem}>
-                            <span
-                                className={styles.legendColor}
-                                style={{ background: ACCEL_COLOR }}
-                            />
-                            {/* Named for what the sensor reports, not for what
-                                a viewer expects to see: an accelerometer at rest
-                                reads specific force, so a level satellite reads
-                                +1 g along its own +Z and the arrow points *up*.
-                                It is neither a thrust vector nor the direction
-                                of gravity, and it was being read as both. */}
-                            <span>Measured g — up at rest</span>
-                        </div>
+                    {/* The three overlays, one per row. What used to be here
+                        was a colour key for the body triad — three lines
+                        naming axes the gizmo in the corner already labels, and
+                        a fourth for the accelerometer arrow. The scene says all
+                        four in the picture; these say what may be taken off it. */}
+                    <div className={styles.sceneToggles}>
+                        <SceneToggle
+                            label='Artificial horizon'
+                            hint='The dial in the top-left corner. Roll and pitch stay printed below the canvas either way.'
+                            checked={showHorizon}
+                            onChange={setShowHorizon}
+                        />
+                        <SceneToggle
+                            label='Orientation gizmo'
+                            hint='The axis triad in the top-right corner, whose heads are also the camera stations.'
+                            checked={showGizmo}
+                            onChange={setShowGizmo}
+                        />
+                        <SceneToggle
+                            label='Ground reference'
+                            hint='The grid disc under the satellite, its horizon rim and the compass letters on it. The rim is also where an unconfirmed frame and a withheld north are drawn — the wrapper still says both in words.'
+                            checked={showGround}
+                            onChange={setShowGround}
+                        />
                     </div>
                 </>
             )}

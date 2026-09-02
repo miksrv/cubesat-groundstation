@@ -91,41 +91,87 @@
     }
 }
 
-.legend {
+.sceneToggles {
     display: flex;
-    justify-content: center;
-    gap: 14px;
-    padding-top: 6px;
+    flex-direction: column;
+    gap: 9px;
+    padding-top: 10px;
     border-top: 1px solid rgba(255, 255, 255, 0.04);
-    flex-wrap: wrap;
 
     @include breakpoint-mobile {
-        gap: 8px;
+        gap: 4px;
     }
 }
 
-.legendItem {
+.toggle {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Kept in the layout rather than `display: none`, so it can take focus and the
+   focus ring lands on the track that stands in for it. */
+.toggleInput {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+}
+
+.toggleTrack {
+    position: relative;
+    flex-shrink: 0;
+    width: 26px;
+    height: 14px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.toggleThumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-color-secondary);
+    transition:
+        transform 0.15s ease,
+        background 0.15s ease;
+}
+
+.toggleInput:checked + .toggleTrack {
+    background: rgba(0, 184, 217, 0.25);
+    border-color: rgba(0, 184, 217, 0.5);
+
+    .toggleThumb {
+        transform: translateX(12px);
+        background: var(--color-main);
+    }
+}
+
+.toggleInput:focus-visible + .toggleTrack {
+    outline: 2px solid var(--color-main);
+    outline-offset: 2px;
+}
+
+.toggleLabel {
     font-size: 0.65rem;
     color: var(--text-color-secondary);
 
     @include breakpoint-mobile {
         font-size: 0.6rem;
-        gap: 3px;
     }
 }
 
-.legendColor {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    flex-shrink: 0;
-
-    @include breakpoint-mobile {
-        width: 8px;
-        height: 8px;
-    }
+.toggleInput:checked ~ .toggleLabel {
+    color: var(--text-color-primary);
 }

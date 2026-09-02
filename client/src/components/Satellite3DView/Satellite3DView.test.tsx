@@ -5,7 +5,7 @@ import type { AttitudeUpdate } from '../../features/telemetry/source'
 import type { AdcsStatus } from '../../features/telemetry/types'
 import { mockAdcs } from '../../test-fixtures'
 import { FakeSource, installFakeSource } from '../../test-source'
-import { act, render, screen } from '../../test-utils'
+import { act, fireEvent, render, screen } from '../../test-utils'
 
 import { CAMERA_FACE_ROTATION } from './CubeSatModel'
 import Satellite3DView from './Satellite3DView'
@@ -80,31 +80,45 @@ describe('Satellite3DView', () => {
         expect(screen.getByText('withheld')).toBeInTheDocument()
     })
 
-    it('names the body axes by what is on the frame, not by a mission role', () => {
+    it('offers the three canvas overlays as switches, all on to begin with', async () => {
         render(
             <Satellite3DView
                 adcs={mockAdcs}
                 isLoading={false}
             />
         )
+        await screen.findByTestId('r3f-canvas')
 
-        // Bench-verified on the assembled satellite: +X away from the camera,
-        // +Y to the right, +Z up. There is no orbit here and so no VEL / ORB /
-        // nadir — the walk this thing goes on has none of them.
-        expect(screen.getByText('X — camera looks −X')).toBeInTheDocument()
-        expect(screen.getByText('Y — right side')).toBeInTheDocument()
-        expect(screen.getByText('Z — top of frame')).toBeInTheDocument()
-        // And the accelerometer arrow says which way it points, because at rest
-        // it lies exactly along +Z and was being read as a thrust vector or as
-        // the direction of gravity — it is neither.
-        expect(screen.getByText('Measured g — up at rest')).toBeInTheDocument()
-        // The camera boresight went with them: a ray drawn out of the lens onto
-        // a floor this scene invents was one more thing on screen the satellite
-        // does not measure.
-        expect(screen.queryByText(/boresight/i)).not.toBeInTheDocument()
-        expect(screen.queryByText('VEL')).not.toBeInTheDocument()
-        expect(screen.queryByText('ORB')).not.toBeInTheDocument()
-        expect(screen.queryByText(/nadir/i)).not.toBeInTheDocument()
+        // What stood here was a colour key for the body triad — three lines
+        // naming axes the corner gizmo already labels, plus one for the
+        // accelerometer arrow. The scene draws all four; the words were
+        // furniture, and the switches are not.
+        expect(screen.queryByText('X — camera looks −X')).not.toBeInTheDocument()
+        expect(screen.queryByText('Measured g — up at rest')).not.toBeInTheDocument()
+
+        expect(screen.getByRole('switch', { name: 'Artificial horizon' })).toBeChecked()
+        expect(screen.getByRole('switch', { name: 'Orientation gizmo' })).toBeChecked()
+        expect(screen.getByRole('switch', { name: 'Ground reference' })).toBeChecked()
+    })
+
+    it('takes the artificial horizon off the canvas without touching the numbers', async () => {
+        render(
+            <Satellite3DView
+                adcs={{ ...mockAdcs, roll: 15.3, pitch: -8.7 }}
+                isLoading={false}
+            />
+        )
+        await screen.findByTestId('r3f-canvas')
+
+        expect(screen.getByRole('img', { name: /attitude/i })).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Artificial horizon' }))
+
+        expect(screen.queryByRole('img', { name: /attitude/i })).not.toBeInTheDocument()
+        // The switch hides an annotation, never a measurement: roll and pitch
+        // are printed under the canvas either way.
+        expect(screen.getByText('15.3°')).toBeInTheDocument()
+        expect(screen.getByText('-8.7°')).toBeInTheDocument()
     })
 
     it('displays angular rate readout from gyro data', () => {
@@ -333,8 +347,39 @@ describe('Satellite3DView', () => {
             // Nothing is being withheld now — a lettered ring over an
             // undimmed horizon is the whole message — so the canvas carries no
             // tooltip at all. A widget that explained itself when there was
-            // nothing to explain would train the viewer to ignore it.
-            expect(container.querySelector('[title]')).toBeNull()
+            // nothing to explain would train the viewer to ignore it. Asked of
+            // the canvas rather than of the panel: the overlay switches below it
+            // carry hints of their own, which say what a control does and not
+            // what the satellite is withholding.
+            expect(container.querySelector('.canvasWrapper')).not.toHaveAttribute('title')
+        })
+
+        it('takes the ground reference away on request without changing what is withheld', async () => {
+            const { container, rerender } = render(
+                <Satellite3DView
+                    adcs={mockAdcs}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            publish(rerender, [
+                { sample: LEVEL, adcs: { yaw: 30 } },
+                { sample: TURNED, adcs: { yaw: 300 } }
+            ])
+            expect(screen.getByText('N')).toBeInTheDocument()
+
+            fireEvent.click(screen.getByRole('switch', { name: 'Ground reference' }))
+
+            // The disc, its grid, its horizon rim and the letters on it go
+            // together — they are one reference, and half of it is a floor with
+            // no edge.
+            expect(screen.queryByText('N')).not.toBeInTheDocument()
+            expect(screen.queryByText('W')).not.toBeInTheDocument()
+            // Nothing was withheld before the switch and nothing is after it:
+            // the rim is where the two verdicts are *drawn*, and the words for
+            // them live on the wrapper, which still has none to say.
+            expect(container.querySelector('.canvasWrapper')).not.toHaveAttribute('title')
         })
 
         it('takes the letters away again when the two sources stop agreeing', async () => {
