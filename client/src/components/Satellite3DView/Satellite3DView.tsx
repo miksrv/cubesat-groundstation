@@ -1,10 +1,20 @@
-import React, { lazy, Suspense } from 'react'
-import { Container, Skeleton } from 'simple-react-ui-kit'
+import React, { lazy, Suspense, useCallback, useState } from 'react'
+import { Button, Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { AttitudeUpdate } from '../../features/telemetry/source'
 import type { AdcsStatus } from '../../features/telemetry/types'
 import { useAttitudeRef } from '../../features/telemetry/useSource'
-import { chartColors } from '../../styles/chartColors'
+
+import AttitudeIndicator from './AttitudeIndicator'
+import type { FrameCheck, HeadingFix } from './sceneContract'
+import {
+    ACCEL_COLOR,
+    AXIS_COLOR,
+    DEFAULT_VIEWPOINT,
+    INITIAL_FRAME_CHECK,
+    INITIAL_HEADING_FIX,
+    sceneNotes
+} from './sceneContract'
 
 import styles from './Satellite3DView.module.scss'
 
@@ -16,13 +26,6 @@ interface Props {
      *  exactly the path it renders the satellite. Absent means live. */
     attitude?: React.MutableRefObject<AttitudeUpdate | null>
 }
-
-const AXIS = {
-    x: chartColors.red[0],
-    y: chartColors.green[0],
-    z: chartColors.blue[0]
-}
-const ACCEL_COLOR = chartColors.orange[0]
 
 // The three.js/@react-three/fiber scene is a heavy WebGL bundle — load it lazily
 // so it isn't in the critical path for the rest of the dashboard.
@@ -41,21 +44,80 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
     const liveAttitudeRef = useAttitudeRef()
     const attitudeRef = attitude ?? liveAttitudeRef
 
+    const [viewpoint, setViewpoint] = useState(DEFAULT_VIEWPOINT)
+    /*
+      The scene's own verdict on whether its world frame survives contact with
+      the accelerometer. It lives up here because it is read twice: as the
+      dimming of the horizon inside the canvas, and as the words on the wrapper
+      that say why it dimmed. Updated only when the verdict changes — see
+      CubeSatModel.
+    */
+    const [frameCheck, setFrameCheck] = useState<FrameCheck>(INITIAL_FRAME_CHECK)
+    /*
+      Where north is, if anywhere. Read twice for the same reason the frame
+      check is: as the presence or absence of letters on the compass ring inside
+      the canvas, and as the words that say why they are absent. It is derived
+      from the published yaw and the quaternion together — see `worldFrame.ts` —
+      never assumed, and it is `withheld` for as long as the magnetometer is
+      uncalibrated.
+    */
+    const [heading, setHeading] = useState<HeadingFix>(INITIAL_HEADING_FIX)
+
+    const recallCamera = useCallback(() => {
+        // A new `seq` every press, so the button still brings the camera back
+        // after the viewer has dragged away from the station it was last sent to.
+        setViewpoint((current) => ({ seq: current.seq + 1 }))
+    }, [])
+
+    /*
+      The only camera control in the header, and the only one there should be:
+      the axis-aligned views three more buttons used to give are the gizmo's job,
+      and it keeps the viewer's zoom while doing it — see RESET_VIEWPOINT.
+    */
     return (
         <Container
             title='3D Satellite View'
             className={styles.panel}
+            action={
+                !showSkeleton && (
+                    <Button
+                        size='small'
+                        mode='outline'
+                        label='Reset'
+                        onClick={recallCamera}
+                    />
+                )
+            }
         >
             {showSkeleton && <Skeleton style={{ height: '280px', width: '100%' }} />}
             {!showSkeleton && (
                 <>
-                    <div className={styles.canvasWrapper}>
+                    {/* The scene draws both of its verdicts rather than
+                        printing them — the horizon dims when the frame is
+                        unconfirmed, the compass ring loses its letters when
+                        there is no north — and neither picture can say why.
+                        These are the words for that, out of the way until they
+                        are asked for, and absent altogether when nothing is
+                        being withheld. */}
+                    <div
+                        className={styles.canvasWrapper}
+                        title={sceneNotes(frameCheck, heading)}
+                    >
                         <Suspense fallback={<Skeleton style={{ height: '100%', width: '100%' }} />}>
                             <Satellite3DScene
                                 attitudeRef={attitudeRef}
-                                accel={adcs?.accel ?? null}
+                                adcs={adcs}
+                                viewpoint={viewpoint}
+                                frameCheck={frameCheck}
+                                onFrameCheck={setFrameCheck}
+                                heading={heading}
+                                onHeading={setHeading}
                             />
                         </Suspense>
+                        {/* Plain DOM over the WebGL surface: roll and pitch
+                            without orbiting the camera, and with no scene to
+                            lose if the context goes. */}
+                        <AttitudeIndicator adcs={adcs} />
                     </div>
                     <div className={styles.values}>
                         <div className={styles.axis}>
@@ -88,34 +150,43 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
                             ω<sub>z</sub> {fmtRate(adcs?.gyro.z)}°/s
                         </span>
                     </div>
+                    {/* Named for what is on the frame, not for a mission role
+                        this craft does not have. The axis directions are the
+                        BNO055's, bench-verified on the assembled satellite. */}
                     <div className={styles.legend}>
                         <div className={styles.legendItem}>
                             <span
                                 className={styles.legendColor}
-                                style={{ background: AXIS.x }}
+                                style={{ background: AXIS_COLOR.x }}
                             />
-                            <span>X — body</span>
+                            <span>X — camera looks −X</span>
                         </div>
                         <div className={styles.legendItem}>
                             <span
                                 className={styles.legendColor}
-                                style={{ background: AXIS.y }}
+                                style={{ background: AXIS_COLOR.y }}
                             />
-                            <span>Y — body</span>
+                            <span>Y — right side</span>
                         </div>
                         <div className={styles.legendItem}>
                             <span
                                 className={styles.legendColor}
-                                style={{ background: AXIS.z }}
+                                style={{ background: AXIS_COLOR.z }}
                             />
-                            <span>Z — body (camera)</span>
+                            <span>Z — top of frame</span>
                         </div>
                         <div className={styles.legendItem}>
                             <span
                                 className={styles.legendColor}
                                 style={{ background: ACCEL_COLOR }}
                             />
-                            <span>Measured g</span>
+                            {/* Named for what the sensor reports, not for what
+                                a viewer expects to see: an accelerometer at rest
+                                reads specific force, so a level satellite reads
+                                +1 g along its own +Z and the arrow points *up*.
+                                It is neither a thrust vector nor the direction
+                                of gravity, and it was being read as both. */}
+                            <span>Measured g — up at rest</span>
                         </div>
                     </div>
                 </>

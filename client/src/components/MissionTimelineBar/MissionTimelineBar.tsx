@@ -190,7 +190,7 @@ const MissionTimelineBar: React.FC<Props> = ({ timeline }) => {
                     <span className={styles.clockUtc}>{utcClock(timeline.playhead)}</span>
                     <button
                         type='button'
-                        className={styles.button}
+                        className={`${styles.button} ${styles.speed}`}
                         aria-label='Playback speed'
                         onClick={timeline.cycleSpeed}
                     >

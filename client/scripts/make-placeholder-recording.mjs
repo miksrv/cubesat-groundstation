@@ -13,7 +13,11 @@
  *
  *   - `yaw` is null for the first third: the BNO055 reports a constant until
  *     the magnetometer reaches calib 3, and the satellite withholds it rather
- *     than publish the constant.
+ *     than publish the constant. Once it has a value it is a real compass
+ *     bearing — clockwise from north, derived from the same turn the quaternion
+ *     carries — because the dashboard reconciles the two against each other and
+ *     a heading invented independently of the orientation cannot be reconciled
+ *     with anything.
  *   - `uv_index` is null throughout: the SEN0501 board revision is unknown, and
  *     two revisions read one register with formulas that disagree by forty.
  *   - The fix drops for a stretch, and the coordinates go stale rather than
@@ -48,6 +52,41 @@ const random = () => {
     seed = (seed * 1103515245 + 12345) % 2147483648
     return seed / 2147483648
 }
+
+/**
+ * Degrees the satellite has turned about its own up axis, counter-clockwise seen
+ * from above — the sense a quaternion and a scene azimuth both use, and the
+ * opposite of the sense a compass bearing uses. One revolution per 40 s.
+ */
+const turnedDeg = (t) => ((t / 40) * 360) % 360
+
+/** Degrees per second of that turn, for the gyro to agree with. */
+const TURN_RATE_DEG_S = 360 / 40
+
+/**
+ * The magnetic bearing of the sensor world frame's +X axis, in degrees.
+ *
+ * A *choice*, and only because this recording is synthetic: the number is what
+ * `NorthEstimator` exists to measure rather than assume, so writing it down here
+ * is writing down the answer the estimator has to recover. Deliberately not zero
+ * — a zero would let an estimator that ignored the offset altogether pass, and
+ * "the sensor's world +X happens to be magnetic north" is exactly the assumption
+ * `worldFrame.ts` refuses to make.
+ */
+const NORTH_OFFSET_DEG = 42
+
+/**
+ * What the BNO055 would publish as `EUL_HEADING`: a compass bearing, degrees
+ * **clockwise** from magnetic north.
+ *
+ * It has to be derived from the same turn the quaternion carries, or the two
+ * disagree — and they did. This generator used to publish the counter-clockwise
+ * turn angle verbatim as `yaw`, which reads as a bearing running the wrong way
+ * round: `NorthEstimator` folds `yaw + azimuth`, so instead of a constant it got
+ * twice the turn angle, 180° of scatter, and the demo's compass ring correctly
+ * refused to letter itself. Bearings run clockwise, so the turn is subtracted.
+ */
+const headingAt = (t) => (((NORTH_OFFSET_DEG - turnedDeg(t)) % 360) + 360) % 360
 
 const quaternionAt = (t) => {
     // A slow tumble plus a hand's wobble — enough that interpolation between
@@ -84,7 +123,7 @@ for (let index = 0; index < ROWS; index += 1) {
         roll: round(Math.sin(t / 11) * 6, 2),
         pitch: round(Math.cos(t / 13) * 4, 2),
         // Withheld until the magnetometer is calibrated. Not a zero.
-        yaw: calibMag === 3 ? round(((t / 40) * 360) % 360, 2) : null,
+        yaw: calibMag === 3 ? round(headingAt(t), 2) : null,
         quat_w: quat.w,
         quat_x: quat.x,
         quat_y: quat.y,
@@ -95,7 +134,10 @@ for (let index = 0; index < ROWS; index += 1) {
         accel_z: round(0.98 + (random() - 0.5) * 0.05, 3),
         gyro_x: round((random() - 0.5) * 3, 3),
         gyro_y: round((random() - 0.5) * 3, 3),
-        gyro_z: round(8 + (random() - 0.5) * 2, 3),
+        // The rate of the turn the quaternion actually describes, not a number
+        // near it: a gyro that disagreed with the orientation it accompanies is
+        // the same inconsistency the heading had.
+        gyro_z: round(TURN_RATE_DEG_S + (random() - 0.5) * 2, 3),
         calib_status: JSON.stringify({ sys: 3, gyro: 3, accel: 3, mag: calibMag }),
         lat: round(LAT0 + travelled * 0.0000075, 6),
         lon: round(LON0 + travelled * 0.0000121, 6),
@@ -213,11 +255,7 @@ radio.push(
 )
 radio.push(rx(21 * 60 + 41, '!sys'))
 radio.push(
-    tx(
-        21 * 60 + 51,
-        'ack',
-        beaconLine(21 * 60 + 51, ['re=sys', 'cpu=13', 'ram=39', 'disk=24', 'up=1.4h', 'tc=47.2'])
-    )
+    tx(21 * 60 + 51, 'ack', beaconLine(21 * 60 + 51, ['re=sys', 'cpu=13', 'ram=39', 'disk=24', 'up=1.4h', 'tc=47.2']))
 )
 radio.sort((a, b) => a.t - b.t)
 

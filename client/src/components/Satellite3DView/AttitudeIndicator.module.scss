@@ -1,0 +1,15 @@
+/* The artificial horizon, over the WebGL surface rather than in it.
+
+   Top-left because drei's world-axis gizmo sits top-right, and because the
+   satellite itself is drawn at the centre of the canvas — a corner is the only
+   place an overlay does not cover the thing it describes. */
+.indicator {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    /* Nothing behind it but the scene's own dark background, and nothing under
+       it: the roll, pitch and heading this used to print sit in the panel below
+       the canvas. The dial is a picture, and the picture is the whole widget. */
+    pointer-events: none;
+    line-height: 0;
+}

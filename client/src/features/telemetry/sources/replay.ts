@@ -34,17 +34,36 @@ import type {
 } from '../types'
 import { EMPTY_LIVE_STATE } from '../types'
 
-/** How fast the recording is replayed against wall time. */
+/** A multiplier on the compression below: how much further the playhead moves
+ *  per tick. It does *not* change the tick rate — a fast replay should not
+ *  hammer the event loop, it should take longer strides. */
 const DEFAULT_SPEED = 1
 
-/** How often the live view is stepped forward, in ms. Independent of the
- *  recording's own cadence: one telemetry row is 30 s of satellite time. */
-const TICK_MS = 1000
+/** How often the clock ticks, in ms of wall time. Fixed, whatever the speed. */
+const TICK_MS = 250
 
-/** How often an attitude sample is emitted, in ms. The satellite records at
- *  1 Hz and the scene interpolates; emitting faster than the recording would
- *  only repeat samples. */
-const ATTITUDE_MS = 1000
+/**
+ * How many seconds of satellite time one tick advances — a tenfold compression
+ * at 250 ms a tick.
+ *
+ * **There is one clock, and this is it.** There used to be two: telemetry walked
+ * one row per second and attitude walked one sample per second, so after a
+ * minute of watching the orientation on screen was from satellite-second 60
+ * while the ADCS status beside it was from satellite-second 1800. Nothing said
+ * so, because nothing in the widgets compared the two — until `NorthEstimator`
+ * did, refused every pair as thousands of seconds apart, and left the compass
+ * ring permanently unlettered in the demo. `GravityFrameCheck` was quietly
+ * pairing mismatched samples the whole time as well.
+ *
+ * The number is a compromise between two things the recording wants at once. Ten
+ * times is fast enough that a 30 s telemetry cadence lands a fresh row every 3 s
+ * — a dashboard stepping once every 30 s reads as frozen — and slow enough that
+ * the placeholder's tumble (a revolution per 40 s of satellite time) stays a
+ * rotation rather than a blur. It also divides 30 exactly, so the playhead lands
+ * *on* row timestamps rather than beside them, which is what lets an attitude
+ * sample and an ADCS status be the same moment and be reconciled.
+ */
+const PLAYHEAD_STEP_S = 2.5
 
 export interface Recording {
     mission: MissionSummary
@@ -70,7 +89,11 @@ export class ReplaySource implements TelemetrySource {
     public readonly capabilities: SourceCapabilities
 
     private timer: ReturnType<typeof setInterval> | null = null
-    private attitudeTimer: ReturnType<typeof setInterval> | null = null
+    /** Satellite epoch seconds. Null until the first tick, which starts it at
+     *  the beginning of the recording rather than a tick's worth in. */
+    private playhead: number | null = null
+    /** How many telemetry rows the playhead has passed. Also what
+     *  `recentTelemetry` means by "already replayed". */
     private cursor = 0
     private attitudeCursor = 0
     private radioCursor = 0
@@ -209,23 +232,17 @@ export class ReplaySource implements TelemetrySource {
     // ── the replay ──────────────────────────────────────────────────────────
 
     private start(): void {
-        if (this.timer == null && this.recording.telemetry.length > 0) {
-            this.step()
-            this.timer = setInterval(() => this.step(), TICK_MS / this.speed)
+        if (this.timer != null || this.span() == null) {
+            return
         }
-        if (this.attitudeTimer == null && this.recording.attitude.length > 0) {
-            this.attitudeTimer = setInterval(() => this.stepAttitude(), ATTITUDE_MS / this.speed)
-        }
+        this.step()
+        this.timer = setInterval(() => this.step(), TICK_MS)
     }
 
     private stop(): void {
         if (this.timer != null) {
             clearInterval(this.timer)
             this.timer = null
-        }
-        if (this.attitudeTimer != null) {
-            clearInterval(this.attitudeTimer)
-            this.attitudeTimer = null
         }
     }
 
@@ -235,21 +252,73 @@ export class ReplaySource implements TelemetrySource {
         }
     }
 
-    private step(): void {
+    /**
+     * The stretch of satellite time the recording covers.
+     *
+     * Both channels, not just the rows: an export can carry attitude past its
+     * last telemetry row, and looping on the rows alone would cut that tail off
+     * every lap. Null for a recording with nothing in it, which is what stops
+     * the clock before it starts.
+     */
+    private span(): { from: number; to: number } | null {
         const rows = this.recording.telemetry
-        const index = this.cursor % rows.length
-        if (index === 0) {
-            // A new lap of the loop: the radio log starts over with it.
-            this.radioCursor = 0
+        const samples = this.recording.attitude
+        const starts: number[] = []
+        const ends: number[] = []
+        if (rows.length > 0) {
+            starts.push(epoch(rows[0].timestamp))
+            ends.push(epoch(rows[rows.length - 1].timestamp))
         }
-        const row = rows[index]
-        this.cursor += 1
-        this.state = liveStateFromRow(row, this.recording.mission, {
+        if (samples.length > 0) {
+            starts.push(samples[0].t)
+            ends.push(samples[samples.length - 1].t)
+        }
+        return starts.length === 0 ? null : { from: Math.min(...starts), to: Math.max(...ends) }
+    }
+
+    /** One tick of the one clock: move the playhead, then bring every channel up
+     *  to where it now is. */
+    private step(): void {
+        const span = this.span()
+        if (span == null) {
+            return
+        }
+        if (this.playhead == null) {
+            this.playhead = span.from
+        } else {
+            this.playhead += PLAYHEAD_STEP_S * this.speed
+            if (this.playhead > span.to) {
+                // A new lap. Everything rewinds together, because everything is
+                // driven by this one number.
+                this.playhead = span.from
+                this.cursor = 0
+                this.radioCursor = 0
+                this.attitudeCursor = 0
+            }
+        }
+        this.stepTelemetry(this.playhead)
+        this.stepRadio(this.playhead)
+        this.stepAttitude(this.playhead)
+    }
+
+    /** The newest row at or before the playhead, published once when it is
+     *  crossed. Rows the playhead skipped over are counted but not published:
+     *  the state they would set is superseded by the one that follows. */
+    private stepTelemetry(playhead: number): void {
+        const rows = this.recording.telemetry
+        let crossed = false
+        while (this.cursor < rows.length && epoch(rows[this.cursor].timestamp) <= playhead) {
+            this.cursor += 1
+            crossed = true
+        }
+        if (!crossed) {
+            return
+        }
+        this.state = liveStateFromRow(rows[this.cursor - 1], this.recording.mission, {
             played: this.cursor,
             total: rows.length
         })
         this.listeners.forEach((listener) => listener(this.state))
-        this.stepRadio(Date.parse(row.timestamp) / 1000 || 0)
     }
 
     /** Emit every radio event up to the playhead — the table stays in step
@@ -263,10 +332,24 @@ export class ReplaySource implements TelemetrySource {
         }
     }
 
-    private stepAttitude(): void {
+    /**
+     * The attitude sample at or before the playhead, with **its own** timestamp.
+     *
+     * Not the playhead's: the sample was measured when it was measured, and
+     * re-stamping it to now is exactly the fabrication that would let
+     * `NorthEstimator` reconcile a pair that has no business being reconciled.
+     * A step that divides the telemetry cadence means the two agree to the second
+     * whenever a row is crossed, which is when the pairing is admissible.
+     */
+    private stepAttitude(playhead: number): void {
         const samples = this.recording.attitude
-        const sample = samples[this.attitudeCursor % samples.length]
-        this.attitudeCursor += 1
+        while (this.attitudeCursor + 1 < samples.length && samples[this.attitudeCursor + 1].t <= playhead) {
+            this.attitudeCursor += 1
+        }
+        const sample = samples[this.attitudeCursor]
+        if (sample == null || sample.t > playhead) {
+            return
+        }
         const { w, x, y, z } = sample.quaternion
         if (w == null || x == null || y == null || z == null) {
             return
@@ -274,3 +357,8 @@ export class ReplaySource implements TelemetrySource {
         this.attitudeListeners.forEach((listener) => listener({ t: sample.t, w, x, y, z }))
     }
 }
+
+/** Seconds, from a row's ISO timestamp. 0 for one that will not parse — the same
+ *  answer the previous code gave, and a row with no readable time cannot be
+ *  placed on a playhead at all. */
+const epoch = (timestamp: string): number => Date.parse(timestamp) / 1000 || 0

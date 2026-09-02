@@ -135,3 +135,11 @@
     color: var(--text-color-secondary);
     font-size: 0.64rem;
 }
+
+/* The label runs from ×1 to ×16 as the speed cycles, and the bar is a flex row:
+   without a floor under this button's width, every press would shift the clock
+   and the scrubber beside it. Wide enough for the three-character label. */
+.speed {
+    min-width: 46px;
+    text-align: center;
+}

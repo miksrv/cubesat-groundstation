@@ -1,16 +1,35 @@
-import { mockAdcs } from '../../test-fixtures'
-import { installFakeSource } from '../../test-source'
-import { render, screen } from '../../test-utils'
+import type React from 'react'
+import * as THREE from 'three'
 
+/* The same module jest maps `@react-three/drei` onto, reached by path because
+   the real package has no such export to declare. */
+import { orbitControlsMoves } from '../../__mocks__/react-three-drei'
+import type { AttitudeUpdate } from '../../features/telemetry/source'
+import type { AdcsStatus } from '../../features/telemetry/types'
+import { mockAdcs } from '../../test-fixtures'
+import { FakeSource, installFakeSource } from '../../test-source'
+import { act, fireEvent, render, screen } from '../../test-utils'
+
+import { CAMERA_FACE_ROTATION } from './CubeSatModel'
 import Satellite3DView from './Satellite3DView'
+import { RESET_VIEWPOINT } from './sceneContract'
 
 import '@testing-library/jest-dom'
+
+/** Level: the sensor's world frame is the one in which this is identity. */
+const LEVEL: AttitudeUpdate = { t: 1, w: 1, x: 0, y: 0, z: 0 }
+
+/** A quarter turn about the sensor world's up axis, counter-clockwise seen from
+ *  above — the satellite carried round a corner. */
+const TURNED: AttitudeUpdate = { t: 1, w: Math.SQRT1_2, x: 0, y: 0, z: Math.SQRT1_2 }
 
 describe('Satellite3DView', () => {
     // The view subscribes to the attitude channel, so it needs a source. The
     // fake is the whole point of the interface: no broker, no server.
+    let fake: FakeSource
+
     beforeEach(() => {
-        installFakeSource()
+        fake = installFakeSource()
     })
 
     it('renders the 3D satellite view panel title', () => {
@@ -65,7 +84,7 @@ describe('Satellite3DView', () => {
         expect(screen.getByText('withheld')).toBeInTheDocument()
     })
 
-    it('displays legend items', () => {
+    it('names the body axes by what is on the frame, not by a mission role', () => {
         render(
             <Satellite3DView
                 adcs={mockAdcs}
@@ -73,10 +92,23 @@ describe('Satellite3DView', () => {
             />
         )
 
-        expect(screen.getByText('X — body')).toBeInTheDocument()
-        expect(screen.getByText('Y — body')).toBeInTheDocument()
-        expect(screen.getByText('Z — body (camera)')).toBeInTheDocument()
-        expect(screen.getByText('Measured g')).toBeInTheDocument()
+        // Bench-verified on the assembled satellite: +X away from the camera,
+        // +Y to the right, +Z up. There is no orbit here and so no VEL / ORB /
+        // nadir — the walk this thing goes on has none of them.
+        expect(screen.getByText('X — camera looks −X')).toBeInTheDocument()
+        expect(screen.getByText('Y — right side')).toBeInTheDocument()
+        expect(screen.getByText('Z — top of frame')).toBeInTheDocument()
+        // And the accelerometer arrow says which way it points, because at rest
+        // it lies exactly along +Z and was being read as a thrust vector or as
+        // the direction of gravity — it is neither.
+        expect(screen.getByText('Measured g — up at rest')).toBeInTheDocument()
+        // The camera boresight went with them: a ray drawn out of the lens onto
+        // a floor this scene invents was one more thing on screen the satellite
+        // does not measure.
+        expect(screen.queryByText(/boresight/i)).not.toBeInTheDocument()
+        expect(screen.queryByText('VEL')).not.toBeInTheDocument()
+        expect(screen.queryByText('ORB')).not.toBeInTheDocument()
+        expect(screen.queryByText(/nadir/i)).not.toBeInTheDocument()
     })
 
     it('displays angular rate readout from gyro data', () => {
@@ -113,5 +145,316 @@ describe('Satellite3DView', () => {
 
         const skeleton = container.querySelector('[data-testid="skeleton"]')
         expect(skeleton).not.toBeInTheDocument()
+    })
+
+    describe('the world frame check', () => {
+        // The audit smooths over three seconds of accelerometer, so the clock is
+        // driven rather than waited on. Nothing else here needs fake timers.
+        beforeEach(() => {
+            jest.useFakeTimers()
+        })
+
+        afterEach(() => {
+            jest.useRealTimers()
+        })
+
+        const settle = (): void => {
+            act(() => {
+                jest.advanceTimersByTime(6000)
+            })
+        }
+
+        it('claims nothing before the accelerometer has been heard from', async () => {
+            render(
+                <Satellite3DView
+                    adcs={mockAdcs}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            // No attitude sample has arrived, so the rotation into world
+            // coordinates cannot be done at all — and the panel says so instead
+            // of drawing a horizon it has not earned.
+            settle()
+            // Not printed under the canvas any more — the horizon simply does
+            // not brighten. The reason for that is on the wrapper, where it can
+            // be asked for without becoming furniture.
+            expect(screen.getByTitle(/world frame unverified — waiting for a steady g/)).toBeInTheDocument()
+        })
+
+        it('says the frame is verified once a level satellite reads g along its own +Z', async () => {
+            render(
+                <Satellite3DView
+                    adcs={mockAdcs}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            act(() => {
+                fake.emitAttitude(LEVEL)
+            })
+            settle()
+
+            expect(screen.getByTitle(/world frame verified by measured g/)).toBeInTheDocument()
+        })
+
+        it('withdraws the horizon instead of correcting it when g disagrees', async () => {
+            // The same one g, but along the body +X axis: what a level satellite
+            // would look like if the sensor-world mapping were a quarter turn
+            // wrong. Nothing throws, nothing is silently rotated — the panel
+            // stops claiming its ground plane means anything.
+            render(
+                <Satellite3DView
+                    adcs={{ ...mockAdcs, accel: { x: 0.99, y: 0.02, z: 0.01 } }}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            act(() => {
+                fake.emitAttitude(LEVEL)
+            })
+            settle()
+
+            expect(screen.getByTitle(/world frame unverified — measured g is \d+° from up/)).toBeInTheDocument()
+        })
+
+        it('withholds a verdict while the satellite is being accelerated', async () => {
+            render(
+                <Satellite3DView
+                    adcs={{ ...mockAdcs, accel: { x: 0, y: 0, z: 2.4 } }}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            act(() => {
+                fake.emitAttitude(LEVEL)
+            })
+            settle()
+
+            expect(screen.getByTitle(/world frame unverified — waiting for a steady g/)).toBeInTheDocument()
+        })
+    })
+
+    describe('the compass', () => {
+        // The reconciliation runs on an interval and needs a run of pairs, so
+        // the clock is driven rather than waited on.
+        beforeEach(() => {
+            jest.useFakeTimers()
+        })
+
+        afterEach(() => {
+            jest.useRealTimers()
+        })
+
+        /** A calibrated magnetometer publishing a heading, a still satellite,
+         *  and — as the live source does — an attitude sample stamped with the
+         *  very same timestamp as the status it left with. */
+        const publish = (
+            rerender: (ui: React.ReactElement) => void,
+            steps: Array<{ sample: AttitudeUpdate; adcs: Partial<AdcsStatus> }>,
+            count = 14
+        ): void => {
+            for (let index = 0; index < count; index += 1) {
+                const step = steps[index % steps.length]
+                const t = 1000 + index * 0.5
+                act(() => {
+                    fake.emitAttitude({ ...step.sample, t })
+                })
+                rerender(
+                    <Satellite3DView
+                        adcs={{ ...mockAdcs, gyro: { x: 0, y: 0, z: 0 }, ...step.adcs, timestamp: t }}
+                        isLoading={false}
+                    />
+                )
+                act(() => {
+                    jest.advanceTimersByTime(300)
+                })
+            }
+        }
+
+        it('draws no letters and prints no heading while the magnetometer is uncalibrated', async () => {
+            const uncalibrated = {
+                ...mockAdcs,
+                yaw: null,
+                calibStatus: { sys: 2, gyro: 3, accel: 3, mag: 1 }
+            }
+            const { rerender } = render(
+                <Satellite3DView
+                    adcs={uncalibrated}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            publish(rerender, [{ sample: LEVEL, adcs: uncalibrated }])
+
+            // The ring is still drawn — it is the horizon plane through the
+            // body — but it carries nothing that claims a direction.
+            expect(screen.queryByText('N')).not.toBeInTheDocument()
+            expect(screen.queryByText('E')).not.toBeInTheDocument()
+            expect(screen.queryByText('S')).not.toBeInTheDocument()
+            expect(screen.queryByText('W')).not.toBeInTheDocument()
+
+            // And no heading number anywhere in the widget: the yaw box and the
+            // canvas say why instead. The attitude indicator used to be a third
+            // voice on this; it prints nothing now, so the words are the yaw
+            // box's and the canvas caption's alone.
+            expect(screen.queryByText(/HDG/)).not.toBeInTheDocument()
+            expect(screen.queryByText(/178\.9/)).not.toBeInTheDocument()
+            expect(screen.getByText('withheld')).toBeInTheDocument()
+            // An unlettered ring on its own would read as a broken compass. The
+            // canvas carries the reason, on the same rule that makes the yaw box
+            // say "withheld" rather than dash out.
+            expect(
+                screen.getByTitle(/heading uncalibrated — no north until the magnetometer reads 3\/3/)
+            ).toBeInTheDocument()
+        })
+
+        it('letters the ring once the published yaw and the quaternion reconcile', async () => {
+            const { container, rerender } = render(
+                <Satellite3DView
+                    adcs={mockAdcs}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            // Level, then a quarter turn counter-clockwise seen from above,
+            // whose compass bearing therefore *falls* by 90.
+            publish(rerender, [
+                { sample: LEVEL, adcs: { yaw: 30 } },
+                { sample: TURNED, adcs: { yaw: 300 } }
+            ])
+
+            expect(screen.getByText('N')).toBeInTheDocument()
+            expect(screen.getByText('E')).toBeInTheDocument()
+            expect(screen.getByText('S')).toBeInTheDocument()
+            expect(screen.getByText('W')).toBeInTheDocument()
+            // Nothing is being withheld now — a lettered ring over an
+            // undimmed horizon is the whole message — so the canvas carries no
+            // tooltip at all. A widget that explained itself when there was
+            // nothing to explain would train the viewer to ignore it.
+            expect(container.querySelector('[title]')).toBeNull()
+        })
+
+        it('takes the letters away again when the two sources stop agreeing', async () => {
+            const { rerender } = render(
+                <Satellite3DView
+                    adcs={mockAdcs}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            // The same quarter turn with the bearing *rising*: a heading that
+            // ran the other way round would look like this, and there is no
+            // honest average of the two estimates it produces.
+            publish(rerender, [
+                { sample: LEVEL, adcs: { yaw: 30 } },
+                { sample: TURNED, adcs: { yaw: 120 } }
+            ])
+
+            expect(screen.queryByText('N')).not.toBeInTheDocument()
+            expect(screen.getByTitle(/north withheld — yaw and quaternion disagree by \d+°/)).toBeInTheDocument()
+        })
+    })
+
+    describe('the camera controls', () => {
+        it('offers reset and nothing the gizmo already does', () => {
+            render(
+                <Satellite3DView
+                    adcs={mockAdcs}
+                    isLoading={false}
+                />
+            )
+
+            expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
+            // The axis-aligned stations belong to the orientation gizmo, whose
+            // heads keep the viewer's distance to the target where a button
+            // snapped to a hard-coded radius and threw the zoom away.
+            expect(screen.queryByRole('button', { name: 'Level' })).not.toBeInTheDocument()
+            expect(screen.queryByRole('button', { name: 'Top' })).not.toBeInTheDocument()
+            expect(screen.queryByRole('button', { name: 'Side' })).not.toBeInTheDocument()
+            // No compass: heading is withheld until the magnetometer is
+            // calibrated, so no control may imply the scene knows where north is.
+            expect(screen.queryByRole('button', { name: /north/i })).not.toBeInTheDocument()
+        })
+
+        it('keeps the reset button out of the way while the skeleton shows', () => {
+            render(
+                <Satellite3DView
+                    adcs={null}
+                    isLoading={true}
+                />
+            )
+
+            expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
+        })
+
+        it('moves the camera on every press, so a dragged camera comes back', async () => {
+            render(
+                <Satellite3DView
+                    adcs={mockAdcs}
+                    isLoading={false}
+                />
+            )
+            await screen.findByTestId('r3f-canvas')
+
+            // Forget the placement the scene made when it mounted: what is
+            // under test is the button, not the opening view.
+            orbitControlsMoves.length = 0
+
+            const reset = screen.getByRole('button', { name: 'Reset' })
+            fireEvent.click(reset)
+            fireEvent.click(reset)
+
+            // Twice, not once. There is only one station, so a request carrying
+            // just its identity would be an unchanged state on the second press
+            // and the camera would stay wherever the viewer had dragged it —
+            // that is the whole reason the request carries a `seq`.
+            expect(orbitControlsMoves).toStrictEqual([[...RESET_VIEWPOINT], [...RESET_VIEWPOINT]])
+        })
+    })
+})
+
+/**
+ * The one silent failure mode of a decal: it can be laid on the right face and
+ * still be a quarter turn wrong about that face's normal, and nothing but the
+ * lettering will say so. It did say so — "CAM" read bottom-to-top, and because
+ * it is the only marking on an otherwise blank white cube, the satellite read
+ * as lying on its right side while every other part of the scene agreed it was
+ * level. Asserted here rather than left to the eye, because the eye is what
+ * missed it.
+ */
+describe('the camera-face decal', () => {
+    /** Where a rotation carries one of the decal's own axes, to the nearest
+     *  whole component. `+ 0` folds away the −0 that `round()` leaves behind:
+     *  `toStrictEqual` tells the two zeroes apart and a reader would not. */
+    const image = (axis: THREE.Vector3): number[] =>
+        axis
+            .clone()
+            .applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(...CAMERA_FACE_ROTATION)))
+            .round()
+            .toArray()
+            .map((component) => component + 0)
+
+    it('faces out of the −X face, the one the hardware puts a lens on', () => {
+        // A plane geometry's own normal is +Z.
+        expect(image(new THREE.Vector3(0, 0, 1))).toStrictEqual([-1, 0, 0])
+    })
+
+    it('stands its up on +Z, the top of the frame, not on +Y, one of its edges', () => {
+        expect(image(new THREE.Vector3(0, 1, 0))).toStrictEqual([0, 0, 1])
+    })
+
+    it('reads left-to-right for someone looking into the lens', () => {
+        // That viewer looks along body +X with +Z up, so their right hand is
+        // body −Y — and the text's own +X has to land there or the lettering
+        // comes out mirrored.
+        expect(image(new THREE.Vector3(1, 0, 0))).toStrictEqual([0, -1, 0])
     })
 })

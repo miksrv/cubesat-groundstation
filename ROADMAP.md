@@ -30,7 +30,7 @@ Stages 0–5 are done and gone from this table; what each of them settled is rec
 **Stage 6 is implemented and deployed**, and stays unticked until the timeline has been stepped
 through by hand in front of the satellite. It grew on 2026-09-01: the replay keeps the whole widget
 set in place, draws the mission's own events, radio traffic and photographs, disables the two
-widgets that command, and plays at ×1/×2/×4.
+widgets that command, and plays at ×1 through ×16.
 
 **Stage 7 needs two things from the satellite before it is worth doing:** the export must carry the
 mission's photographs (it now carries `radio` as of 2026-09-01, but the body is still
@@ -40,6 +40,32 @@ export — only `FLIGHT` and `DIAG` record now, so a demonstration leaves nothin
 ---
 
 ## Open
+
+**The 3D view's world frame is only half-verified, on purpose.** The scene now draws a floor, a
+horizon and a compass, and the mapping from the BNO055's world frame to the scene lives in one
+constant (`client/src/components/Satellite3DView/worldFrame.ts`). Only the *up* axis is established
+— from the bench dump, where the fused quaternion goes to identity as the board goes level. The
+scene's +X heading is not assumed to be magnetic north: it is reconciled at runtime against the
+published `yaw`, and the ring keeps its letters only while the two agree. Two things follow, and
+both are expected rather than broken:
+
+- Below magnetometer calibration 3 there is no heading anywhere in the widget — the ring is a plain
+  circle, as `yaw` is withheld and for the same reason.
+- In a *mission replay* the compass may never fix north at all. The two heading sources are
+  simultaneous live, but a replay interpolates attitude at the playhead while ADCS comes from the
+  nearest DHS row, so pairs are only accepted while the gyro says the satellite was nearly still.
+  A sparse recording of a moving satellite legitimately yields nothing.
+
+The frame check itself is live: the measured `accel`, rotated by the attitude, must point at the
+scene's up. When it does not, the horizon dims and says so rather than drawing a confident ground
+plane. **Nothing here has been confirmed against the real chip yet** — the bundled recording is
+synthetic, so the check exists precisely to speak up when a real walk finally arrives.
+
+**The LoRa antenna is not drawn on the satellite model.** The BNO055 notes fix the camera face
+(`+X points away from the camera`), which is what anchors the drawing to the real object, but no
+document in `cubesat-sim` — hardware notes, README or the frame STLs — records which face the
+antenna leaves from. A mast on a guessed face is the same invention as the nadir vector that was
+removed from this widget, so it stays off until somebody measures it. Two lines to add back.
 
 **Two 2026-09-01 items are done and gone from here:** the three logs on the page now all read
 newest-first (the console keeps bottom-append — it has a prompt at the bottom), and `Quick Commands`

@@ -4,6 +4,17 @@ export const Badge: React.FC<{ label?: React.ReactNode; className?: string }> = 
     <span data-testid='badge'>{label}</span>
 )
 
+export const Button: React.FC<
+    React.ButtonHTMLAttributes<HTMLButtonElement> & { label?: string; mode?: string; size?: string }
+> = ({ label, children, mode: _mode, size: _size, ...props }) => (
+    <button
+        type='button'
+        {...props}
+    >
+        {label ?? children}
+    </button>
+)
+
 export const Skeleton: React.FC<React.HTMLAttributes<HTMLDivElement>> = (props) => (
     <div
         data-testid='skeleton'
