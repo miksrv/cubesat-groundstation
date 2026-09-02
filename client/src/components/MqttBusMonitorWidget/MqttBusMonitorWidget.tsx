@@ -3,7 +3,7 @@ import { Container } from 'simple-react-ui-kit'
 
 import type { LiveState } from '../../features/telemetry/types'
 import { chartColors } from '../../styles/chartColors'
-import type { SubsystemKey } from '../../utils/subsystemStatus'
+import type { StatusLevel, SubsystemKey } from '../../utils/subsystemStatus'
 import { getSubsystemStatuses } from '../../utils/subsystemStatus'
 
 import styles from './MqttBusMonitorWidget.module.scss'
@@ -29,9 +29,13 @@ interface NodeDef {
  * old right-hand column named a `CLOUD` node: there is no cloud, and the
  * ground station is this page.
  *
- * A service the profile never started is drawn grey and still, not dim: its
- * silence is the profile working, and a pulsing line out of a stopped unit
- * would be the diagram inventing traffic.
+ * A node with nothing arriving on it gets **no line at all** — not a fainter
+ * one, and not a still one. The line *is* the traffic here, so drawing one for
+ * a silent unit is the diagram inventing traffic; a dimmed or frozen line still
+ * asserts a flow and only whispers that it has stopped. This covers both of the
+ * ways a node goes quiet: the profile never started it, or it has not reported
+ * yet. The chip stays — the service is on this bus either way, which is what
+ * its grey name and its dark dot say.
  */
 const LEFT_NODES: NodeDef[] = [
     { label: 'EPS', y: 40, color: chartColors.blue[0], heard: (l) => l.eps != null, key: 'EPS' },
@@ -56,7 +60,23 @@ const CHIP_HEIGHT = 32
 const LEFT_CHIP_X = 8
 const RIGHT_CHIP_X = 304
 
-const OFF_STROKE = 'var(--text-color-secondary)'
+/** The ink for a node with nothing arriving on it. */
+const STILL_STROKE = 'var(--text-color-secondary)'
+
+/**
+ * The service name carries the same verdict the Subsystem Status widget shows,
+ * so the two panels cannot disagree about a subsystem while both are on screen.
+ *
+ * OK is deliberately absent: a healthy name stays plain white. Colour here is
+ * an exception that means *look at this one*, and painting every nominal
+ * service green would spend the signal on the six rows that need none.
+ */
+const LABEL_CLASS: Partial<Record<StatusLevel, string>> = {
+    WARN: styles.chipLabelWarn,
+    FAIL: styles.chipLabelFail,
+    OFF: styles.chipLabelOff,
+    UNKNOWN: styles.chipLabelUnknown
+}
 
 /** Smooth S-curve from a leaf node's dot to the hub's edge, echoing the reference design's flowing bus lines. */
 const curvePath = (fromX: number, fromY: number, toX: number, toY: number): string => {
@@ -67,14 +87,21 @@ const curvePath = (fromX: number, fromY: number, toX: number, toY: number): stri
 /** Spread each of the 4 lines to a different point along the hub's edge instead of one shared corner, so they fan in/out visibly rather than converging on a single spot. */
 const hubEdgeY = (index: number, count: number): number => HUB_Y + (index - (count - 1) / 2) * 16
 
-const NodeChip: React.FC<{ node: NodeDef; x: number; dotX: number; align: 'left' | 'right'; off: boolean }> = ({
-    node,
-    x,
-    dotX,
-    align,
-    off
-}) => (
+const NodeChip: React.FC<{
+    node: NodeDef
+    x: number
+    dotX: number
+    align: 'left' | 'right'
+    status: StatusLevel
+    /** Whether anything is arriving on this node. The dot's glow is the
+     *  "on air" cue, and with no line reaching the chip it is the only thing
+     *  left saying so — a silent node must not keep it. */
+    silent: boolean
+    /** Why the name is coloured, since a colour is never the whole message. */
+    detail?: string
+}> = ({ node, x, dotX, align, status, silent, detail }) => (
     <g>
+        {detail && <title>{`${node.label} — ${detail}`}</title>}
         <rect
             x={x}
             y={node.y - CHIP_HEIGHT / 2}
@@ -87,7 +114,7 @@ const NodeChip: React.FC<{ node: NodeDef; x: number; dotX: number; align: 'left'
             x={x + CHIP_WIDTH / 2}
             y={node.y + 4}
             textAnchor='middle'
-            className={off ? styles.chipLabelOff : styles.chipLabel}
+            className={[styles.chipLabel, LABEL_CLASS[status]].filter(Boolean).join(' ')}
         >
             {node.label}
         </text>
@@ -95,8 +122,8 @@ const NodeChip: React.FC<{ node: NodeDef; x: number; dotX: number; align: 'left'
             cx={dotX}
             cy={node.y}
             r={4}
-            fill={off ? OFF_STROKE : node.color}
-            className={off ? styles.dotOff : align === 'left' ? styles.dotLeft : styles.dotRight}
+            fill={silent ? STILL_STROKE : node.color}
+            className={silent ? styles.dotSilent : align === 'left' ? styles.dotLeft : styles.dotRight}
         />
     </g>
 )
@@ -124,23 +151,36 @@ interface Props {
 }
 
 const MqttBusMonitorWidget: React.FC<Props> = React.memo(({ live }) => {
-    // OBC's verdict, the same one the Subsystem Status widget renders: OFF is
-    // "the profile never started it", which is not the same picture as "not
-    // heard from yet" — one is grey and still, the other dim and waiting.
-    const verdicts = new Map(getSubsystemStatuses(live).map((s) => [s.key, s.status]))
-    const isOff = (node: NodeDef) => node.key != null && verdicts.get(node.key) === 'OFF'
+    // OBC's verdict, the same one the Subsystem Status widget renders. It is
+    // read for two different things: the name's colour (where OFF and NO DATA
+    // stay distinct findings) and whether a line is drawn at all (where they
+    // agree — nothing is on the wire in either case).
+    const verdicts = new Map(getSubsystemStatuses(live).map((s) => [s.key, s]))
+    // HOSTD and DASHBOARD have no verdict to inherit — OBC does not watch them
+    // — so they read as OK, which is what a plain white name already meant.
+    const verdictOf = (node: NodeDef) => (node.key != null ? verdicts.get(node.key) : undefined)
+    const levelOf = (node: NodeDef): StatusLevel => verdictOf(node)?.status ?? 'OK'
+    const isOff = (node: NodeDef) => levelOf(node) === 'OFF'
+
+    // Whether there is a flow to draw. Note OFF counts as silent even if a
+    // sample arrived before the profile switch — the unit is stopped now.
+    const isSilent = (node: NodeDef) => isOff(node) || !node.heard(live)
 
     const line = (node: NodeDef, index: number, d: string) => {
-        const off = isOff(node)
+        if (isSilent(node)) {
+            return null
+        }
         return (
             <path
                 key={node.label}
                 d={d}
-                className={off ? styles.pulseLineOff : styles.pulseLine}
+                className={styles.pulseLine}
                 style={{
-                    stroke: off ? OFF_STROKE : node.color,
+                    stroke: node.color,
+                    // Staggered off the node's own index, not the drawn order,
+                    // so a line keeps its phase when a neighbour goes quiet.
                     animationDelay: `${index * 0.3}s`,
-                    opacity: off ? 0.5 : node.heard(live) ? 1 : 0.25
+                    opacity: 1
                 }}
             />
         )
@@ -201,7 +241,9 @@ const MqttBusMonitorWidget: React.FC<Props> = React.memo(({ live }) => {
                         x={LEFT_CHIP_X}
                         dotX={LEFT_CHIP_X + CHIP_WIDTH}
                         align='left'
-                        off={isOff(node)}
+                        status={levelOf(node)}
+                        silent={isSilent(node)}
+                        detail={verdictOf(node)?.detail}
                     />
                 ))}
                 {RIGHT_NODES.map((node) => (
@@ -211,7 +253,9 @@ const MqttBusMonitorWidget: React.FC<Props> = React.memo(({ live }) => {
                         x={RIGHT_CHIP_X}
                         dotX={RIGHT_CHIP_X}
                         align='right'
-                        off={isOff(node)}
+                        status={levelOf(node)}
+                        silent={isSilent(node)}
+                        detail={verdictOf(node)?.detail}
                     />
                 ))}
             </svg>

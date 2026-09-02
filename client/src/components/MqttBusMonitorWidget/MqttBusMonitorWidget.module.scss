@@ -17,14 +17,8 @@
     animation: dashFlow 1.6s linear infinite;
 }
 
-// A service the profile never started: grey and still, deliberately not
-// animated — a pulsing line out of a stopped unit would be the diagram
-// inventing traffic.
-.pulseLineOff {
-    stroke-width: 1.4;
-    stroke-dasharray: 4 5;
-    fill: none;
-}
+// There is no style for a silent node's line, because there is no line: see
+// the node-list docstring. The chip's dot below is what marks it as quiet.
 
 .chip {
     fill: #0d1015;
@@ -39,11 +33,25 @@
     letter-spacing: 0.04em;
 }
 
-.chipLabelOff {
+// The subsystem's verdict, carried over from Subsystem Status so the two
+// panels cannot disagree while both are on screen. These follow `.chipLabel`
+// on purpose: each is a modifier layered over it, and only the fill changes.
+// There is no OK modifier — a healthy name stays the plain white above.
+.chipLabelWarn {
+    fill: var(--color-orange);
+}
+
+.chipLabelFail {
+    fill: var(--color-red);
+}
+
+// OFF ("the profile never started it") and UNKNOWN ("nothing has reported
+// yet") are different findings that happen to share a colour — grey is the
+// absence of a claim in both cases — but they stay separate classes because
+// only OFF also stills the line and the dot.
+.chipLabelOff,
+.chipLabelUnknown {
     fill: var(--text-color-secondary);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
 }
 
 .dotLeft,
@@ -51,8 +59,9 @@
     filter: drop-shadow(0 0 3px currentColor);
 }
 
-// No glow either: the glow is the "on air" cue.
-.dotOff {
+// No glow: the glow is the "on air" cue, and with the line gone this dot is
+// the only thing left carrying it.
+.dotSilent {
     opacity: 0.6;
 }
 
