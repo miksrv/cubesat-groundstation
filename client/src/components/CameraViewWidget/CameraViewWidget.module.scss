@@ -1,3 +1,5 @@
+@use '../../styles/mixins' as *;
+
 /* The ui-kit Container renders a plain <section>, so the flex column must
    start here for .body to absorb the leftover height — that is what lets
    the caption's margin-top: auto pin it to the card's bottom edge. */
@@ -25,6 +27,23 @@
     margin-top: 10px;
     align-items: center;
     justify-content: center;
+}
+
+/* The whole frame is the target — a 16:9 card is already small, and a hit
+   area the size of the letterboxed pixels would be smaller still. */
+.zoomButton {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
+    display: flex;
+
+    &:focus-visible {
+        outline: 2px solid var(--color-main);
+        outline-offset: -2px;
+    }
 }
 
 .image {
@@ -82,4 +101,66 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* The z-index is the mission archive's, and for the reason documented there:
+   Leaflet's panes and controls reach 1000 without boxing themselves into a
+   stacking context, so anything meant to cover the page has to clear them. */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 24px 24px;
+    background: rgba(0, 0, 0, 0.86);
+    backdrop-filter: blur(2px);
+    cursor: zoom-out;
+
+    @include breakpoint-mobile {
+        padding: 48px 8px 16px;
+    }
+}
+
+/* No upscaling: a 640x480 frame blown up to a 4K window is a blurry lie about
+   what the camera resolved. It gets its own size and the darkness around it. */
+.lightboxImage {
+    max-width: 100%;
+    /* The caption below never shrinks, so the image is the flex item that
+       gives — min-height: 0 is what lets it, and object-fit keeps the aspect
+       while it does. */
+    min-height: 0;
+    object-fit: contain;
+    cursor: default;
+}
+
+.lightboxCaption {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    cursor: default;
+}
+
+.lightboxClose {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    padding: 4px 10px;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: var(--text-color-secondary);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+
+    &:hover {
+        color: var(--text-color-primary);
+        background: rgba(255, 255, 255, 0.16);
+    }
 }

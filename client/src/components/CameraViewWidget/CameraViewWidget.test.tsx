@@ -1,5 +1,5 @@
 import type { CameraShot } from '../../features/telemetry/types'
-import { fireEvent, render, screen } from '../../test-utils'
+import { fireEvent, render, screen, within } from '../../test-utils'
 
 import CameraViewWidget from './CameraViewWidget'
 
@@ -81,6 +81,68 @@ describe('CameraViewWidget', () => {
             />
         )
         expect(screen.getByText(/no mission/)).toBeInTheDocument()
+    })
+
+    it('opens the photograph full screen, and closes on Escape', () => {
+        render(
+            <CameraViewWidget
+                shot={shot()}
+                photosAvailable={true}
+                isLoading={false}
+            />
+        )
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: /full screen/i }))
+
+        const lightbox = screen.getByRole('dialog')
+        expect(lightbox).toBeInTheDocument()
+        // Both the card and the lightbox show the same photograph.
+        expect(screen.getAllByRole('img')).toHaveLength(2)
+        // Provenance travels with it: full screen is where an operator asks
+        // which mission this was.
+        expect(within(lightbox).getByText(/mission 42/)).toBeInTheDocument()
+
+        fireEvent.keyDown(document, { key: 'Escape' })
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('closes the full-screen photograph on the backdrop and on its close button', () => {
+        render(
+            <CameraViewWidget
+                shot={shot()}
+                photosAvailable={true}
+                isLoading={false}
+            />
+        )
+
+        fireEvent.click(screen.getByRole('button', { name: /full screen/i }))
+        fireEvent.click(screen.getByRole('button', { name: /Close the full-screen/i }))
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: /full screen/i }))
+        // The darkness itself, not a child of it — a click that began on the
+        // image and drifted off must not close it.
+        fireEvent.click(screen.getByRole('dialog'))
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('takes the full-screen view down with a photograph the satellite has deleted', () => {
+        render(
+            <CameraViewWidget
+                shot={shot()}
+                photosAvailable={true}
+                isLoading={false}
+            />
+        )
+        fireEvent.click(screen.getByRole('button', { name: /full screen/i }))
+
+        const enlarged = within(screen.getByRole('dialog')).getByRole('img')
+        fireEvent.error(enlarged)
+
+        // No black screen left over the dashboard, and the card says why.
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        expect(screen.getByText(/retention removes/)).toBeInTheDocument()
     })
 
     it('falls back to the placeholder when the image is gone from the satellite', () => {
