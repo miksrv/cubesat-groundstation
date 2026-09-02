@@ -30,7 +30,14 @@ Stages 0–5 are done and gone from this table; what each of them settled is rec
 **Stage 6 is implemented and deployed**, and stays unticked until the timeline has been stepped
 through by hand in front of the satellite. It grew on 2026-09-01: the replay keeps the whole widget
 set in place, draws the mission's own events, radio traffic and photographs, disables the two
-widgets that command, and plays at ×1 through ×16.
+widgets that command, and plays at ×1 through ×16. On 2026-09-02 the picker became a modal —
+`MissionArchiveDialog` — and gained the second verb: a mission can be erased from the satellite's
+archive, rows, attitude, radio log and photographs together. **Deleting is the satellite's, never
+this page's**: the dashboard's HTTP surface is read-only by construction, so the dialog publishes
+`delete_mission` on `cubesat/command` and DHS, which owns the database, performs it and answers in
+`dhs_status.last_delete`. That is the one command this UI sets a `request_id` on, because that
+answer is retained and somebody else's must not be mistaken for our own. Export and import are not
+in the dialog and are Stage 7's, for the reason below.
 
 **Stage 7 needs two things from the satellite before it is worth doing:** the export must carry the
 mission's photographs (it now carries `radio` as of 2026-09-01, but the body is still
@@ -92,12 +99,19 @@ satellite. The stack has run on the Pi twice, and there are recorded missions, s
 on is a *walk* rather than a working satellite. See the note under Stage 6 above for what the export
 must carry first.
 
-**Commands are unrestricted by design, for now.** The dashboard publishes onto `cubesat/command`
-exactly as the radio does — one vocabulary, whatever the channel. In `EXPO` the satellite is its own
-access point in a public room, so a visitor can send `set_profile HOSTED` and end the demonstration
-by taking the access point down. The ground vocabulary has no `poweroff`, so the worst case is a
-nuisance. If it becomes one in a real room, the fix is a per-profile command allowlist in the
-dashboard service, not a change to the broker ACL — that file cannot see which profile is active.
+**Commands are unrestricted by design, for now — with one exception.** The dashboard publishes onto
+`cubesat/command` exactly as the radio does — one vocabulary, whatever the channel. In `EXPO` the
+satellite is its own access point in a public room, so a visitor can send `set_profile HOSTED` and
+end the demonstration by taking the access point down. The ground vocabulary has no `poweroff`, so
+the worst case is a nuisance. If it becomes one in a real room, the fix is a per-profile command
+allowlist enforced on the satellite, not a change to the broker ACL — that file cannot see which
+profile is active.
+
+The exception is `delete_mission`, added 2026-09-02, because erasing somebody's recorded flight is
+not a nuisance. DHS refuses it outright in `EXPO`, and it deliberately has **no compact spelling**
+on the satellite, so it is in neither the radio vocabulary nor this console's mirror of it — the
+archive dialog is the only thing here that sends it. When the general fence is built, the
+profile-shaped half of that is what it should look like.
 
 **There is no end-to-end test.** The Cypress spec went with the PHP backend: it stubbed
 `/api/cubesat/*` endpoints that no longer exist and asserted on widgets that were rewritten, so it

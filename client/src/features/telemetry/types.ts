@@ -212,6 +212,32 @@ export interface MissionSummary {
     purgedAt: string | null
 }
 
+/**
+ * The satellite's answer to a `delete_mission`, from `dhs_status.last_delete`.
+ *
+ * A response, not a state, riding on a retained message — so it is matched by
+ * `requestId` against the command this page sent. A result that belongs to
+ * somebody else's delete, or to one from before this page was opened, matches
+ * nothing and is ignored.
+ */
+export interface MissionDeleteResult {
+    /** Epoch seconds, stamped by DHS when it answered. */
+    at: number
+    requestId: string | null
+    missionId: number | null
+    ok: boolean
+    /** Why it was refused: the profile is EXPO, the mission is the one being
+     *  recorded, there is no such mission, the database would not open. Null on
+     *  success. */
+    error: string | null
+    rows: number
+    attitude: number
+    radio: number
+    /** Photographs removed with it, and what they occupied. */
+    photos: number
+    bytesReclaimed: number
+}
+
 /** A mission with its detail, as a timeline replays it. */
 export interface MissionDetail {
     mission: MissionSummary
@@ -600,19 +626,27 @@ export type CommandName =
     | 'take_photo'
     | 'get_telemetry'
     | 'set_comms_config'
+    /** Erase one recorded mission. Deliberately has no compact spelling on the
+     *  satellite, so it is in neither the radio vocabulary nor the Mission
+     *  Console's mirror of it — the archive dialog is the only thing here that
+     *  sends it. */
+    | 'delete_mission'
 
 export interface Command {
     command: CommandName
     params?: Record<string, unknown>
     /**
-     * Deliberately never set by this UI. The satellite echoes it on only two
-     * topics (`comms/data` and `payload/photo`) — OBC answers nothing, its
-     * feedback is the next retained `obc_status` — so request/response
-     * correlation cannot be built for most of the vocabulary anyway. The one
-     * console prints every snapshot and every refusal regardless of who asked,
-     * which is the right behaviour for a single-operator page. Kept in the
-     * type because `send()` supports it and the wire accepts it: the day two
-     * ground clients need to tell their answers apart, this is the field.
+     * Set for exactly one command, `delete_mission`, and left off everything
+     * else.
+     *
+     * Most of the vocabulary cannot use it: OBC answers nothing — its feedback
+     * is the next retained `obc_status` — and the two topics that do echo it
+     * (`comms/data`, `payload/photo`) are read by a console that prints every
+     * snapshot and every refusal regardless of who asked, which is the right
+     * behaviour for a single-operator page. A delete is the one command whose
+     * answer must be told from somebody else's: `dhs_status.last_delete` is
+     * retained, so without this field a page opening later would meet an old
+     * result as though it were its own.
      */
     requestId?: string
 }

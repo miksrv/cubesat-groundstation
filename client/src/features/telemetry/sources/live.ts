@@ -28,6 +28,7 @@ import mqtt from 'mqtt'
 import {
     decodeAdcs,
     decodeComms,
+    decodeDeleteResult,
     decodeDhs,
     decodeEps,
     decodeHost,
@@ -95,6 +96,18 @@ const TOPICS = {
  */
 const SUBSCRIBED = Object.values(TOPICS)
 
+/** How long a `delete_mission` waits for `dhs_status` to answer it. Generous
+ *  against a busy satellite on an access point, and short enough that a recorder
+ *  which is not running is reported rather than waited on for ever. */
+const DELETE_TIMEOUT_MS = 15_000
+
+/** One delete this page is waiting on. */
+interface PendingDelete {
+    resolve: () => void
+    reject: (cause: Error) => void
+    timer: ReturnType<typeof setTimeout>
+}
+
 export interface LiveOptions {
     /** e.g. `ws://cubesat.local:9001`. */
     brokerUrl: string
@@ -108,6 +121,7 @@ export class LiveSource implements TelemetrySource {
     public readonly capabilities: SourceCapabilities = {
         commands: true,
         archive: true,
+        deleteMissions: true,
         photos: true,
         radio: true
     }
@@ -123,6 +137,9 @@ export class LiveSource implements TelemetrySource {
     private readonly radioListeners = new Set<(event: RadioEvent) => void>()
     private readonly commandListeners = new Set<(echo: CommandEcho) => void>()
     private readonly snapshotListeners = new Set<(snapshot: TelemetrySnapshot) => void>()
+    /** Deletes this page has asked for and not yet had an answer to, by the
+     *  `request_id` they went out with. See {@link deleteMission}. */
+    private readonly pendingDeletes = new Map<string, PendingDelete>()
 
     public constructor(private readonly options: LiveOptions) {}
 
@@ -237,6 +254,43 @@ export class LiveSource implements TelemetrySource {
         }
     }
 
+    /**
+     * Publish `delete_mission` and wait for the recorder's own answer.
+     *
+     * A command with a reply, which is unusual on this bus and is why the wait
+     * is here rather than at the caller. `cubesat/command` is fire-and-forget by
+     * design — nothing downstream knows which channel a command arrived on — so
+     * the answer comes back the way every other fact does: on the retained
+     * `dhs_status`, in `last_delete`, stamped with the `request_id` that asked.
+     * Matching on that id is what makes the retention safe: a page that opens
+     * long after somebody else's delete sees their result and correctly ignores
+     * it.
+     *
+     * The timeout is not a formality. DHS does not run in every profile, and a
+     * command published to a service that is not there produces exactly nothing
+     * — which without this would be a dialog spinning for ever on a mission that
+     * is still very much on the card.
+     */
+    public async deleteMission(id: number): Promise<void> {
+        const requestId = `del_${id}_${Date.now().toString(36)}`
+        await new Promise<void>((resolve, reject) => {
+            const pending: PendingDelete = {
+                resolve,
+                reject,
+                timer: setTimeout(() => {
+                    this.pendingDeletes.delete(requestId)
+                    reject(new Error('the recorder did not answer — is DHS running in this profile?'))
+                }, DELETE_TIMEOUT_MS)
+            }
+            this.pendingDeletes.set(requestId, pending)
+            this.send({ command: 'delete_mission', params: { mission_id: id }, requestId }).catch((cause: unknown) => {
+                clearTimeout(pending.timer)
+                this.pendingDeletes.delete(requestId)
+                reject(cause instanceof Error ? cause : new Error('the command could not be published'))
+            })
+        })
+    }
+
     public async listPhotos(missionId: number): Promise<PhotoFile[]> {
         const body = await this.get<{ photos: unknown[] }>(`/missions/${missionId}/photos`)
         return (body.photos ?? []).flatMap((row) => {
@@ -270,6 +324,13 @@ export class LiveSource implements TelemetrySource {
     public close(): void {
         this.client?.end(true)
         this.client = null
+        // Nothing will ever answer these now. Rejected rather than left hanging:
+        // a promise that never settles is a dialog that never stops spinning.
+        this.pendingDeletes.forEach((pending) => {
+            clearTimeout(pending.timer)
+            pending.reject(new Error('the connection to the satellite was closed'))
+        })
+        this.pendingDeletes.clear()
     }
 
     // ── the connection ──────────────────────────────────────────────────────
@@ -299,6 +360,31 @@ export class LiveSource implements TelemetrySource {
         client.on('message', (topic, payload) => this.onMessage(topic, payload))
         this.client = client
         return client
+    }
+
+    /** Answer whichever delete this `last_delete` belongs to, if it is ours. */
+    private settleDelete(raw: unknown): void {
+        const result = decodeDeleteResult(raw)
+        if (result?.requestId == null) {
+            return
+        }
+        const pending = this.pendingDeletes.get(result.requestId)
+        if (pending == null) {
+            // Somebody else's delete, or one from before this page was opened —
+            // `dhs_status` is retained, so both arrive here as a matter of
+            // course. Not an error, and not ours to report.
+            return
+        }
+        clearTimeout(pending.timer)
+        this.pendingDeletes.delete(result.requestId)
+        if (result.ok) {
+            pending.resolve()
+            return
+        }
+        // The satellite's own words. It knows why it refused — the profile is
+        // EXPO, the mission is being recorded — and paraphrasing that here would
+        // put a second, worse explanation in front of the operator.
+        pending.reject(new Error(result.error ?? `mission ${result.missionId ?? '?'} was not deleted`))
     }
 
     private setConnection(next: ConnectionState): void {
@@ -371,6 +457,10 @@ export class LiveSource implements TelemetrySource {
             case TOPICS.payloadData:
                 return this.patch({ science: decodeScience(raw) })
             case TOPICS.dhsStatus:
+                // The status carries the recorder's answer to a delete as well
+                // as its state. Settled first: the dialog is waiting on it, and
+                // the patch below re-renders the page either way.
+                this.settleDelete(raw.last_delete)
                 return this.patch({ dhs: decodeDhs(raw) })
             case TOPICS.commsStatus:
                 return this.patch({ comms: decodeComms(raw) })

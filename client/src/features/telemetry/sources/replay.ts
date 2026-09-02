@@ -109,6 +109,10 @@ export class ReplaySource implements TelemetrySource {
         this.capabilities = {
             commands: false,
             archive: true,
+            // A recording is a file, not an archive with a satellite behind it.
+            // The dialog hides the verb rather than offering a button that can
+            // only fail.
+            deleteMissions: false,
             photos: false,
             // Declared from what the recording actually holds: an export made
             // before radio_log existed has no traffic to replay, and a widget
@@ -213,6 +217,13 @@ export class ReplaySource implements TelemetrySource {
             })),
             radio: this.recording.radio
         }
+    }
+
+    public async deleteMission(_id: number): Promise<void> {
+        // Rejected rather than resolved, for the same reason `send` is: there is
+        // no satellite here, and a recording that appeared to delete itself
+        // would teach somebody the wrong thing about the real one.
+        throw new Error('this is a recording — there is nothing to delete')
     }
 
     public async send(_command: Command): Promise<void> {

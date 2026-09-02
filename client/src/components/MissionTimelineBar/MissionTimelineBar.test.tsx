@@ -54,6 +54,7 @@ const timelineStub = (overrides: Partial<Timeline>): Timeline => ({
     pause: jest.fn(),
     seek: jest.fn(),
     cycleSpeed: jest.fn(),
+    remove: jest.fn(async () => undefined),
     exit: jest.fn(),
     ...overrides
 })
@@ -66,48 +67,14 @@ describe('MissionTimelineBar', () => {
         expect(timeline.open).toHaveBeenCalled()
     })
 
-    it('lists the archive, and picking a mission loads it', () => {
+    it('opens the archive dialog over the bar, and the bar stays where it was', () => {
+        // The dialog is a layer over the page, so the chrome underneath must not
+        // rearrange itself while it is open and rearrange back on cancel.
         const timeline = timelineStub({ phase: 'picking', missions: [mission] })
         render(<MissionTimelineBar timeline={timeline} />)
-        expect(screen.getByText(/2026-08-29 01:48:41 UTC/)).toBeInTheDocument()
-        expect(screen.getByText(/78 rows/)).toBeInTheDocument()
-        // The two most informative traits for choosing a recording: how far it
-        // travelled, and why it ended.
-        expect(screen.getByText(/34 m/)).toBeInTheDocument()
-        expect(screen.getByText(/shutdown/)).toBeInTheDocument()
-        fireEvent.click(screen.getByText(/#8 DEMO/))
-        expect(timeline.pick).toHaveBeenCalledWith(8)
-    })
-
-    it('shows a walk in kilometres and an interruption in words', () => {
-        const walk = { ...mission, distanceM: 2340, endReason: 'interrupted' as const }
-        const timeline = timelineStub({ phase: 'picking', missions: [walk] })
-        render(<MissionTimelineBar timeline={timeline} />)
-        expect(screen.getByText(/2\.3 km/)).toBeInTheDocument()
-        expect(screen.getByText(/interrupted/)).toBeInTheDocument()
-    })
-
-    it('withholds the distance of a mission that never had a fix', () => {
-        // Null, not zero: an indoor DEMO did not travel zero metres, it has no
-        // track at all — so no distance fragment is rendered.
-        const indoors = { ...mission, distanceM: null }
-        const timeline = timelineStub({ phase: 'picking', missions: [indoors] })
-        render(<MissionTimelineBar timeline={timeline} />)
-        expect(screen.queryByText(/\d+ m ·/)).not.toBeInTheDocument()
-        expect(screen.getByText(/78 rows/)).toBeInTheDocument()
-    })
-
-    it('says the archive is empty rather than showing an empty list', () => {
-        const timeline = timelineStub({ phase: 'picking', missions: [] })
-        render(<MissionTimelineBar timeline={timeline} />)
-        expect(screen.getByText('The archive holds no missions yet')).toBeInTheDocument()
-    })
-
-    it('marks a purged mission in the picker', () => {
-        const purged = { ...mission, purgedAt: '2026-09-29T00:00:00Z' }
-        const timeline = timelineStub({ phase: 'picking', missions: [purged] })
-        render(<MissionTimelineBar timeline={timeline} />)
-        expect(screen.getByText(/detail purged/)).toBeInTheDocument()
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: 'MISSION ARCHIVE' })).toBeInTheDocument()
+        expect(screen.getByText(/#8 DEMO/)).toBeInTheDocument()
     })
 
     it('shows the error and the way back', () => {

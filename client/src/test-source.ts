@@ -28,7 +28,13 @@ import { setSource } from './features/telemetry/useSource'
 export class FakeSource implements TelemetrySource {
     public readonly kind = 'live' as const
     public readonly label = 'test'
-    public capabilities: SourceCapabilities = { commands: true, archive: true, photos: true, radio: true }
+    public capabilities: SourceCapabilities = {
+        commands: true,
+        archive: true,
+        deleteMissions: true,
+        photos: true,
+        radio: true
+    }
 
     /** Everything `send` was called with, in order. */
     public readonly sent: Command[] = []
@@ -43,6 +49,10 @@ export class FakeSource implements TelemetrySource {
     public missionRadio: RadioEvent[] = []
     /** Set to make `recentTelemetry` reject, as an unreachable archive does. */
     public archiveError: Error | null = null
+    /** Every mission id `deleteMission` was asked for, in order. */
+    public readonly deleted: number[] = []
+    /** Set to make `deleteMission` reject, as a satellite refusing one does. */
+    public deleteError: Error | null = null
     /** What `listPhotos` hands back, oldest first — the archive's order. */
     public photos: PhotoFile[] = []
 
@@ -137,6 +147,20 @@ export class FakeSource implements TelemetrySource {
             attitude: this.missionAttitude,
             radio: this.missionRadio
         }
+    }
+
+    public async deleteMission(id: number): Promise<void> {
+        if (!this.capabilities.deleteMissions) {
+            throw new Error('this is a recording — there is nothing to delete')
+        }
+        if (this.deleteError) {
+            throw this.deleteError
+        }
+        this.deleted.push(id)
+        // The satellite's archive is what the dialog re-reads, so the fake's
+        // has to change too: a test that deletes a mission and still lists it
+        // would be asserting against a listing nothing updates.
+        this.missions = this.missions.filter((mission) => mission.id !== id)
     }
 
     public async listPhotos(_missionId: number): Promise<PhotoFile[]> {

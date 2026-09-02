@@ -155,8 +155,10 @@ describe('Dashboard', () => {
         source.emit(mockLiveState)
         fireEvent.click(screen.getByText('MISSION ARCHIVE'))
         await waitFor(() => expect(screen.getByText(/#11 walk to work/)).toBeInTheDocument())
-        fireEvent.click(screen.getByText(/#11 walk to work/))
-        await waitFor(() => expect(screen.getByText('REPLAY')).toBeInTheDocument())
+        // The archive is a modal now; its REPLAY button is what loads a mission,
+        // and the transport bar's own REPLAY badge is what appears afterwards.
+        fireEvent.click(screen.getByRole('button', { name: 'REPLAY' }))
+        await waitFor(() => expect(screen.getByLabelText('Mission time')).toBeInTheDocument())
     }
 
     it('keeps every widget in place while a mission replays', async () => {

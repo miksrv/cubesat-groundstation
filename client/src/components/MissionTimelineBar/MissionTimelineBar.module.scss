@@ -68,42 +68,6 @@
     white-space: nowrap;
 }
 
-.missionMeta {
-    color: var(--text-color-secondary);
-    font-family: var(--font-family-mono);
-    font-size: 0.64rem;
-}
-
-.picker {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-    min-width: 0;
-}
-
-.missionRow {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    background: var(--button-default-background);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--border-radius);
-    color: var(--button-default-color);
-    padding: 6px 10px;
-    cursor: pointer;
-    text-align: left;
-
-    &:hover {
-        background: var(--button-default-background-hover);
-    }
-
-    @include breakpoint-mobile {
-        flex-direction: column;
-        gap: 2px;
-    }
-}
-
 .transport {
     background: var(--button-default-background);
     color: var(--button-default-color);

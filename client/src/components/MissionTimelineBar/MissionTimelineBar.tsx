@@ -1,7 +1,8 @@
 import React from 'react'
 
-import type { MissionSummary } from '../../features/telemetry/types'
+import { missionTime, utcClock } from '../../features/timeline/labels'
 import type { Timeline } from '../../features/timeline/useTimeline'
+import MissionArchiveDialog from '../MissionArchiveDialog/MissionArchiveDialog'
 
 import styles from './MissionTimelineBar.module.scss'
 
@@ -9,54 +10,21 @@ interface Props {
     timeline: Timeline
 }
 
-const pad = (n: number): string => n.toString().padStart(2, '0')
-
-/** Mission-relative time: `T+MM:SS`, growing hours only when a mission has
- *  them — a 50-minute walk should not read `T+00:50:00`. */
-const missionTime = (seconds: number): string => {
-    const whole = Math.max(0, Math.floor(seconds))
-    const hours = Math.floor(whole / 3600)
-    const minutes = Math.floor((whole % 3600) / 60)
-    const rest = whole % 60
-    return hours > 0 ? `${hours}:${pad(minutes)}:${pad(rest)}` : `${minutes}:${pad(rest)}`
-}
-
-const utcClock = (epoch: number): string => {
-    const date = new Date(epoch * 1000)
-    return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())} UTC`
-}
-
-const startedAtLabel = (iso: string): string => iso.replace('T', ' ').replace('Z', ' UTC')
-
-const durationLabel = (mission: MissionSummary): string | null => {
-    if (!mission.endedAt) {
-        return 'running'
-    }
-    const seconds = (Date.parse(mission.endedAt) - Date.parse(mission.startedAt)) / 1000
-    return Number.isFinite(seconds) ? missionTime(seconds) : null
-}
-
-/** Null stays null: a mission with no fix walked no measurable distance, and
- *  the satellite says so by withholding the number rather than writing 0. */
-const distanceLabel = (metres: number | null): string | null => {
-    if (metres == null) {
-        return null
-    }
-    return metres >= 1000 ? `${(metres / 1000).toFixed(1)} km` : `${metres.toFixed(0)} m`
-}
-
-/** `end_reason` as the recorder wrote it, spaced for reading. `interrupted`
- *  is the one worth noticing before pressing play: power was lost mid-mission
- *  and the closing timestamp is the last row's, not a shutdown's. */
-const endReasonLabel = (reason: string | null): string | null => reason?.replace(/_/g, ' ') ?? null
-
 /**
- * The timeline's own chrome: the archive button, the mission picker, and the
- * transport controls. The replayed data itself goes through the Dashboard into
- * the same widgets the live view uses — this bar only owns the clock's UI.
+ * The timeline's own chrome: the archive button and the transport controls. The
+ * replayed data itself goes through the Dashboard into the same widgets the live
+ * view uses — this bar only owns the clock's UI.
+ *
+ * Choosing a mission is not here. It was, as an inline list that pushed the page
+ * down while it was open, and it is now `MissionArchiveDialog`: a listing that
+ * can also delete needs room for what a mission recorded and for a confirmation
+ * step, and neither belongs in a strip of chrome.
  */
 const MissionTimelineBar: React.FC<Props> = ({ timeline }) => {
-    if (timeline.phase === 'idle') {
+    // The bar looks the same whether or not the archive is open: the dialog is
+    // a layer over the page, so the chrome underneath it should not rearrange
+    // itself behind the operator's back and then rearrange back on cancel.
+    if (timeline.phase === 'idle' || timeline.phase === 'picking') {
         return (
             <div className={styles.bar}>
                 <span className={styles.hint}>Replay a recorded mission from the satellite's archive</span>
@@ -67,46 +35,14 @@ const MissionTimelineBar: React.FC<Props> = ({ timeline }) => {
                 >
                     MISSION ARCHIVE
                 </button>
-            </div>
-        )
-    }
-
-    if (timeline.phase === 'picking') {
-        return (
-            <div className={styles.bar}>
-                <div className={styles.picker}>
-                    {timeline.missions == null && <span className={styles.hint}>Loading missions…</span>}
-                    {timeline.missions != null && timeline.missions.length === 0 && (
-                        <span className={styles.hint}>The archive holds no missions yet</span>
-                    )}
-                    {timeline.missions?.map((mission) => (
-                        <button
-                            key={mission.id}
-                            type='button'
-                            className={styles.missionRow}
-                            onClick={() => timeline.pick(mission.id)}
-                        >
-                            <span className={styles.missionId}>
-                                #{mission.id} {mission.label ?? mission.profile}
-                            </span>
-                            <span className={styles.missionMeta}>
-                                {startedAtLabel(mission.startedAt)}
-                                {durationLabel(mission) != null && ` · ${durationLabel(mission)}`}
-                                {mission.rows != null && ` · ${mission.rows} rows`}
-                                {distanceLabel(mission.distanceM) != null && ` · ${distanceLabel(mission.distanceM)}`}
-                                {endReasonLabel(mission.endReason) != null && ` · ${endReasonLabel(mission.endReason)}`}
-                                {mission.purgedAt != null && ' · detail purged'}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-                <button
-                    type='button'
-                    className={styles.button}
-                    onClick={timeline.exit}
-                >
-                    CANCEL
-                </button>
+                {timeline.phase === 'picking' && (
+                    <MissionArchiveDialog
+                        missions={timeline.missions}
+                        onPick={timeline.pick}
+                        onDelete={timeline.remove}
+                        onClose={timeline.exit}
+                    />
+                )}
             </div>
         )
     }

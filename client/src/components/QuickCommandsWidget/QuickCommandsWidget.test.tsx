@@ -56,7 +56,7 @@ describe('QuickCommandsWidget', () => {
     it('shows the vocabulary disabled when the source cannot be commanded', () => {
         // A recording has no satellite behind it. The buttons stay visible —
         // the panel still teaches what an operator could do — but disabled.
-        source.capabilities = { commands: false, archive: true, photos: false, radio: false }
+        source.capabilities = { commands: false, archive: true, deleteMissions: false, photos: false, radio: false }
         render(<QuickCommandsWidget />)
         const takePhoto = screen.getByText('TAKE PHOTO')
         expect(takePhoto).toBeDisabled()

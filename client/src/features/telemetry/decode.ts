@@ -21,6 +21,7 @@ import type {
     EpsStatus,
     GnssFix,
     HostStatus,
+    MissionDeleteResult,
     MissionSummary,
     NetworkMode,
     ObcStatus,
@@ -444,6 +445,37 @@ export const decodeTelemetry = (raw: Raw): TelemetryRecord => ({
     uptimeSeconds: num(raw.uptime_seconds),
     cpuTemperature: num(raw.cpu_temperature)
 })
+
+/**
+ * `dhs_status.last_delete`, or null when the recorder has never been asked to
+ * delete anything.
+ *
+ * Decoded here rather than folded into {@link decodeDhs} deliberately: this is
+ * an answer to one command, not a fact about the recorder, and putting it into
+ * `DhsStatus` would hand every widget on the page a field only the archive
+ * dialog can use.
+ */
+export const decodeDeleteResult = (raw: unknown): MissionDeleteResult | null => {
+    if (typeof raw !== 'object' || raw == null) {
+        return null
+    }
+    const result = raw as Raw
+    return {
+        at: num(result.at) ?? 0,
+        requestId: str(result.request_id),
+        missionId: num(result.mission_id),
+        // Only an explicit `true` is a success. A malformed answer is a refusal
+        // — the satellite is the one that knows, and assuming otherwise would
+        // tell somebody their mission is gone when it may not be.
+        ok: result.ok === true,
+        error: str(result.error),
+        rows: num(result.rows) ?? 0,
+        attitude: num(result.attitude) ?? 0,
+        radio: num(result.radio) ?? 0,
+        photos: num(result.photos) ?? 0,
+        bytesReclaimed: num(result.bytes_reclaimed) ?? 0
+    }
+}
 
 export const decodeMission = (raw: Raw): MissionSummary => ({
     id: num(raw.id) ?? 0,

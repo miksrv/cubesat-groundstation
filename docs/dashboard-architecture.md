@@ -14,7 +14,7 @@ interface with several data sources behind a single seam**. No PHP and no MySQL 
 | # | Case | Runs on | Data comes from |
 |---|---|---|---|
 | 1 | Live dashboard in `DEMO` / `EXPO` | the satellite | the satellite's own MQTT bus and SQLite |
-| 2 | Mission archive: load a mission, play its timeline | the satellite | the satellite's SQLite |
+| 2 | Mission archive: list the missions, replay one, delete one | the satellite | the satellite's SQLite, and `delete_mission` on its command bus |
 | 3 | Public demo, always reachable on the internet | ordinary static hosting | itself — no backend at all |
 | 4 | Ground receiver: a Heltec V4 on USB (future) | a laptop | a local serial link and its own SQLite |
 

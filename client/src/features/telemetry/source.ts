@@ -52,6 +52,10 @@ export interface SourceCapabilities {
     commands: boolean
     /** Whether the mission archive is reachable. */
     archive: boolean
+    /** Whether {@link TelemetrySource.deleteMission} does anything. False on a
+     *  replay, and false is not a detail: the archive dialog hides the verb
+     *  rather than offering a button that can only fail. */
+    deleteMissions: boolean
     /** Whether photographs arrive. */
     photos: boolean
     /** Whether radio traffic arrives — false on a replay, so the radio table
@@ -151,6 +155,24 @@ export interface TelemetrySource {
     loadMission(id: number): Promise<MissionDetail>
 
     /**
+     * Erase one mission from the satellite's archive — its rows, its track, its
+     * radio traffic and its photographs.
+     *
+     * Domain-level like everything else here, and deliberately so: on the live
+     * satellite this is a `delete_mission` command on `cubesat/command` answered
+     * on `dhs_status`, because DHS owns the database and the dashboard's own
+     * HTTP surface is read-only by construction. None of that is the caller's
+     * business.
+     *
+     * Resolves only when the satellite says it deleted it. Rejects with the
+     * satellite's own reason when it refuses — the profile is `EXPO`, the
+     * mission is the one being recorded, there is no such mission — and when no
+     * answer comes at all, which is what a recorder that is not running looks
+     * like from here.
+     */
+    deleteMission(id: number): Promise<void>
+
+    /**
      * The photographs a mission has on disk, oldest first — the order the
      * satellite lists them in, which is chronological because the names embed
      * the UTC capture time. Names and fetchable URLs, never pixels: a page
@@ -188,6 +210,7 @@ export interface AttitudeUpdate {
 export const NO_CAPABILITIES: SourceCapabilities = {
     commands: false,
     archive: false,
+    deleteMissions: false,
     photos: false,
     radio: false
 }

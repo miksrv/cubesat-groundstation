@@ -5,7 +5,7 @@
  * and each decoder must return null for the other's message.
  */
 
-import { decodeObc, decodePhoto, decodePhotoRefusal } from './decode'
+import { decodeDeleteResult, decodeObc, decodePhoto, decodePhotoRefusal } from './decode'
 
 const refusalWire = {
     timestamp: 1741863600.5,
@@ -78,5 +78,58 @@ describe('decodePhoto', () => {
             missionId: 12,
             photoBase64: '/9j/4AAQ'
         })
+    })
+})
+
+describe('decodeDeleteResult', () => {
+    it('decodes what DHS reports in dhs_status.last_delete', () => {
+        expect(
+            decodeDeleteResult({
+                at: 1741863612.4,
+                request_id: 'req_042',
+                mission_id: 41,
+                ok: true,
+                error: null,
+                rows: 318,
+                attitude: 2283,
+                radio: 57,
+                photos: 12,
+                bytes_reclaimed: 5242880
+            })
+        ).toStrictEqual({
+            at: 1741863612.4,
+            requestId: 'req_042',
+            missionId: 41,
+            ok: true,
+            error: null,
+            rows: 318,
+            attitude: 2283,
+            radio: 57,
+            photos: 12,
+            bytesReclaimed: 5242880
+        })
+    })
+
+    it('carries the refusal and its reason', () => {
+        const refused = decodeDeleteResult({
+            at: 1741863612.4,
+            request_id: 'req_042',
+            mission_id: 41,
+            ok: false,
+            error: 'mission 41 is being recorded; end it first'
+        })
+        expect(refused?.ok).toBe(false)
+        expect(refused?.error).toBe('mission 41 is being recorded; end it first')
+    })
+
+    it('treats anything but an explicit success as a refusal', () => {
+        // The satellite is the half that knows. Assuming otherwise would tell
+        // somebody their mission is gone when it may well not be.
+        expect(decodeDeleteResult({ request_id: 'req_042' })?.ok).toBe(false)
+    })
+
+    it('is null before the recorder has ever been asked to delete anything', () => {
+        expect(decodeDeleteResult(null)).toBeNull()
+        expect(decodeDeleteResult(undefined)).toBeNull()
     })
 })

@@ -1,0 +1,199 @@
+@use '../../styles/mixins' as *;
+
+.backdrop {
+    position: fixed;
+    inset: 0;
+    /* Above everything, and the number is not arbitrary. Leaflet gives its own
+       panes 400, its controls 800 and its corner containers 1000, and none of
+       that is boxed in — `.leaflet-container` creates no stacking context, so
+       those children compete directly with anything else on the page. The
+       sticky status bar is 100. A modest value loses to the ground-track map,
+       which is exactly what a 50 here did. */
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: blur(2px);
+
+    @include breakpoint-mobile {
+        padding: 0;
+        align-items: stretch;
+    }
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    width: min(760px, 100%);
+    /* The list scrolls inside the panel rather than the panel growing past the
+       viewport: an archive of forty walks must not push its own footer — which
+       says what delete does — off the screen. */
+    max-height: min(78vh, 640px);
+    background: var(--container-background-color);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--border-radius);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+    outline: none;
+
+    @include breakpoint-mobile {
+        max-height: 100%;
+        border-radius: 0;
+        border: none;
+    }
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--color-main);
+}
+
+.close {
+    background: transparent;
+    border: none;
+    color: var(--text-color-secondary);
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 4px 6px;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--text-color-primary);
+    }
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 16px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--button-default-background);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    padding: 8px 10px;
+
+    @include breakpoint-mobile {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+
+/* The row being confirmed is marked, so the ERASE button is never the only
+   thing saying which mission is about to go. */
+.rowConfirming {
+    border-color: rgba(239, 68, 68, 0.45);
+    background: var(--color-red-background);
+}
+
+.about {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.missionId {
+    font-family: var(--font-family-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.meta {
+    color: var(--text-color-secondary);
+    font-family: var(--font-family-mono);
+    font-size: 0.64rem;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.action {
+    background: var(--button-default-background);
+    color: var(--button-default-color);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--border-radius);
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+        background: var(--button-default-background-hover);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+}
+
+.replay {
+    color: var(--color-main);
+    border-color: rgba(0, 184, 217, 0.35);
+}
+
+.danger {
+    color: var(--color-contrast);
+    background: var(--color-red);
+    border-color: var(--color-red);
+
+    &:hover:not(:disabled) {
+        background: var(--color-red-hover);
+    }
+}
+
+.warning {
+    color: var(--color-red);
+    font-size: 0.64rem;
+}
+
+.error {
+    color: var(--color-red);
+    font-size: 0.64rem;
+    width: 100%;
+}
+
+.hint {
+    color: var(--text-color-secondary);
+    font-size: 0.64rem;
+    line-height: 1.6;
+
+    code {
+        font-family: var(--font-family-mono);
+    }
+}
+
+.footer {
+    padding: 10px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

@@ -287,6 +287,34 @@ describe('useTimeline', () => {
         expect(result.current.end).toBe(START + 65)
     })
 
+    it('a deleted mission leaves the listing the dialog is showing', async () => {
+        // The hook owns the listing, so a delete is a change to it. Removed
+        // locally rather than by a second round trip — and only after the
+        // satellite said it was gone.
+        const second = { ...mission, id: 9 }
+        source.missions = [mission, second]
+        const { result } = renderHook(() => useTimeline())
+        act(() => result.current.open())
+        await waitFor(() => expect(result.current.missions).toHaveLength(2))
+
+        await act(async () => {
+            await result.current.remove(mission.id)
+        })
+
+        expect(source.deleted).toEqual([mission.id])
+        expect(result.current.missions).toEqual([second])
+    })
+
+    it('a refused delete leaves the mission listed, and says why', async () => {
+        source.deleteError = new Error('deleting a mission is not permitted in EXPO')
+        const { result } = renderHook(() => useTimeline())
+        act(() => result.current.open())
+        await waitFor(() => expect(result.current.missions).toHaveLength(1))
+
+        await expect(result.current.remove(mission.id)).rejects.toThrow('not permitted in EXPO')
+        expect(result.current.missions).toEqual([mission])
+    })
+
     it('exit drops everything and returns to live', async () => {
         const { result } = await readyTimeline()
         act(() => jest.advanceTimersByTime(10_000))

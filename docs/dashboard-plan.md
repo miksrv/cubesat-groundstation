@@ -188,6 +188,21 @@ Needs Stage 1 and Stage 5.
 - Attitude comes from the `attitude` table at 1 Hz with slerp between samples; everything else from
   `telemetry` at DHS's own cadence. Two different rates on one timeline is the thing to get right
 
+**The picker became a dialog on 2026-09-02**, and gained a delete. The inline list lived in the
+timeline bar and pushed the page down while it was open — tolerable for one verb, "replay this
+one", and not once a row can erase a walk permanently. `MissionArchiveDialog` is a modal with room
+to describe what is about to be destroyed and a confirmation step of its own, rather than a browser
+`confirm()` an operator learns to dismiss without reading.
+
+Two properties of the delete are worth keeping. **It is the satellite's, not this page's**: the
+dashboard service is read-only by construction (`archive.py` opens the file `mode=ro`), so the
+dialog publishes `delete_mission` on `cubesat/command` and DHS — the database's one writer —
+performs it and answers on `dhs_status.last_delete`. And **the answer is correlated**: that status
+is retained, so a page opening later meets somebody else's result as a matter of course, which is
+why this is the one command the UI stamps with a `request_id`. `capabilities.deleteMissions` is
+false on the replay source, and the dialog then renders no delete at all rather than a button that
+can only fail.
+
 ---
 
 ## Stage 7 — The public demo · *groundstation*

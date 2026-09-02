@@ -94,6 +94,18 @@ export interface Timeline {
 
     open: () => void
     pick: (id: number) => void
+    /**
+     * Erase one mission from the satellite's archive.
+     *
+     * Here rather than in the dialog because this hook owns the listing, and a
+     * delete is a change to it: on success the mission leaves `missions`
+     * without a second round trip, which is also what makes the dialog's
+     * "gone" honest — it reflects a satellite that said it deleted the thing,
+     * not a row a widget hid.
+     *
+     * Rejects with the satellite's own reason so the dialog can print it.
+     */
+    remove: (id: number) => Promise<void>
     play: () => void
     pause: () => void
     seek: (t: number) => void
@@ -257,6 +269,11 @@ export const useTimeline = (): Timeline => {
             })
     }
 
+    const remove = async (id: number): Promise<void> => {
+        await getSource().deleteMission(id)
+        setMissions((current) => (current == null ? current : current.filter((m) => m.id !== id)))
+    }
+
     const exit = (): void => {
         setPhase('idle')
         setMissions(null)
@@ -285,6 +302,7 @@ export const useTimeline = (): Timeline => {
         attitudeRef,
         open,
         pick,
+        remove,
         play: () => {
             // Play at the end means "again": rewind rather than a button that
             // silently does nothing.
