@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef } from 'react'
+import React, { Suspense } from 'react'
 
 import { GizmoHelper, OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
@@ -9,8 +9,8 @@ import type { AdcsStatus } from '../../features/telemetry/types'
 import CubeSatModel from './CubeSatModel'
 import FrameCheckProbe from './FrameCheckProbe'
 import HeadingProbe from './HeadingProbe'
-import type { FrameCheck, HeadingFix, ViewpointRequest } from './sceneContract'
-import { RESET_VIEWPOINT } from './sceneContract'
+import type { FrameCheck, HeadingFix } from './sceneContract'
+import { OPENING_VIEWPOINT } from './sceneContract'
 import WorldAxesGizmo from './WorldAxesGizmo'
 import WorldReference from './WorldReference'
 
@@ -20,10 +20,6 @@ interface Props {
      *  chunk need the accelerometer, the published heading, the calibration
      *  that says whether that heading is a measurement, and the turn rate. */
     adcs: AdcsStatus | null
-    /** The viewer's latest press of Reset. Owned by the widget so the button can
-     *  live in the panel header without this chunk leaking into the main
-     *  bundle. */
-    viewpoint: ViewpointRequest
     /** Owned by the widget, because the same verdict is also spelled out on the
      *  canvas wrapper in plain DOM. Passed back down so the world reference can
      *  dim. */
@@ -35,61 +31,11 @@ interface Props {
     onHeading: (fix: HeadingFix) => void
 }
 
-/**
- * OrbitControls plus the one fixed camera station.
- *
- * A component of its own, inside the Canvas, because the controls ref has to be
- * populated in the same commit that the effect reads it — r3f renders these
- * children into its own React root, so an effect in the outer component would
- * fire against a ref that is still null.
- */
-const CameraRig: React.FC<{ viewpoint: ViewpointRequest }> = ({ viewpoint }) => {
-    const controls = useRef<React.ComponentRef<typeof OrbitControls>>(null)
-
-    useEffect(() => {
-        const instance = controls.current
-        if (!instance) {
-            return
-        }
-        // Snapped, not tweened: a tween would fight the viewer's own drag for
-        // its whole duration, and the point of the button is to end an argument
-        // about where the camera is, not to start one. (The gizmo tweens, and
-        // should — it is answering a different question.)
-        instance.object.position.set(...RESET_VIEWPOINT)
-        instance.target.set(0, 0, 0)
-        instance.update()
-    }, [viewpoint])
-
-    return (
-        <OrbitControls
-            ref={controls}
-            // GizmoHelper reaches for the default controls when an axis head is
-            // clicked, and throws outright if nothing has claimed the slot.
-            makeDefault
-            enableZoom
-            enablePan={false}
-            minDistance={1.5}
-            // Far enough to frame the whole ground disc from the Top station:
-            // the compass letters sit on its rim, and at 6 the rim was never
-            // all in view at once.
-            maxDistance={9}
-        />
-    )
-}
-
 // Canvas lives inside this component (not the other way around) so the whole
 // chunk mounts as one unit once loaded — see the OrbitGroundTrack widget for
 // why mounting Canvas eagerly with a lazy child behind Suspense causes WebGL
 // context loss under React.StrictMode in development.
-const Satellite3DScene: React.FC<Props> = ({
-    attitudeRef,
-    adcs,
-    viewpoint,
-    frameCheck,
-    onFrameCheck,
-    heading,
-    onHeading
-}) => {
+const Satellite3DScene: React.FC<Props> = ({ attitudeRef, adcs, frameCheck, onFrameCheck, heading, onHeading }) => {
     return (
         <>
             {/* Outside the Canvas on purpose: both audits are arithmetic on
@@ -107,7 +53,7 @@ const Satellite3DScene: React.FC<Props> = ({
                 onFix={onHeading}
             />
             <Canvas
-                camera={{ position: [...RESET_VIEWPOINT], fov: 40 }}
+                camera={{ position: [...OPENING_VIEWPOINT], fov: 40 }}
                 gl={{ powerPreference: 'default' }}
             >
                 <Suspense fallback={null}>
@@ -162,7 +108,23 @@ const Satellite3DScene: React.FC<Props> = ({
                     >
                         <WorldAxesGizmo />
                     </GizmoHelper>
-                    <CameraRig viewpoint={viewpoint} />
+                    {/* The only camera control besides the gizmo's heads: drag
+                        to orbit, wheel to zoom. Nothing puts the camera back to
+                        where it opened — the gizmo's three stations are the way
+                        back from a stray drag, and they keep the viewer's zoom. */}
+                    <OrbitControls
+                        // GizmoHelper reaches for the default controls when an
+                        // axis head is clicked, and throws outright if nothing
+                        // has claimed the slot.
+                        makeDefault
+                        enableZoom
+                        enablePan={false}
+                        minDistance={1.5}
+                        // Far enough to frame the whole ground disc from the
+                        // Top station: the compass letters sit on its rim, and
+                        // at 6 the rim was never all in view at once.
+                        maxDistance={9}
+                    />
                 </Suspense>
             </Canvas>
         </>

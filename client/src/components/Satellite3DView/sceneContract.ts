@@ -72,36 +72,26 @@ export const frameCheckLabel = (check: FrameCheck): string => {
 }
 
 /**
- * The one fixed camera station, in scene-world coordinates: the oblique
- * three-quarter view the widget opens on, and the only one a button offers.
+ * Where the camera stands when the widget opens, in scene-world coordinates:
+ * an oblique three-quarter view, the only one that shows all three body axes
+ * at once.
  *
- * There is exactly one because the corner orientation gizmo already covers the
- * rest. Its axis heads are clickable — that is what `makeDefault` on
- * `OrbitControls` is for — so the head labelled Z looks straight down the world
- * up-axis, and X and Y give the two side-on, on-the-horizon eyes that are the
- * cheapest way to read tilt. It does it better than a button can, too: it swings
- * the camera around the target at the distance the viewer had, where a station is
- * a hard-coded position and throws the zoom away.
- *
- * What the gizmo cannot produce is a view off-axis, so this station stays. It is
- * the only one that shows all three body axes at once, and without it a stray
- * drag has no way back.
+ * It is the opening view and nothing more — there is no button that returns
+ * to it. The corner orientation gizmo is the camera control: its axis heads are
+ * clickable — that is what `makeDefault` on `OrbitControls` is for — so the
+ * head labelled Z looks straight down the world up-axis, and X and Y give the
+ * two side-on, on-the-horizon eyes that are the cheapest way to read tilt. It
+ * does it better than a button can, too: it swings the camera around the target
+ * at the distance the viewer had, where a station is a hard-coded position and
+ * throws the zoom away. A Reset button that did just that used to sit in the
+ * panel header; it was the one control there, and it went.
  *
  * It is *not* named for a direction on the ground, and there is no "North"
  * button, because with the magnetometer uncalibrated the scene has no north (see
  * `worldFrame.ts`) — such a button would be the same invented compass this
  * widget exists to stop drawing.
  */
-export const RESET_VIEWPOINT: readonly [number, number, number] = [1.9, 1.25, 2.4]
-
-/** A *request* for that station, not the camera's state. `seq` increments on
- *  every press so that asking again still moves the camera back after the viewer
- *  has dragged away from it — the same value would be no state change at all. */
-export interface ViewpointRequest {
-    seq: number
-}
-
-export const DEFAULT_VIEWPOINT: ViewpointRequest = { seq: 0 }
+export const OPENING_VIEWPOINT: readonly [number, number, number] = [1.9, 1.25, 2.4]
 
 // ── heading ─────────────────────────────────────────────────────────────────
 

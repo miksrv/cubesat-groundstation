@@ -1,5 +1,5 @@
-import React, { lazy, Suspense, useCallback, useState } from 'react'
-import { Button, Container, Skeleton } from 'simple-react-ui-kit'
+import React, { lazy, Suspense, useState } from 'react'
+import { Container, Skeleton } from 'simple-react-ui-kit'
 
 import type { AttitudeUpdate } from '../../features/telemetry/source'
 import type { AdcsStatus } from '../../features/telemetry/types'
@@ -7,14 +7,7 @@ import { useAttitudeRef } from '../../features/telemetry/useSource'
 
 import AttitudeIndicator from './AttitudeIndicator'
 import type { FrameCheck, HeadingFix } from './sceneContract'
-import {
-    ACCEL_COLOR,
-    AXIS_COLOR,
-    DEFAULT_VIEWPOINT,
-    INITIAL_FRAME_CHECK,
-    INITIAL_HEADING_FIX,
-    sceneNotes
-} from './sceneContract'
+import { ACCEL_COLOR, AXIS_COLOR, INITIAL_FRAME_CHECK, INITIAL_HEADING_FIX, sceneNotes } from './sceneContract'
 
 import styles from './Satellite3DView.module.scss'
 
@@ -44,7 +37,6 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
     const liveAttitudeRef = useAttitudeRef()
     const attitudeRef = attitude ?? liveAttitudeRef
 
-    const [viewpoint, setViewpoint] = useState(DEFAULT_VIEWPOINT)
     /*
       The scene's own verdict on whether its world frame survives contact with
       the accelerometer. It lives up here because it is read twice: as the
@@ -63,31 +55,15 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
     */
     const [heading, setHeading] = useState<HeadingFix>(INITIAL_HEADING_FIX)
 
-    const recallCamera = useCallback(() => {
-        // A new `seq` every press, so the button still brings the camera back
-        // after the viewer has dragged away from the station it was last sent to.
-        setViewpoint((current) => ({ seq: current.seq + 1 }))
-    }, [])
-
     /*
-      The only camera control in the header, and the only one there should be:
-      the axis-aligned views three more buttons used to give are the gizmo's job,
-      and it keeps the viewer's zoom while doing it — see RESET_VIEWPOINT.
+      No camera control in the header. The orientation gizmo inside the canvas
+      is the camera control — its heads are the axis-aligned stations, and they
+      keep the viewer's zoom — see OPENING_VIEWPOINT.
     */
     return (
         <Container
             title='3D Satellite View'
             className={styles.panel}
-            action={
-                !showSkeleton && (
-                    <Button
-                        size='small'
-                        mode='outline'
-                        label='Reset'
-                        onClick={recallCamera}
-                    />
-                )
-            }
         >
             {showSkeleton && <Skeleton style={{ height: '280px', width: '100%' }} />}
             {!showSkeleton && (
@@ -107,7 +83,6 @@ const Satellite3DView: React.FC<Props> = React.memo(({ adcs, isLoading, attitude
                             <Satellite3DScene
                                 attitudeRef={attitudeRef}
                                 adcs={adcs}
-                                viewpoint={viewpoint}
                                 frameCheck={frameCheck}
                                 onFrameCheck={setFrameCheck}
                                 heading={heading}

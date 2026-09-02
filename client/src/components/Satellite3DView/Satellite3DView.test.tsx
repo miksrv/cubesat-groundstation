@@ -1,18 +1,14 @@
 import type React from 'react'
 import * as THREE from 'three'
 
-/* The same module jest maps `@react-three/drei` onto, reached by path because
-   the real package has no such export to declare. */
-import { orbitControlsMoves } from '../../__mocks__/react-three-drei'
 import type { AttitudeUpdate } from '../../features/telemetry/source'
 import type { AdcsStatus } from '../../features/telemetry/types'
 import { mockAdcs } from '../../test-fixtures'
 import { FakeSource, installFakeSource } from '../../test-source'
-import { act, fireEvent, render, screen } from '../../test-utils'
+import { act, render, screen } from '../../test-utils'
 
 import { CAMERA_FACE_ROTATION } from './CubeSatModel'
 import Satellite3DView from './Satellite3DView'
-import { RESET_VIEWPOINT } from './sceneContract'
 
 import '@testing-library/jest-dom'
 
@@ -364,7 +360,7 @@ describe('Satellite3DView', () => {
     })
 
     describe('the camera controls', () => {
-        it('offers reset and nothing the gizmo already does', () => {
+        it('offers no camera buttons — the gizmo already covers the stations', () => {
             render(
                 <Satellite3DView
                     adcs={mockAdcs}
@@ -372,51 +368,17 @@ describe('Satellite3DView', () => {
                 />
             )
 
-            expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
-            // The axis-aligned stations belong to the orientation gizmo, whose
-            // heads keep the viewer's distance to the target where a button
-            // snapped to a hard-coded radius and threw the zoom away.
+            // The header used to carry a Reset button; the axis-aligned
+            // stations belong to the orientation gizmo, whose heads keep the
+            // viewer's distance to the target where a button snapped to a
+            // hard-coded position and threw the zoom away.
+            expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
             expect(screen.queryByRole('button', { name: 'Level' })).not.toBeInTheDocument()
             expect(screen.queryByRole('button', { name: 'Top' })).not.toBeInTheDocument()
             expect(screen.queryByRole('button', { name: 'Side' })).not.toBeInTheDocument()
             // No compass: heading is withheld until the magnetometer is
             // calibrated, so no control may imply the scene knows where north is.
             expect(screen.queryByRole('button', { name: /north/i })).not.toBeInTheDocument()
-        })
-
-        it('keeps the reset button out of the way while the skeleton shows', () => {
-            render(
-                <Satellite3DView
-                    adcs={null}
-                    isLoading={true}
-                />
-            )
-
-            expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
-        })
-
-        it('moves the camera on every press, so a dragged camera comes back', async () => {
-            render(
-                <Satellite3DView
-                    adcs={mockAdcs}
-                    isLoading={false}
-                />
-            )
-            await screen.findByTestId('r3f-canvas')
-
-            // Forget the placement the scene made when it mounted: what is
-            // under test is the button, not the opening view.
-            orbitControlsMoves.length = 0
-
-            const reset = screen.getByRole('button', { name: 'Reset' })
-            fireEvent.click(reset)
-            fireEvent.click(reset)
-
-            // Twice, not once. There is only one station, so a request carrying
-            // just its identity would be an unchanged state on the second press
-            // and the camera would stay wherever the viewer had dragged it —
-            // that is the whole reason the request carries a `seq`.
-            expect(orbitControlsMoves).toStrictEqual([[...RESET_VIEWPOINT], [...RESET_VIEWPOINT]])
         })
     })
 })
