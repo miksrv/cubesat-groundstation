@@ -254,8 +254,8 @@ describe('MissionConsoleWidget', () => {
                 latest={mockTelemetryRecord}
             />
         )
-        runCommand('science soon')
-        expect(await screen.findByText('usage: science start|stop')).toBeInTheDocument()
+        runCommand('restart')
+        expect(await screen.findByText('usage: restart <adcs|payload|dhs|comms>')).toBeInTheDocument()
         expect(source.sent).toEqual([])
     })
 

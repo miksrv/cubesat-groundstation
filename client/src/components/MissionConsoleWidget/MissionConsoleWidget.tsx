@@ -44,9 +44,8 @@ interface Props {
  * nothing teaches the operator something false about the thing they are
  * operating. `poweroff` is absent because the vocabulary has no such thing
  * (`CRITICAL` is the only thing permitted to power the host down), and
- * `restart` is absent because its handler is not written yet — the satellite
- * answers that spelling with `err=unknown`, and this console must not know
- * more commands than the satellite does.
+ * `science start|stop` went on 2026-09-02 with the state it named. This console
+ * must not know more commands than the satellite does.
  */
 const HELP_TEXT = [
     'Satellite commands - the same lines work over the Meshtastic uplink:',
@@ -56,7 +55,6 @@ const HELP_TEXT = [
     '  env                     - temperature, humidity, pressure, light',
     '  mission                 - the mission being recorded',
     '  photo                   - take one photograph',
-    '  science start|stop      - enter or leave SCIENCE',
     '  restart <service>       - restart adcs, payload, dhs or comms through HOSTD',
     '  profile <name>          - HOSTED | DEMO | EXPO | FLIGHT | DIAG | MAINTENANCE',
     '  safe                    - request SAFE',
@@ -159,11 +157,6 @@ const parse = (line: string): Parsed => {
                 return { command: { command: 'restart_service', params: { service: args[0] } } }
             }
             return { usage: 'usage: restart <adcs|payload|dhs|comms>' }
-        case 'science':
-            if (args.length === 1 && (args[0] === 'start' || args[0] === 'stop')) {
-                return { command: { command: args[0] === 'start' ? 'science_start' : 'science_stop' } }
-            }
-            return { usage: 'usage: science start|stop' }
         // `lora` is what this verb was called until 2026-09-01, kept accepted
         // because it may be in somebody's fingers. Renamed because it said the
         // wrong thing: turning it off never turned the radio off, and quiet-but-

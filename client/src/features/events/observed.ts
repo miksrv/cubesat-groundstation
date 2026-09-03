@@ -34,8 +34,7 @@ const STATE_SEVERITY: Record<string, EventSeverity> = {
     SAFE: 'warning',
     LOW_POWER: 'warning',
     DEPLOY: 'info',
-    NOMINAL: 'success',
-    SCIENCE: 'success'
+    NOMINAL: 'success'
 }
 
 /** Enough to fill the panel and to stop an all-night EXPO growing without end. */

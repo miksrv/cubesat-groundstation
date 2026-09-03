@@ -34,8 +34,8 @@ const COMMANDS: Array<{ label: string; command: Command; destructive?: boolean }
     // Start/Stop Timelapse were here until 2026-09-01. A mission photographs
     // itself now, and a button that publishes a verb the satellite answers
     // nothing to is worse than no button.
-    { label: 'Science Start', command: { command: 'science_start' } },
-    { label: 'Science Stop', command: { command: 'science_stop' } },
+    // Science Start/Stop were here until 2026-09-02, when the satellite removed
+    // the SCIENCE state: they changed a label and nothing a service could act on.
     { label: 'Get Telemetry', command: { command: 'get_telemetry' } },
     // The beacon starts off in DEMO and EXPO (2026-09-01): the satellite is a
     // metre away with this page open, so beaconing at its operator over a shared

@@ -26,8 +26,17 @@
 /** What the Raspberry Pi is allowed to be. Chosen by a human, changes rarely. */
 export type Profile = 'HOSTED' | 'DEMO' | 'EXPO' | 'FLIGHT' | 'DIAG' | 'MAINTENANCE'
 
-/** What the satellite is doing inside that envelope. Chosen from its own telemetry. */
-export type MissionState = 'BOOT' | 'STANDBY' | 'DEPLOY' | 'NOMINAL' | 'SCIENCE' | 'LOW_POWER' | 'SAFE' | 'CRITICAL'
+/**
+ * What the satellite is doing inside that envelope. Chosen from its own telemetry.
+ *
+ * `SCIENCE` sat above `NOMINAL` until the satellite removed it on 2026-09-02 —
+ * every cadence, the beacon, the camera and the recording rule were identical to
+ * `NOMINAL`, so it was a label and nothing a service could act on. A mission
+ * recorded before that date still holds it in `telemetry.obc_state`, and it
+ * replays without falling over: an unclassifiable state renders under its real
+ * name and is judged UNKNOWN rather than assumed healthy — see below.
+ */
+export type MissionState = 'BOOT' | 'STANDBY' | 'DEPLOY' | 'NOMINAL' | 'LOW_POWER' | 'SAFE' | 'CRITICAL'
 
 /**
  * The states this build can classify. A state name on the wire is **not**
@@ -42,7 +51,6 @@ export const MISSION_STATES: readonly MissionState[] = [
     'STANDBY',
     'DEPLOY',
     'NOMINAL',
-    'SCIENCE',
     'LOW_POWER',
     'SAFE',
     'CRITICAL'
@@ -615,11 +623,10 @@ export interface CommandEcho {
 /** Every command the satellite answers for. The single table in
  *  `cubesat-sim/README.md` → The command vocabulary is the source of truth;
  *  this is that list in a type. `start_timelapse`/`stop_timelapse` went with the
- *  timelapse itself on 2026-09-01 — a mission photographs itself now. */
+ *  timelapse itself on 2026-09-01 — a mission photographs itself now, and
+ *  `science_start`/`science_stop` went with the `SCIENCE` state on 2026-09-02. */
 export type CommandName =
     | 'set_profile'
-    | 'science_start'
-    | 'science_stop'
     | 'safe_mode'
     | 'recover'
     | 'restart_service'

@@ -66,8 +66,6 @@ const obcBadgeClass = (state: string): string => {
         case 'BOOT':
         case 'DEPLOY':
             return styles.badgeBoot
-        case 'SCIENCE':
-            return styles.badgeScience
         case 'LOW_POWER':
             return styles.badgeLowPower
         case 'SAFE':
