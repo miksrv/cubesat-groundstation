@@ -68,6 +68,42 @@ scene's up. When it does not, the horizon dims and says so rather than drawing a
 plane. **Nothing here has been confirmed against the real chip yet** — the bundled recording is
 synthetic, so the check exists precisely to speak up when a real walk finally arrives.
 
+**`Mission Status` says NOMINAL for a satellite that is not on a mission — found 2026-09-02.** The
+satellite was switched from `DEMO` back to `HOSTED` with the page left open; the headline stayed
+`NOMINAL` while the satellite sat in `STANDBY`. Nothing is stale here, and that is the point: the
+page is receiving live `obc_status` every 30 s and classifying it correctly. `getMissionStatus`
+(`client/src/utils/subsystemStatus.ts`) is a three-level *health verdict* — `CRITICAL` for
+`CRITICAL`, `WARNING` for `SAFE` and `LOW_POWER`, `UNKNOWN` for silence or a state this build cannot
+name, and `NOMINAL` for everything else. So `BOOT`, `STANDBY` and `DEPLOY` all read `NOMINAL`, and
+the verdict's label collides with the name of a mission state the satellite has just left. It is a
+correct answer printed in a word that means something else — the failure mode `cubesat-sim`'s own
+rules single out, a plausible reading being worse than a gap.
+
+The fix is the vocabulary, not the classifier: a verdict needs words that are not state names
+(`OK` / `WARNING` / `CRITICAL` / `UNKNOWN`, say), and the headline should carry the actual state
+beside it rather than leaving the operator to infer it. The OBC row is already right and is worth
+checking against a live page while this is done: `getObcStatus` returns `OK` with the detail
+`state STANDBY`, and `obcBadgeClass` renders the real state — so the badge should read `STANDBY`
+there. If it does not, that is a second and separate defect.
+
+**The same session exposed the condition underneath it: the page outlives its own service.** A
+browser takes live data from mosquitto's WebSocket listener, which runs in every profile, while
+`cubesat-dashboard` is stopped by the profile it is not named in. So after leaving `DEMO` an open
+page keeps updating from MQTT with every HTTP route behind it gone, and it says nothing about that:
+
+- Live widgets keep working, the camera included — a frame arrives as base64 inside the retained
+  `payload_photo`, not over HTTP.
+- `/api/telemetry` is gone, so CPU, RAM, disk and the charts fed by the session ring freeze;
+  `/api/missions` is gone, so the archive dialog fails. A reload shows nothing at all.
+- Retained `payload_status` and `dhs_status` **linger in the broker** after the profile stops those
+  services, still asserting their last value, while `adcs_status` is not retained and simply stops.
+  `obc_status.subsystems.watched` is what resolves the three cases, and is exactly what it exists
+  for — the page should lean on it rather than on whether a status is present.
+
+Wanted: the page notices that its own origin has gone — a failed `/api/telemetry` is enough — and
+says so once, plainly ("dashboard service stopped: live telemetry only, no history"). A page half
+live and half frozen, with no sign of which half is which, is worse than either.
+
 **`Mission Events` should be a ship's log, and it is missing the entries an operator looks for
 first — requested 2026-09-01.** Four transitions, all already on the bus and all derivable in
 `features/events/observed.ts` the way the existing entries are: `eps_status.external_power` flipping
