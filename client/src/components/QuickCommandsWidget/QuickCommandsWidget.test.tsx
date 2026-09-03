@@ -1,4 +1,5 @@
 import { subscribeNotices } from '../../features/console/notices'
+import { mockComms } from '../../test-fixtures'
 import type { FakeSource } from '../../test-source'
 import { installFakeSource } from '../../test-source'
 import { render, screen, waitFor } from '../../test-utils'
@@ -45,6 +46,36 @@ describe('QuickCommandsWidget', () => {
         await waitFor(() => expect(notices).toHaveLength(1))
         expect(notices[0]).toMatch(/take_photo failed: broker unreachable/)
         stop()
+    })
+
+    it('names the beacon parameter the way the satellite does since 2026-09-03', async () => {
+        // `lora_enabled` until that day, and the satellite still accepts it as
+        // an alias — which is a courtesy to the build deployed before it, not a
+        // name a new build should be teaching. The flag rations the scheduled
+        // beacon and nothing else: commands are answered either way.
+        render(<QuickCommandsWidget />)
+        screen.getByText('BEACON OFF').click()
+        await waitFor(() =>
+            expect(source.sent).toStrictEqual([{ command: 'set_comms_config', params: { beacon_enabled: false } }])
+        )
+    })
+
+    it('marks which of the two beacon buttons the satellite is already at', () => {
+        // The profile decides where the beacon starts — off in DEMO and EXPO —
+        // so without this the panel offers two buttons and no clue which one
+        // would change anything.
+        render(<QuickCommandsWidget comms={{ ...mockComms, beaconEnabled: false }} />)
+        expect(screen.getByText('BEACON OFF')).toHaveAttribute('aria-pressed', 'true')
+        expect(screen.getByText('BEACON ON')).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('marks neither before COMMS has said anything', () => {
+        // Withhold rather than fabricate: a page that has just connected knows
+        // nothing about the beacon, and guessing at the profile's default would
+        // be a claim the satellite never made.
+        render(<QuickCommandsWidget />)
+        expect(screen.getByText('BEACON OFF')).not.toHaveAttribute('aria-pressed')
+        expect(screen.getByText('BEACON ON')).not.toHaveAttribute('aria-pressed')
     })
 
     it('sends set_profile with the profile as a parameter', async () => {

@@ -65,6 +65,27 @@ describe('RadioLinkLogWidget', () => {
         expect(screen.getAllByText(/^\d{2}:\d{2}:\d{2}$/)[0]).toHaveClass('time')
     })
 
+    it('renders an ack, and says what it is without implying a beacon', () => {
+        // New in DEMO and EXPO on 2026-09-03: those profiles start the beacon
+        // off, and until that day they produced no tx rows at all. A reply to
+        // a command is now gated on listening instead, so an ack goes out in a
+        // profile that beacons nothing — and reading it as "the beacon is on
+        // after all" is the wrong conclusion to invite from a three-letter
+        // label in a table of numbers.
+        render(
+            <RadioLinkLogWidget
+                events={[rx({ direction: 'tx', kind: 'ack', text: 'CSAT t=1 re=photo ok=1 kb=182 seq=7', sent: true })]}
+            />
+        )
+        expect(screen.getByText('ack')).toBeInTheDocument()
+        expect(screen.getByTitle(/whether or not the scheduled beacon is on/)).toBeInTheDocument()
+    })
+
+    it('renders a kind this build has not heard of rather than dropping the row', () => {
+        render(<RadioLinkLogWidget events={[rx({ direction: 'tx', kind: 'newkind', sent: true })]} />)
+        expect(screen.getByText('newkind')).toBeInTheDocument()
+    })
+
     it('marks a transmission that never left, and keeps it on the record', () => {
         render(
             <RadioLinkLogWidget

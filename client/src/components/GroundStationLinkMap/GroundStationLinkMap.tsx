@@ -245,9 +245,11 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, host, i
                   Heltec running Meshtastic, which does the framing, retries and
                   encryption itself and reports none of that back over the serial
                   link; SNR exists only on a message that has already arrived.
-                  What COMMS does publish is whether the node answered, whether it
-                  may transmit, whether it is still listening, and when an uplink
-                  last landed — so that is what is shown.
+                  What COMMS does publish is whether the node answered, which
+                  node and region it is, which mesh channel it takes commands
+                  from, whether the scheduled beacon runs, whether it is still
+                  listening, and when an uplink last landed — so that is what is
+                  shown.
                 */}
                 <div className={styles.coords}>
                     <div className={styles.coord}>
@@ -261,6 +263,24 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, host, i
                     <div className={styles.coord}>
                         <span>Region</span>
                         <b>{comms?.radio?.region ?? '—'}</b>
+                    </div>
+                    {/*
+                      Beside the node and the region because it is the third
+                      thing two radios have to agree on before a conversation is
+                      possible, and the only one of the three that is invisible
+                      from the outside: since 2026-09-03 the satellite acts on an
+                      uplink only if it arrived on this mesh channel. A ground
+                      station one index out transmits perfectly, receives
+                      perfectly and is never answered — a fault with no symptom
+                      except silence, and this number is the five-second check
+                      for it.
+                    */}
+                    <div
+                        className={styles.coord}
+                        title='Commands are acted on only from this mesh channel. A ground node on another index is heard and ignored.'
+                    >
+                        <span>Cmd channel</span>
+                        <b>{comms?.commandChannel != null ? comms.commandChannel : '—'}</b>
                     </div>
                     <div className={styles.coord}>
                         <span>Last uplink</span>
@@ -295,19 +315,29 @@ const GroundStationLinkMap: React.FC<Props> = React.memo(({ adcs, comms, host, i
                 <div className={styles.bottomRow}>
                     <div className={styles.uplinkDownlink}>
                         {/*
-                          Quiet and deaf are different states, and this is the only
-                          place the difference is visible: a silenced transmitter
-                          that still listens is the way back into a satellite in
-                          SAFE, not a fault.
+                          Quiet and deaf are different states, and this is the
+                          only place the difference is visible: a satellite that
+                          has stopped beaconing and still listens is the way back
+                          in from SAFE, not a fault.
+
+                          The row was labelled `Transmitting` until 2026-09-03,
+                          and that had become a lie: the flag rations the
+                          *scheduled* beacon, while a reply to an accepted
+                          command goes out on `Listening` alone. So a satellite
+                          reading `Transmitting: no` was answering commands the
+                          whole time, and an operator who believed this row would
+                          have read an unanswered command as the flag's doing.
+                          `Beacon on|off` is the same value under the name of
+                          what it actually decides.
                         */}
                         <StatRow
-                            label='Transmitting'
-                            value={comms ? (comms.loraEnabled ? 'yes' : 'no') : '—'}
+                            label='Beacon'
+                            value={comms ? (comms.beaconEnabled ? 'on' : 'off') : '—'}
                             mono
                         />
                         <StatRow
                             label='Listening'
-                            value={comms ? (comms.loraListening ? 'yes' : 'no') : '—'}
+                            value={comms ? (comms.loraListening ? 'yes — answers commands' : 'no') : '—'}
                             mono
                         />
                     </div>

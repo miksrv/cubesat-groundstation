@@ -44,6 +44,14 @@
     }
 }
 
+/* The beacon button naming the state the satellite is already in. Marked
+   rather than disabled: pressing it is harmless, and a disabled button would
+   read as "unavailable" where the truth is "already so". */
+.current {
+    color: var(--color-green);
+    border-color: rgba(34, 197, 94, 0.45);
+}
+
 .destructive {
     color: var(--color-red);
     border-color: rgba(239, 68, 68, 0.25);

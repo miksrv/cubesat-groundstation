@@ -1,7 +1,7 @@
 import { act } from 'react'
 
 import { postNotice } from '../../features/console/notices'
-import { mockLiveState, mockTelemetryRecord } from '../../test-fixtures'
+import { mockComms, mockLiveState, mockTelemetryRecord } from '../../test-fixtures'
 import type { FakeSource } from '../../test-source'
 import { installFakeSource } from '../../test-source'
 import { fireEvent, render, screen, waitFor } from '../../test-utils'
@@ -45,6 +45,39 @@ describe('MissionConsoleWidget', () => {
         )
         runCommand('status')
         expect(await screen.findByText('Satellite Status:')).toBeInTheDocument()
+    })
+
+    it('says the beacon is off without claiming the satellite is silent', async () => {
+        // The line read `listening only` until 2026-09-03, which promised a
+        // silence the satellite does not keep: a reply to an accepted command
+        // is gated on listening, not on the beacon flag. An operator reading
+        // the old wording would have blamed the flag for a command that in fact
+        // never arrived. The channel rides along because that is the other
+        // half of the same diagnosis.
+        render(
+            <MissionConsoleWidget
+                live={{ ...mockLiveState, comms: { ...mockComms, beaconEnabled: false } }}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('status')
+        expect(
+            await screen.findByText(/beacon off - listening and still answering commands, commands on ch 1/)
+        ).toBeInTheDocument()
+    })
+
+    it('reports a radio the profile has taken away as off, not as a quiet beacon', async () => {
+        render(
+            <MissionConsoleWidget
+                live={{
+                    ...mockLiveState,
+                    comms: { ...mockComms, beaconEnabled: false, loraListening: false }
+                }}
+                latest={mockTelemetryRecord}
+            />
+        )
+        runCommand('status')
+        expect(await screen.findByText(/Radio:\s+off for this profile/)).toBeInTheDocument()
     })
 
     it('prints the answer to "telemetry", which lands on cubesat/comms/data', async () => {
@@ -94,10 +127,29 @@ describe('MissionConsoleWidget', () => {
             source.emitPhotoRefusal({
                 timestamp: 1741863600,
                 requestId: null,
-                reason: 'card full - 12 MB free, 50 MB required'
+                reason: 'card full - 12 MB free, 50 MB required',
+                reasonCode: 'nospace'
             })
         })
-        expect(await screen.findByText('Camera refused: card full - 12 MB free, 50 MB required')).toBeInTheDocument()
+        // Both spellings of the no: the sentence carries the numbers, the code
+        // is what `!photo` answered a phone in the field with, and an operator
+        // comparing the two is comparing the code.
+        expect(
+            await screen.findByText('Camera refused: card full - 12 MB free, 50 MB required (err=nospace)')
+        ).toBeInTheDocument()
+    })
+
+    it('prints the code alone where the satellite sent no sentence', async () => {
+        render(
+            <MissionConsoleWidget
+                live={mockLiveState}
+                latest={mockTelemetryRecord}
+            />
+        )
+        act(() => {
+            source.emitPhotoRefusal({ timestamp: 1741863600, requestId: null, reason: null, reasonCode: 'state' })
+        })
+        expect(await screen.findByText('Camera refused: err=state')).toBeInTheDocument()
     })
 
     it('clears the console on the "clear" command', () => {
@@ -259,7 +311,7 @@ describe('MissionConsoleWidget', () => {
         expect(source.sent).toEqual([])
     })
 
-    it('starts and stops transmission with beacon on|off', async () => {
+    it('starts and stops the scheduled beacon with beacon on|off', async () => {
         render(
             <MissionConsoleWidget
                 live={mockLiveState}
@@ -267,8 +319,12 @@ describe('MissionConsoleWidget', () => {
             />
         )
         runCommand('beacon off')
+        // `beacon_enabled` since 2026-09-03: the parameter was `lora_enabled`
+        // while the flag was believed to decide whether the radio transmits at
+        // all. The satellite still accepts the old name as an alias, and this
+        // build deliberately does not send it.
         await waitFor(() =>
-            expect(source.sent).toEqual([{ command: 'set_comms_config', params: { lora_enabled: false } }])
+            expect(source.sent).toEqual([{ command: 'set_comms_config', params: { beacon_enabled: false } }])
         )
     })
 
@@ -284,7 +340,7 @@ describe('MissionConsoleWidget', () => {
         )
         runCommand('lora on')
         await waitFor(() =>
-            expect(source.sent).toEqual([{ command: 'set_comms_config', params: { lora_enabled: true } }])
+            expect(source.sent).toEqual([{ command: 'set_comms_config', params: { beacon_enabled: true } }])
         )
     })
 

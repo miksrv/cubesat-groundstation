@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Container } from 'simple-react-ui-kit'
 
 import { postNotice } from '../../features/console/notices'
-import type { Command, CommandName, Profile } from '../../features/telemetry/types'
+import type { Command, CommandName, CommsStatus, Profile } from '../../features/telemetry/types'
 import { getSource } from '../../features/telemetry/useSource'
 
 import styles from './QuickCommandsWidget.module.scss'
@@ -29,7 +29,7 @@ import styles from './QuickCommandsWidget.module.scss'
  * to power the host down, and it decides that from the battery rather than from
  * a button.
  */
-const COMMANDS: Array<{ label: string; command: Command; destructive?: boolean }> = [
+const COMMANDS: Array<{ label: string; command: Command; destructive?: boolean; beacon?: boolean }> = [
     { label: 'Take Photo', command: { command: 'take_photo' } },
     // Start/Stop Timelapse were here until 2026-09-01. A mission photographs
     // itself now, and a button that publishes a verb the satellite answers
@@ -40,9 +40,16 @@ const COMMANDS: Array<{ label: string; command: Command; destructive?: boolean }
     // The beacon starts off in DEMO and EXPO (2026-09-01): the satellite is a
     // metre away with this page open, so beaconing at its operator over a shared
     // mesh channel is noise. These two put it back inside the profile's envelope
-    // — the same command the radio and `cubesat lora on` send.
-    { label: 'Beacon On', command: { command: 'set_comms_config', params: { lora_enabled: true } } },
-    { label: 'Beacon Off', command: { command: 'set_comms_config', params: { lora_enabled: false } } },
+    // — the same command the radio and `cubesat beacon on` send.
+    //
+    // `beacon_enabled` is what the parameter has been called since 2026-09-03,
+    // when the flag stopped meaning "the radio may transmit" and started
+    // meaning only "the scheduled beacon runs": commands are answered either
+    // way. The satellite still accepts `lora_enabled` as an alias, and this
+    // build deliberately does not send it — an alias kept for old clients is
+    // not a name a new one should be teaching.
+    { label: 'Beacon On', command: { command: 'set_comms_config', params: { beacon_enabled: true } }, beacon: true },
+    { label: 'Beacon Off', command: { command: 'set_comms_config', params: { beacon_enabled: false } }, beacon: false },
     { label: 'Safe Mode', command: { command: 'safe_mode' }, destructive: true },
     { label: 'Recover', command: { command: 'recover' }, destructive: true }
 ]
@@ -50,13 +57,18 @@ const COMMANDS: Array<{ label: string; command: Command; destructive?: boolean }
 const PROFILES: Profile[] = ['HOSTED', 'DEMO', 'EXPO', 'FLIGHT', 'DIAG', 'MAINTENANCE']
 
 interface Props {
+    /** COMMS as it last reported, for the one pair of buttons with a state
+     *  behind them. Null before the retained status arrives, and on a source
+     *  with no satellite — in both cases neither beacon button is marked,
+     *  which is honest: nothing here knows which one is current. */
+    comms?: CommsStatus | null
     /** True while a recorded mission is being replayed: the buttons stay where
      *  they are — the widget set does not change with the mode — and refuse to
      *  publish, because the satellite's present is not what is on screen. */
     disabled?: boolean
 }
 
-const QuickCommandsWidget: React.FC<Props> = ({ disabled = false }) => {
+const QuickCommandsWidget: React.FC<Props> = ({ comms = null, disabled = false }) => {
     const source = getSource()
     const [pending, setPending] = useState<CommandName | null>(null)
 
@@ -96,17 +108,27 @@ const QuickCommandsWidget: React.FC<Props> = ({ disabled = false }) => {
         >
             <div className={styles.scroll}>
                 <div className={styles.grid}>
-                    {COMMANDS.map(({ label, command, destructive }) => (
-                        <button
-                            key={label}
-                            type='button'
-                            className={`${styles.button} ${destructive ? styles.destructive : ''}`}
-                            disabled={locked}
-                            onClick={() => send(command)}
-                        >
-                            {pending === command.command ? '…' : label.toUpperCase()}
-                        </button>
-                    ))}
+                    {COMMANDS.map(({ label, command, destructive, beacon }) => {
+                        // Which of the beacon pair is already true. The profile
+                        // decides where the beacon starts — off in DEMO and
+                        // EXPO — so without this the panel offers two buttons
+                        // and no way to tell which one would change anything.
+                        const current = beacon != null && comms != null && comms.beaconEnabled === beacon
+                        return (
+                            <button
+                                key={label}
+                                type='button'
+                                className={`${styles.button} ${destructive ? styles.destructive : ''} ${
+                                    current ? styles.current : ''
+                                }`}
+                                disabled={locked}
+                                aria-pressed={beacon != null && comms != null ? current : undefined}
+                                onClick={() => send(command)}
+                            >
+                                {pending === command.command ? '…' : label.toUpperCase()}
+                            </button>
+                        )
+                    })}
                 </div>
                 <div className={`${styles.grid} ${styles.profiles}`}>
                     {PROFILES.map((profile) => (

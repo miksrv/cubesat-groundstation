@@ -22,6 +22,14 @@ import styles from './RadioLinkLogWidget.module.scss'
  * recorded into `radio_log`. It was the last widget still reaching for a channel
  * of its own, which during a replay meant one panel reading the present while
  * everything beside it read a past afternoon.
+ *
+ * Two things changed on the satellite on 2026-09-03 and both are visible here.
+ * An `rx` row now only ever describes the satellite's own mesh channel — COMMS
+ * drops everything else before publishing, so the public mesh's chat, which did
+ * turn up in this table on 2026-09-02, no longer can. And `DEMO` and `EXPO`,
+ * which start the beacon off, now produce `tx` rows where they produced none at
+ * all: a reply to a command is gated on listening rather than on the beacon
+ * flag, so an `ack` goes out in a profile that beacons nothing.
  */
 
 const dash = '—'
@@ -32,6 +40,22 @@ const time = (epoch: number): string =>
 const number = (value: number | null, digits: number, unit = ''): string =>
     value != null ? `${value.toFixed(digits)}${unit}` : dash
 
+/**
+ * What each `tx` kind is, spelled out on hover — the words are the satellite's
+ * and they are three-letter labels in a table of numbers otherwise. `ack` is
+ * the one worth explaining: it is the kind that appears in `DEMO` and `EXPO`
+ * without a beacon behind it, and reading it as "the beacon is on after all"
+ * is the wrong conclusion to invite.
+ *
+ * A kind this build has not heard of gets no hint and still renders, exactly
+ * as {@link RadioEvent.kind} promises.
+ */
+const KIND_HINT: Record<string, string> = {
+    ack: 'answer to a command — sent whether or not the scheduled beacon is on',
+    beacon: 'scheduled telemetry, on the beacon interval for this state',
+    down: 'going-down notice, sent as COMMS shuts off'
+}
+
 /** What the tx event was for, or who the rx came from. */
 const origin = (event: RadioEvent): string => {
     if (event.direction === 'rx') {
@@ -39,6 +63,11 @@ const origin = (event: RadioEvent): string => {
     }
     return event.kind ?? dash
 }
+
+/** The hover text for the same cell: what a kind means, or nothing for an rx,
+ *  whose sender is already its own explanation. */
+const originHint = (event: RadioEvent): string | undefined =>
+    event.direction === 'tx' && event.kind != null ? KIND_HINT[event.kind] : undefined
 
 interface Props {
     /** Newest first. Live from `cubesat/comms/radio`, or a replayed mission's
@@ -58,8 +87,9 @@ const RadioLinkLogWidget: React.FC<Props> = ({ events, emptyMessage }) => {
                 <div className={styles.empty}>
                     {emptyMessage ?? (
                         <>
-                            No radio traffic yet — rows appear as the link talks and listens. The same events are
-                            recorded into the mission&apos;s <code>radio_log</code>.
+                            No radio traffic yet — rows appear as the link talks and listens, on the satellite&apos;s
+                            own mesh channel alone. The same events are recorded into the mission&apos;s{' '}
+                            <code>radio_log</code>.
                         </>
                     )}
                 </div>
@@ -94,7 +124,12 @@ const RadioLinkLogWidget: React.FC<Props> = ({ events, emptyMessage }) => {
                                     <td className={event.direction === 'rx' ? styles.rx : styles.tx}>
                                         {event.direction === 'rx' ? '▼ RX' : '▲ TX'}
                                     </td>
-                                    <td className={styles.mono}>{origin(event)}</td>
+                                    <td
+                                        className={styles.mono}
+                                        title={originHint(event)}
+                                    >
+                                        {origin(event)}
+                                    </td>
                                     <td className={styles.mono}>{number(event.rssi, 0, ' dBm')}</td>
                                     <td className={styles.mono}>{number(event.snr, 1, ' dB')}</td>
                                     <td className={styles.mono}>{event.hops ?? dash}</td>

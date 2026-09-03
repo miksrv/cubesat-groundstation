@@ -50,31 +50,68 @@ describe('GroundStationLinkMap', () => {
         // RSSI, SNR, latency and packet loss are gone. None of them is telemetry
         // on this satellite: the radio is a Heltec running Meshtastic, which does
         // its own framing and retries and reports none of it back over the serial
-        // link. What COMMS publishes is whether the node answered and whether it
-        // may transmit — so that is what the panel shows.
+        // link. What COMMS publishes is whether the node answered, which channel
+        // it takes commands from and whether the scheduled beacon runs — so that
+        // is what the panel shows.
         expect(screen.getByText('answered')).toBeInTheDocument()
         expect(screen.getByText('!698204b0')).toBeInTheDocument()
-        expect(screen.getByText('Transmitting')).toBeInTheDocument()
+        expect(screen.getByText('Beacon')).toBeInTheDocument()
         expect(screen.getByText('Listening')).toBeInTheDocument()
     })
 
-    it('shows a beacon that is off as off, and the receiver as still listening', () => {
-        // The DEMO/EXPO case since 2026-09-01: the profile starts the beacon off,
-        // and this panel is where an operator checks whether the satellite is
-        // quiet (a setting) or deaf (a different profile entirely). The two rows
-        // must not read the same.
+    it('names the mesh channel commands must arrive on', () => {
+        // The fault this row exists for: a ground node one index out transmits
+        // perfectly, receives perfectly and is never answered, because since
+        // 2026-09-03 the satellite acts only on uplinks from its own channel.
+        // Nothing else on the page would show it.
         render(
             <GroundStationLinkMap
                 adcs={mockAdcs}
-                comms={{ ...mockComms, loraEnabled: false, loraListening: true }}
+                comms={{ ...mockComms, commandChannel: 3 }}
                 host={mockHost}
                 isLoading={false}
             />
         )
-        const rows = screen.getAllByText(/^(yes|no)$/).map((node) => node.textContent)
-        // Transmitting first, Listening second — the order the panel renders.
-        expect(rows[0]).toBe('no')
-        expect(rows[1]).toBe('yes')
+        expect(screen.getByText('Cmd channel')).toBeInTheDocument()
+        expect(screen.getByText('3')).toBeInTheDocument()
+    })
+
+    it('withholds the command channel a satellite too old to filter never sent', () => {
+        render(
+            <GroundStationLinkMap
+                adcs={mockAdcs}
+                comms={{ ...mockComms, commandChannel: null }}
+                host={mockHost}
+                isLoading={false}
+            />
+        )
+        // A dash, not a zero: channel 0 is the public primary, and claiming the
+        // satellite takes commands there would be the opposite of the truth.
+        expect(screen.getByText('Cmd channel').parentElement).toHaveTextContent('—')
+        expect(screen.getByText('Cmd channel').parentElement).not.toHaveTextContent('0')
+    })
+
+    it('shows a beacon that is off as off, and the receiver as still listening and answering', () => {
+        // The DEMO/EXPO case since 2026-09-01: the profile starts the beacon off,
+        // and this panel is where an operator checks whether the satellite is
+        // quiet (a setting) or deaf (a different profile entirely). The two rows
+        // must not read the same — and since 2026-09-03 the quiet one is
+        // narrower than it was: the beacon rations the schedule, while a command
+        // is answered on the listening half alone. `Transmitting: no` said the
+        // satellite would not speak, which it does.
+        render(
+            <GroundStationLinkMap
+                adcs={mockAdcs}
+                comms={{ ...mockComms, beaconEnabled: false, loraListening: true }}
+                host={mockHost}
+                isLoading={false}
+            />
+        )
+        // By label, not by value: `off` is also what the Wi-Fi row reads in
+        // FLIGHT, and the two say entirely different things.
+        expect(screen.getByText('Beacon').parentElement).toHaveTextContent('Beaconoff')
+        expect(screen.getByText('yes — answers commands')).toBeInTheDocument()
+        expect(screen.queryByText('Transmitting')).not.toBeInTheDocument()
     })
 
     it('shows the Wi-Fi half of the link, which HOSTD owns', () => {

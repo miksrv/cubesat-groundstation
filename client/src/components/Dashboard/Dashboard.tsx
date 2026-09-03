@@ -324,7 +324,14 @@ const Dashboard: React.FC = () => {
                         latest={history[0] ?? null}
                         disabled={replaying}
                     />
-                    <QuickCommandsWidget disabled={replaying} />
+                    {/* `live.comms` rather than `shown.comms`, for the same
+                        reason the console gets `live`: the beacon pair marks
+                        which button the *satellite* is already at, and during a
+                        replay both are disabled anyway. */}
+                    <QuickCommandsWidget
+                        comms={live.comms}
+                        disabled={replaying}
+                    />
                     <RecentAlertsWidget
                         events={shownEvents}
                         isLoading={false}

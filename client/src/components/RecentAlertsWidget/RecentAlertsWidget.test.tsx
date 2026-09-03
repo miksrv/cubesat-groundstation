@@ -8,7 +8,7 @@ import '@testing-library/jest-dom'
 const now = Date.now() / 1000
 
 const mockEvents: ObservedEvent[] = [
-    { id: '1-1', at: now, severity: 'info', message: 'radio transmitting' },
+    { id: '1-1', at: now, severity: 'info', message: 'beacon on - scheduled telemetry resumed' },
     { id: '2-1', at: now, severity: 'warning', message: 'card full - captures refused' },
     { id: '3-1', at: now, severity: 'critical', message: 'mission state SAFE -> CRITICAL' }
 ]
@@ -23,7 +23,7 @@ describe('RecentAlertsWidget', () => {
         )
         expect(screen.getByText('card full - captures refused')).toBeInTheDocument()
         expect(screen.getByText('mission state SAFE -> CRITICAL')).toBeInTheDocument()
-        expect(screen.queryByText('radio transmitting')).not.toBeInTheDocument()
+        expect(screen.queryByText('beacon on - scheduled telemetry resumed')).not.toBeInTheDocument()
     })
 
     it('shows an empty state when there are no alerts', () => {

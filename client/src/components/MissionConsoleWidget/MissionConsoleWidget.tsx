@@ -59,7 +59,7 @@ const HELP_TEXT = [
     '  profile <name>          - HOSTED | DEMO | EXPO | FLIGHT | DIAG | MAINTENANCE',
     '  safe                    - request SAFE',
     '  recover                 - leave SAFE once the fault is gone',
-    '  beacon on|off           - start or stop transmitting (listening is unaffected)',
+    '  beacon on|off           - start or stop the scheduled beacon (replies and listening are unaffected)',
     'Console commands:',
     '  status                  - what the satellite is reporting right now',
     '  telemetry               - ask COMMS to republish its whole cache',
@@ -160,16 +160,49 @@ const parse = (line: string): Parsed => {
         // `lora` is what this verb was called until 2026-09-01, kept accepted
         // because it may be in somebody's fingers. Renamed because it said the
         // wrong thing: turning it off never turned the radio off, and quiet-but-
-        // listening is the way back into a satellite in SAFE.
+        // listening is the way back into a satellite in SAFE. The parameter
+        // carried the old lie a level down until 2026-09-03, when it became
+        // `beacon_enabled` — off now rations the *schedule* alone, and the
+        // satellite answers a command either way.
         case 'beacon':
         case 'lora':
             if (args.length === 1 && (args[0] === 'on' || args[0] === 'off')) {
-                return { command: { command: 'set_comms_config', params: { lora_enabled: args[0] === 'on' } } }
+                return { command: { command: 'set_comms_config', params: { beacon_enabled: args[0] === 'on' } } }
             }
             return { usage: 'usage: beacon on|off' }
         default:
             return null
     }
+}
+
+/**
+ * What the radio is doing, in one line — and since 2026-09-03 the honest
+ * version of it.
+ *
+ * This line used to read `listening only` with the beacon off, which said the
+ * satellite would not speak. It does: a reply to an accepted command is gated
+ * on listening, not on the beacon flag, so `beacon off` rations the *schedule*
+ * — the telemetry the satellite sends unasked — and nothing else. The old
+ * wording would have had an operator reading silence as the beacon's doing
+ * when it was in fact a command that never arrived.
+ *
+ * The command channel rides along because this line is where somebody looks
+ * when the satellite seems not to hear: a ground node one index out transmits
+ * and receives perfectly and is never answered.
+ */
+const radioLine = (comms: LiveState['comms']): string => {
+    if (!comms) {
+        return '-'
+    }
+    if (!comms.loraListening) {
+        // Nothing is transmitted and nothing is heard: the profile has taken
+        // the radio away, and the beacon flag underneath is not the reason.
+        return 'off for this profile'
+    }
+    const channel = comms.commandChannel != null ? `, commands on ch ${comms.commandChannel}` : ''
+    return comms.beaconEnabled
+        ? `beacon on, listening${channel}`
+        : `beacon off - listening and still answering commands${channel}`
 }
 
 /** Whole seconds since an epoch-seconds timestamp, as the radio spells it. */
@@ -305,11 +338,22 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest, disabled = false 
     // A refused capture answers on `cubesat/payload/photo`, not on any status
     // topic. Without this line a command goes out and nothing follows, which
     // reads as success.
+    //
+    // Both spellings of the no are printed where both arrived: `reason` is the
+    // sentence with the numbers in it, `reason_code` the one word the radio
+    // carries as `err=state`. An operator comparing this console with what a
+    // phone in the field was told is comparing the code, so it is shown in the
+    // radio's own syntax rather than translated.
     useEffect(
         () =>
-            getSource().subscribePhotoRefusals((refusal) =>
-                print(`Camera refused: ${refusal.reason ?? 'no reason given'}`)
-            ),
+            getSource().subscribePhotoRefusals((refusal) => {
+                const code = refusal.reasonCode != null ? `err=${refusal.reasonCode}` : null
+                print(
+                    refusal.reason != null
+                        ? `Camera refused: ${refusal.reason}${code != null ? ` (${code})` : ''}`
+                        : `Camera refused: ${code ?? 'no reason given'}`
+                )
+            }),
         []
     )
 
@@ -339,7 +383,7 @@ const MissionConsoleWidget: React.FC<Props> = ({ live, latest, disabled = false 
             `  Profile:       ${live.host?.profile ?? live.obc.profile ?? 'unknown'}`,
             `  Battery:       ${live.eps?.voltage?.toFixed(3) ?? '-'} V (${live.eps?.batteryPercent?.toFixed(0) ?? '-'}%)`,
             `  Recording:     ${live.dhs?.recording ? `mission ${live.dhs.mission?.id ?? '?'}` : 'no'}`,
-            `  Radio:         ${live.comms ? (live.comms.loraEnabled ? 'transmitting' : live.comms.loraListening ? 'listening only' : 'off') : '-'}`,
+            `  Radio:         ${radioLine(live.comms)}`,
             `  Uptime:        ${latest?.uptimeSeconds != null ? `${Math.floor(latest.uptimeSeconds / 3600)}h` : '-'}`
         ])
     }
