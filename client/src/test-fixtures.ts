@@ -93,8 +93,11 @@ export const mockDhs: DhsStatus = {
 export const mockComms: CommsStatus = {
     timestamp: AT,
     radio: { present: true, node: '!698204b0', region: 'US' },
-    loraEnabled: true,
+    beaconEnabled: true,
     loraListening: true,
+    // `1` is the private `CubeSat` channel: the satellite's own default and the
+    // value its documented payload carries.
+    commandChannel: 1,
     lastUplink: AT - 200
 }
 

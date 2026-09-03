@@ -154,13 +154,21 @@ describe('getCommsStatus', () => {
         expect(getCommsStatus(live({ comms: dead })).status).toBe('FAIL')
     })
 
-    it('does not treat a silenced transmitter as a fault', () => {
-        // Quiet is not deaf. A profile that silences the transmitter while the
-        // receiver keeps listening is the way back into a satellite in SAFE.
-        const quiet = { ...mockLiveState.comms!, loraEnabled: false, loraListening: true }
+    it('does not treat a stopped beacon as a fault, and does not call it silence', () => {
+        // Quiet is not deaf. A profile that stops the scheduled beacon while
+        // the receiver keeps listening is the way back into a satellite in
+        // SAFE — and since 2026-09-03 that satellite also answers every
+        // command it accepts, so `not transmitting` would be wrong as well as
+        // alarming.
+        const quiet = { ...mockLiveState.comms!, beaconEnabled: false, loraListening: true }
         const status = getCommsStatus(live({ comms: quiet }))
         expect(status.status).toBe('OK')
-        expect(status.detail).toMatch(/listening, not transmitting/)
+        expect(status.detail).toMatch(/beacon off — listening, answers commands/)
+    })
+
+    it('does say so when the profile has taken the radio away entirely', () => {
+        const dark = { ...mockLiveState.comms!, beaconEnabled: false, loraListening: false }
+        expect(getCommsStatus(live({ comms: dark })).detail).toMatch(/radio off for this profile/)
     })
 })
 

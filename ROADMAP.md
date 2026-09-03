@@ -110,7 +110,9 @@ first — requested 2026-09-01.** Four transitions, all already on the bus and a
 ("mains lost" / "mains restored" — the charging investigation kept wanting that timestamp);
 `payload_photo` arriving (an on-demand `photo` and a mission `mission_frame` are different lines, with
 file name and sequence); `adcs_status.gnss.fix` flipping, with the satellite count; and
-`comms_status.lora_enabled` flipping ("beacon on" / "beacon off"). Rename the widget to what it is —
+`comms_status.beacon_enabled` flipping ("beacon on" / "beacon off" — the field was called
+`lora_enabled` until 2026-09-03, and the old key is published beside it only until a build reading
+the new one is deployed). Rename the widget to what it is —
 a ship's log, *бортовой журнал*. The honest limitation stays: this log starts when the page does.
 Whether the satellite should keep an `events` table of its own — the same transitions recorded by DHS
 beside `radio_log`, exported and replayed with the mission — is a decision filed in `cubesat-sim`'s

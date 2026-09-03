@@ -5,13 +5,14 @@
  * and each decoder must return null for the other's message.
  */
 
-import { decodeDeleteResult, decodeObc, decodePhoto, decodePhotoRefusal } from './decode'
+import { decodeComms, decodeDeleteResult, decodeObc, decodePhoto, decodePhotoRefusal } from './decode'
 
 const refusalWire = {
     timestamp: 1741863600.5,
     request_id: 'req-3',
     status: 'ERROR',
-    reason: 'mission state LOW_POWER does not permit the camera'
+    reason: 'mission state LOW_POWER does not permit the camera',
+    reason_code: 'state'
 }
 
 const photoWire = {
@@ -33,12 +34,72 @@ describe('decodePhotoRefusal', () => {
         expect(decodePhotoRefusal(refusalWire)).toStrictEqual({
             timestamp: 1741863600.5,
             requestId: 'req-3',
-            reason: 'mission state LOW_POWER does not permit the camera'
+            reason: 'mission state LOW_POWER does not permit the camera',
+            // Both spellings of the same no, added by the satellite on
+            // 2026-09-03: the sentence for a person, the one word for a beacon
+            // field that may not contain a space.
+            reasonCode: 'state'
         })
+    })
+
+    it('leaves the code null on a satellite that predates it', () => {
+        const { reason_code: _dropped, ...older } = refusalWire
+        expect(decodePhotoRefusal(older)?.reasonCode).toBeNull()
     })
 
     it('returns null for a capture, which decodePhoto owns', () => {
         expect(decodePhotoRefusal(photoWire)).toBeNull()
+    })
+})
+
+/**
+ * Pins `cubesat/comms/status` to the satellite's own spelling, and in
+ * particular to the rename of 2026-09-03: `lora_enabled` became
+ * `beacon_enabled` when the flag stopped deciding whether the radio transmits
+ * at all and started rationing only the scheduled beacon. The satellite
+ * publishes both keys for now; the fallback is what lets this build run against
+ * one that has not been updated, and the precedence is what stops it reading a
+ * deprecated mirror when the real field is right there.
+ */
+describe('decodeComms', () => {
+    const commsWire = {
+        timestamp: 1741863600.0,
+        radio: { present: true, node: '!698204b0', region: 'US' },
+        beacon_enabled: true,
+        lora_enabled: true,
+        lora_listening: true,
+        command_channel: 1,
+        last_uplink: 1741863400.0
+    }
+
+    it('reads the beacon flag and the command channel', () => {
+        expect(decodeComms(commsWire)).toStrictEqual({
+            timestamp: 1741863600.0,
+            radio: { present: true, node: '!698204b0', region: 'US' },
+            beaconEnabled: true,
+            loraListening: true,
+            commandChannel: 1,
+            lastUplink: 1741863400.0
+        })
+    })
+
+    it('prefers the new key over the deprecated mirror beside it', () => {
+        // They carry the same value on the satellite today. If they ever
+        // disagree, the one that is not deprecated is the answer.
+        expect(decodeComms({ ...commsWire, beacon_enabled: false }).beaconEnabled).toBe(false)
+    })
+
+    it('falls back to lora_enabled on a satellite that has not been updated', () => {
+        const { beacon_enabled: _dropped, ...older } = commsWire
+        expect(decodeComms(older).beaconEnabled).toBe(true)
+    })
+
+    it('withholds a command channel rather than reading its absence as channel 0', () => {
+        // Channel 0 is the public primary. Naming it as the command channel
+        // would be the opposite of the truth about a satellite that has no
+        // uplink filter at all.
+        const { command_channel: _dropped, ...older } = commsWire
+        expect(decodeComms(older).commandChannel).toBeNull()
     })
 })
 

@@ -254,8 +254,18 @@ export const decodeComms = (raw: Raw): CommsStatus => {
     return {
         timestamp: num(raw.timestamp) ?? 0,
         radio: raw.radio ? { present: radio.present === true, node: str(radio.node), region: str(radio.region) } : null,
-        loraEnabled: raw.lora_enabled === true,
+        // `lora_enabled` is the name `beacon_enabled` had until 2026-09-03. The
+        // satellite publishes both with the same value until a build reading
+        // the new one is deployed — this is that build. The old key is consulted
+        // only where the new one is absent, so the page still works against a
+        // satellite that has not been updated; and the fallback lives here
+        // rather than in the model, so no widget has to choose which of two
+        // names for one flag to believe.
+        beaconEnabled: raw.beacon_enabled === undefined ? raw.lora_enabled === true : raw.beacon_enabled === true,
         loraListening: raw.lora_listening === true,
+        // Null on a satellite older than the uplink filter — which is one with
+        // no command channel at all, not one listening on channel 0.
+        commandChannel: num(raw.command_channel),
         lastUplink: num(raw.last_uplink)
     }
 }
@@ -396,7 +406,12 @@ export const decodePhotoRefusal = (raw: Raw): PhotoRefusal | null => {
     return {
         timestamp: num(raw.timestamp) ?? 0,
         requestId: str(raw.request_id),
-        reason: str(raw.reason)
+        reason: str(raw.reason),
+        // Added by the satellite on 2026-09-03 alongside `!photo`'s ack: one
+        // word where `reason` is a sentence. Not validated against a list of
+        // three — a code this build has not heard of is still the satellite's
+        // answer, and dropping it would be worse than printing it.
+        reasonCode: str(raw.reason_code)
     }
 }
 

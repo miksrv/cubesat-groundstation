@@ -412,12 +412,22 @@ export interface DhsStatus {
  * `rssi`, `hops` — each null where the node did not report it), an outcome
  * only for what was said (`kind`, `sent` — a failed transmit arrives with
  * `sent: false` rather than being suppressed).
+ *
+ * An `rx` event only ever describes the satellite's own mesh channel. Since
+ * 2026-09-03 COMMS drops anything heard on another channel — a direct message
+ * included — *before* this publish, so the public mesh's chat no longer reaches
+ * the log. That was a real finding on 2026-09-02, not a hypothetical.
  */
 export interface RadioEvent {
     timestamp: number
     direction: 'rx' | 'tx'
     /** tx: 'beacon', 'ack' or 'down'. Kept as a string so a kind newer than
-     *  this build still renders instead of vanishing. */
+     *  this build still renders instead of vanishing.
+     *
+     *  `ack` is the answer to a command, and since 2026-09-03 it is gated on
+     *  listening rather than on {@link CommsStatus.beaconEnabled} — so `DEMO`
+     *  and `EXPO`, which start the beacon off, now produce `tx` rows where they
+     *  produced none at all. */
     kind: string | null
     /** The line as it crossed the air, verbatim. */
     text: string | null
@@ -433,15 +443,40 @@ export interface RadioEvent {
 export interface CommsStatus {
     timestamp: number
     radio: { present: boolean; node: string | null; region: string | null } | null
-    /** Whether the radio may **transmit**. */
-    loraEnabled: boolean
     /**
-     * Whether the inbox is polled. Reported apart from {@link loraEnabled}
+     * Whether the **scheduled** beacon transmits — the telemetry the satellite
+     * sends unasked, on its own timer.
+     *
+     * It is not a mute switch, and calling it one is the mistake the satellite
+     * renamed the field to stop making (`lora_enabled` until 2026-09-03; the
+     * old key is still published beside the new one with the same value, and
+     * {@link decodeComms} reads it only as a fallback). A reply to an accepted
+     * command is gated on {@link loraListening} instead, so a satellite with
+     * the beacon off still answers every command it accepts — including the
+     * `beacon off` that silenced it, whose confirmation the old rule swallowed.
+     */
+    beaconEnabled: boolean
+    /**
+     * Whether the inbox is polled. Reported apart from {@link beaconEnabled}
      * because a silenced transmitter still hears: "quiet" and "deaf" are
      * genuinely different states, and this is the only place the difference is
-     * visible.
+     * visible. It is the profile's call alone, and it now gates the replies as
+     * well as the inbox.
      */
     loraListening: boolean
+    /**
+     * The mesh channel index an uplink must arrive on to be acted upon — `1`,
+     * the private `CubeSat` channel, unless the satellite's
+     * `LORA_CHANNEL_INDEX` says otherwise. Null while a satellite older than
+     * 2026-09-03 is reporting, which is a satellite with no uplink filter at
+     * all rather than one on channel 0.
+     *
+     * Worth a line on the page because a ground station one index out
+     * transmits perfectly, receives perfectly and never holds a conversation —
+     * the hardest radio fault to diagnose from the outside, and a five-second
+     * check with this number in front of you.
+     */
+    commandChannel: number | null
     lastUplink: number | null
 }
 
@@ -550,18 +585,34 @@ export type Photo =
 
 /**
  * The camera saying no, on the same `cubesat/payload/photo` topic: a
- * `take_photo` or `start_timelapse` the satellite refused — wrong mission
- * state, a full card, a capture that failed. It carries no `kind` and no
- * image; `reason` is the satellite's own sentence. This message is the only
- * feedback a refused button press produces — the retained `payload_status`
- * says the camera is blocked in general, never that *this* press did nothing.
+ * `take_photo` the satellite refused — wrong mission state, a full card, a
+ * capture that failed. It carries no `kind` and no image. This message is the
+ * only feedback a refused button press produces — the retained
+ * `payload_status` says the camera is blocked in general, never that *this*
+ * press did nothing.
  */
 export interface PhotoRefusal {
     timestamp: number
     /** Echoed from the refused command — null for this UI's own asks; see
      *  {@link Command.requestId}. */
     requestId: string | null
+    /** The satellite's own sentence, with the numbers in it — which state
+     *  refused, how many megabytes are left. */
     reason: string | null
+    /**
+     * The same no in one word: `state`, `nospace` or `camera`, from
+     * `payload/camera.py`. Added by the satellite on 2026-09-03 because the
+     * sentence cannot cross the radio — a beacon field may not contain a
+     * space, so `!photo`'s ack carries this code as `err=nospace` while this
+     * page carries the sentence. Shown beside it because it is the
+     * machine-readable half, and it is the half an operator can compare with
+     * what the radio told them.
+     *
+     * Kept as a string for the same reason {@link RadioEvent.kind} is: a code
+     * newer than this build should render, not vanish. Null on a satellite
+     * older than that day.
+     */
+    reasonCode: string | null
 }
 
 /** One photograph in a mission's directory, as the archive lists it. */

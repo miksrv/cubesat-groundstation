@@ -106,16 +106,20 @@ export const diffStates = (previous: LiveState | null, next: LiveState): Observe
         )
     }
 
-    if (next.comms && previous?.comms && previous.comms.loraEnabled !== next.comms.loraEnabled) {
-        // Quiet is not deaf, and saying which is the point of logging it at all.
+    if (next.comms && previous?.comms && previous.comms.beaconEnabled !== next.comms.beaconEnabled) {
+        // Quiet is not deaf, and saying which is the point of logging it at
+        // all. Since 2026-09-03 it is narrower still: the beacon rations the
+        // *schedule*, and a satellite with it off both listens and answers.
+        // "radio silenced" said neither, which was the wrong half of the truth
+        // to leave in an event log somebody reads after the fact.
         out.push(
             event(
                 next.comms.timestamp,
                 'info',
-                next.comms.loraEnabled
-                    ? 'radio transmitting'
+                next.comms.beaconEnabled
+                    ? 'beacon on - scheduled telemetry resumed'
                     : next.comms.loraListening
-                      ? 'radio silenced - still listening'
+                      ? 'beacon off - still listening and answering'
                       : 'radio off',
                 (seq += 1)
             )
@@ -245,4 +249,14 @@ export const radioAlert = (radio: RadioEvent, seq: number): ObservedEvent | null
  * deliberate no.
  */
 export const photoRefusalAlert = (refusal: PhotoRefusal, seq: number): ObservedEvent =>
-    event(refusal.timestamp, 'warning', `capture refused - ${refusal.reason ?? 'no reason given'}`, seq)
+    event(
+        refusal.timestamp,
+        'warning',
+        // `reason_code` (2026-09-03) is the machine-readable half of the same
+        // no, and the half `!photo` answers with over the radio. It is a
+        // fallback here rather than an addition: an alert row is one short
+        // line, and the sentence already contains the code's meaning plus the
+        // numbers. Where the sentence is missing, the code is still an answer.
+        `capture refused - ${refusal.reason ?? refusal.reasonCode ?? 'no reason given'}`,
+        seq
+    )

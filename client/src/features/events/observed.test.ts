@@ -1,4 +1,4 @@
-import { mockAdcs, mockLiveState, mockObc } from '../../test-fixtures'
+import { mockAdcs, mockComms, mockLiveState, mockObc } from '../../test-fixtures'
 import type { RadioEvent } from '../telemetry/types'
 
 import { diffStates, photoRefusalAlert, radioAlert } from './observed'
@@ -38,6 +38,20 @@ describe('subsystem alerts', () => {
         const alert = events.find((event) => event.message.startsWith('COMMS FAIL'))
         expect(alert?.severity).toBe('critical')
         expect(alert?.message).toContain('OBC declared it lost')
+    })
+
+    it('logs a beacon going off without claiming the satellite went silent', () => {
+        // Until 2026-09-03 this line read `radio silenced - still listening`,
+        // and half of it was already wrong: the satellite answers commands
+        // whatever the beacon flag says. An event log is read after the fact,
+        // when the wrong half is what someone reasons from.
+        const quiet = { ...mockLiveState, comms: { ...mockComms, beaconEnabled: false } }
+        expect(messages(diffStates(mockLiveState, quiet))).toContain('beacon off - still listening and answering')
+    })
+
+    it('logs a radio the profile took away as off, which is a different thing', () => {
+        const dark = { ...mockLiveState, comms: { ...mockComms, beaconEnabled: false, loraListening: false } }
+        expect(messages(diffStates(mockLiveState, dark))).toContain('radio off')
     })
 
     it('stays quiet between two healthy states', () => {
@@ -92,17 +106,35 @@ describe('radio alerts', () => {
 describe('photo refusal alerts', () => {
     it("turns a refused capture into a warning, in the satellite's own words", () => {
         const alert = photoRefusalAlert(
-            { timestamp: 1741863600, requestId: null, reason: 'mission state LOW_POWER does not permit the camera' },
+            {
+                timestamp: 1741863600,
+                requestId: null,
+                reason: 'mission state LOW_POWER does not permit the camera',
+                reasonCode: 'state'
+            },
             1
         )
         expect(alert.severity).toBe('warning')
+        // The sentence, not the code: an alert row is one short line and the
+        // sentence already contains the code's meaning plus the numbers.
         expect(alert.message).toBe('capture refused - mission state LOW_POWER does not permit the camera')
     })
 
-    it('still logs a refusal that arrived without a reason', () => {
+    it('falls back to the one-word code where the sentence did not arrive', () => {
+        const alert = photoRefusalAlert(
+            { timestamp: 1741863600, requestId: 'req-3', reason: null, reasonCode: 'nospace' },
+            1
+        )
+        expect(alert.message).toBe('capture refused - nospace')
+    })
+
+    it('still logs a refusal that arrived without either', () => {
         // Withhold rather than fabricate cuts both ways: the refusal happened
-        // even when the sentence explaining it did not arrive.
-        const alert = photoRefusalAlert({ timestamp: 1741863600, requestId: 'req-3', reason: null }, 1)
+        // even when nothing explaining it did.
+        const alert = photoRefusalAlert(
+            { timestamp: 1741863600, requestId: 'req-3', reason: null, reasonCode: null },
+            1
+        )
         expect(alert.message).toBe('capture refused - no reason given')
     })
 })

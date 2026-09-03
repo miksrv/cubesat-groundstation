@@ -209,17 +209,20 @@ export const getCommsStatus = (live: LiveState): SubsystemStatus => {
         return { key: 'COMMS', label: 'COMMS', status: 'FAIL', detail: 'radio did not answer' }
     }
     // Quiet is not deaf, and the two are different states. A profile that
-    // silences the transmitter while the receiver keeps listening is the way
-    // back into a satellite in SAFE — not a degradation.
-    if (!comms.loraEnabled) {
+    // stops the scheduled beacon while the receiver keeps listening is the way
+    // back into a satellite in SAFE — not a degradation. Since 2026-09-03 the
+    // beacon is narrower than "quiet" as well: it rations the schedule alone,
+    // and a satellite with it off answers every command it accepts, so
+    // "not transmitting" would have been the wrong detail to show.
+    if (!comms.beaconEnabled) {
         return {
             key: 'COMMS',
             label: 'COMMS',
             status: 'OK',
-            detail: comms.loraListening ? 'listening, not transmitting' : 'radio off for this profile'
+            detail: comms.loraListening ? 'beacon off — listening, answers commands' : 'radio off for this profile'
         }
     }
-    return { key: 'COMMS', label: 'COMMS', status: 'OK', detail: comms.radio?.node ?? 'transmitting' }
+    return { key: 'COMMS', label: 'COMMS', status: 'OK', detail: comms.radio?.node ?? 'beacon on' }
 }
 
 /** The wire name OBC's watch list uses for each row of the widget. */
