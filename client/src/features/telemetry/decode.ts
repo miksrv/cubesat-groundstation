@@ -140,10 +140,20 @@ export const decodeObc = (raw: Raw): ObcStatus | null => {
 
 export const decodeEps = (raw: Raw): EpsStatus => ({
     timestamp: num(raw.timestamp) ?? 0,
-    batteryPercent: num(raw.battery_percent),
+    // The measurement first, then the arithmetic on it — the payload's own
+    // order since 2026-09-04. Every field here is nullable on the wire and none
+    // may be defaulted: a missing slope means "not known yet", which is what the
+    // satellite reads as "trust the mains pin", while a 0 would claim a pack
+    // measured holding steady.
     voltage: num(raw.voltage),
+    voltageMedian: num(raw.voltage_median),
+    batteryPercent: num(raw.battery_percent),
+    gaugePercent: num(raw.gauge_percent),
     externalPower: bool(raw.external_power),
-    chargeRate: num(raw.charge_rate)
+    voltageRate: num(raw.voltage_rate),
+    chargeRate: num(raw.charge_rate),
+    timeToEmptySec: num(raw.time_to_empty_sec),
+    timeToFullSec: num(raw.time_to_full_sec)
 })
 
 export const decodeAdcs = (raw: Raw): AdcsStatus => ({
@@ -430,6 +440,15 @@ export const decodeTelemetry = (raw: Raw): TelemetryRecord => ({
     obcState: missionState(raw.obc_state),
     battery: num(raw.battery),
     voltage: num(raw.voltage),
+    // Migrations 6, 7 and 8 on the satellite's schema, and null for every row
+    // older than the migration that added the column — which is a real value
+    // here, not an absence to paper over. `voltage_rate` in particular is null
+    // for EPS' first five minutes of a session and for five minutes after every
+    // mains change, and that null is what the power policy read as "trust the
+    // pin" at the instant the row was written.
+    gaugePercent: num(raw.gauge_percent),
+    voltageRate: num(raw.voltage_rate),
+    chargeRate: num(raw.charge_rate),
     // Stored as 0/1: SQLite has no boolean, and the column is null when unknown.
     externalPower: raw.external_power == null ? null : raw.external_power === 1,
     roll: num(raw.roll),

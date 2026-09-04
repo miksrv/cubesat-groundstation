@@ -34,12 +34,29 @@ export const mockObc: ObcStatus = {
     subsystems: { watched: ['adcs', 'comms', 'dhs', 'eps', 'payload'], lost: [] }
 }
 
+/**
+ * The satellite on battery, from the series measured on 2026-09-03: 3.759 V at
+ * idle load in `HOSTED`, falling at −197 mV/h, with the fuel gauge's own model
+ * claiming 47.7 %.
+ *
+ * The derived fields are what the satellite's `common/battery.py` computes from
+ * that voltage, not numbers picked to look plausible: 48.6 % off the inferred
+ * curve, −24.62 %/h through the local gradient (8 mV per point here), and
+ * 7106.4 s down to the pack's 3.0 V floor. So `batteryPercent` and
+ * `gaugePercent` differ by the point that the two fields exist to record, and
+ * `timeToFullSec` is null because the slope points the other way.
+ */
 export const mockEps: EpsStatus = {
     timestamp: AT,
-    batteryPercent: 87.5,
-    voltage: 4.123,
+    voltage: 3.759,
+    voltageMedian: 3.759,
+    batteryPercent: 48.6,
+    gaugePercent: 47.7,
     externalPower: false,
-    chargeRate: -0.208
+    voltageRate: -197.0,
+    chargeRate: -24.62,
+    timeToEmptySec: 7106.4,
+    timeToFullSec: null
 }
 
 export const mockAdcs: AdcsStatus = {
@@ -136,16 +153,28 @@ export const emptyLiveState: LiveState = {
     comms: null
 }
 
-/** One row of `telemetry`, as the archive hands it over. */
+/**
+ * One row of `telemetry`, as the archive hands it over — the same instant of the
+ * same satellite as {@link mockEps}, so a widget cannot be made to pass by
+ * reading one and failing to read the other.
+ *
+ * `battery` is the curve's figure rather than the gauge's, which is what the
+ * column has meant since 2026-09-04; `gaugePercent` holds what the gauge itself
+ * said. The two rate columns arrived with schema migrations 6 and 7, so a row
+ * really does carry them and a replay is not obliged to withhold them.
+ */
 export const mockTelemetryRecord: TelemetryRecord = {
     id: 1,
     timestamp: '2026-08-24T07:12:03Z',
     missionId: 42,
     profile: 'FLIGHT',
     obcState: 'NOMINAL',
-    battery: 87.5,
-    voltage: 4.123,
+    battery: 48.6,
+    voltage: 3.759,
+    gaugePercent: 47.7,
     externalPower: false,
+    voltageRate: -197.0,
+    chargeRate: -24.62,
     roll: 1.23,
     pitch: -0.45,
     yaw: 178.9,

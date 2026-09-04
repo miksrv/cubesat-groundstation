@@ -110,7 +110,7 @@ describe('MissionConsoleWidget', () => {
             })
         })
         expect(await screen.findByText(/COMMS telemetry cache \(request req-7\)/)).toBeInTheDocument()
-        expect(screen.getByText(/4\.123 V \(88%\)/)).toBeInTheDocument()
+        expect(screen.getByText(/3\.759 V \(49%\)/)).toBeInTheDocument()
         expect(screen.getByText(/cpu 34%, ram 52%, disk 41%/)).toBeInTheDocument()
     })
 

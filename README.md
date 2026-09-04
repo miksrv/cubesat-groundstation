@@ -91,9 +91,17 @@ out of its way not to send.
 Three things this dashboard used to show were removed rather than left dashed out, because a row
 that is always empty is a promise that something will fill it:
 
-- **Battery current and wattage.** There is no current sensor. The MAX17048 is a fuel gauge: state
-  of charge, voltage, and a rate of change in percent per hour. The gauge's real `charge_rate` is
-  shown instead — it is what tells "plugged in and charging" from "plugged in and still going down".
+- **Battery current and wattage.** There is no current sensor, and no shunt or coulomb counter
+  either: the gauge is a MAX17040/41, which reads the terminal voltage and reconstructs a state of
+  charge from an internal model. What replaced those two rows was `charge_rate`, described here as a
+  rate the gauge "really does report" — it does not, and the driver was decoding the `0xFFFF` of an
+  unimplemented register into a constant −0.208 %/h. Since the satellite's 2026-09-04 change the
+  rate shown is `voltage_rate`, millivolts per hour fitted over the measured voltage, and that is
+  what tells "plugged in and charging" from "plugged in and still going down". **Every power
+  threshold in this dashboard is a voltage** for the same reason: the gauge's percentage was
+  measured falling at 8–10 %/h on mains with the terminal voltage flat to the millivolt, and
+  `battery_percent` is now derived from the voltage through an inferred pack curve, for display
+  only. The time remaining is the satellite's own estimate and is not recomputed here.
 - **Four per-subsystem temperatures.** There are three thermometers and none is on a subsystem
   board: the SoC die, the BNO055 die, and the air.
 - **RSSI, SNR, latency, packet loss, bitrate.** The radio is a Heltec running stock Meshtastic,

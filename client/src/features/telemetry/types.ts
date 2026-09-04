@@ -128,11 +128,36 @@ export interface TelemetryRecord {
      *  recorded one. */
     obcState: string | null
 
-    /** Percent, from the MAX17048 fuel gauge. */
+    /**
+     * Percent remaining — and it changed meaning on 2026-09-04 without changing
+     * type. Rows written from then on hold the figure derived from `voltage`
+     * through the inferred pack curve; rows written before hold the fuel gauge's
+     * own model, which is what {@link TelemetryRecord.gaugePercent} carries
+     * afterwards. The discontinuity is real and it is dated: do not draw the two
+     * sides as one series without saying which side a point came from.
+     */
     battery: number | null
+    /** The measured terminal voltage, and the quantity every power threshold on
+     *  the satellite compares. The raw sample, not the median EPS smooths for
+     *  its own descents — a median is recoverable from a run of these and the
+     *  raw value is not. */
     voltage: number | null
+    /** What the fuel gauge claimed, from `gauge_percent` (schema migration 8).
+     *  Null for every row recorded before 2026-09-04, where the gauge's figure
+     *  is in `battery` instead. */
+    gaugePercent: number | null
     /** Mains present on the X728's PLD pin. */
     externalPower: boolean | null
+    /** EPS' millivolts-per-hour slope as it read at that instant (migration 7),
+     *  and the one the power policy was deciding on. **Not recomputable from the
+     *  stored voltages**: a reconstruction would produce a number in the windows
+     *  where EPS published none, and those nulls are the whole of what the
+     *  policy read as "trust the pin". */
+    voltageRate: number | null
+    /** The same slope in percent per hour (migration 6). Recorded since
+     *  2026-09-03, when it was still the quantity under the decision; kept
+     *  afterwards because it is what a chart labels. */
+    chargeRate: number | null
 
     /** Degrees. `yaw` is null until the magnetometer is calibrated. */
     roll: number | null
@@ -323,18 +348,83 @@ export interface ObcStatus {
     subsystems: SubsystemHealth | null
 }
 
+/**
+ * `cubesat/eps/status`, and **the voltage is the only measurement in it** —
+ * everything else is arithmetic on it (the satellite's 2026-09-04 change).
+ *
+ * The X728's gauge was identified as a MAX17040/41: no shunt, no coulomb
+ * counter, and a state of charge reconstructed from an internal model. On
+ * 2026-09-03 that model was watched falling at 8–10 %/h for an hour while the
+ * satellite sat on mains with its terminal voltage flat to the millivolt. So
+ * every threshold on that satellite is now expressed in volts, and a percentage
+ * anywhere in this interface is presentation: read one, never compare one.
+ */
 export interface EpsStatus {
     timestamp: number
-    batteryPercent: number | null
+    /** Terminal volts, raw and unfiltered — `VCELL` at 1.25 mV per LSB, the one
+     *  number the hardware reports directly. */
     voltage: number | null
+    /**
+     * The median of the last `eps.level_window_sec` (120 s) of samples, and
+     * **the level the satellite's power policy compares**. A median rather than
+     * a mean because a camera capture pulls the terminal voltage down for one
+     * sample. Null for EPS' first ticks, where the raw `voltage` is the level.
+     */
+    voltageMedian: number | null
+    /**
+     * Percent remaining, `voltageMedian` through the **inferred** pack curve in
+     * the satellite's `common/battery.py` (a generic 18650 discharge curve, not
+     * measured on this pack). Display only: if it is wrong by five points a
+     * chart is wrong by five points and nothing the satellite does changes.
+     */
+    batteryPercent: number | null
+    /**
+     * What the fuel gauge itself claims, published beside the derived figure and
+     * believed by nothing. Kept for the record: the pair over a few missions is
+     * what will confirm or replace the curve, and it is how the next way this
+     * part goes wrong gets noticed.
+     */
+    gaugePercent: number | null
     externalPower: boolean | null
     /**
-     * Signed percent per hour from the gauge's CRATE register: positive
-     * charging, negative draining. It is what tells "plugged in and charging"
-     * from "plugged in and still going down" without waiting for the
-     * state-of-charge reading to move.
+     * Signed millivolts per hour, a least-squares slope over the last
+     * `eps.charge_rate_window_sec` (600 s) of readings — and the one slope the
+     * satellite's power policy consults. Under −30 mV/h the pack is actually
+     * delivering current, which is what tells "plugged in and charging" from
+     * "plugged in and still going down": measured 2026-09-03, the same unplug
+     * separated the two regimes by 0 mV/h against −197 mV/h while the gauge's
+     * modelled percentage barely moved.
+     *
+     * Null until the window holds 300 s of history, and again for 300 s after
+     * `externalPower` changes — a slope measured on battery says nothing about
+     * the pack once it is plugged in. The satellite reads that null as "trust
+     * the pin", and so does this dashboard.
+     */
+    voltageRate: number | null
+    /**
+     * The same slope in percent per hour, converted through the curve's local
+     * gradient. A restatement of `voltageRate` for whoever is reading a screen,
+     * not a second opinion — it cannot disagree, and no decision here or on the
+     * satellite is taken on it.
+     *
+     * It was the gauge's CRATE register until 2026-09-04. That register does not
+     * exist on this part: the driver was decoding the 0xFFFF an unimplemented
+     * address returns into a constant −0.208 %/h, which is why a satellite
+     * appeared to drain at exactly one LSB for weeks.
      */
     chargeRate: number | null
+    /**
+     * The satellite's own estimates against the pack's floor and ceiling (3.0 V
+     * and 4.2 V), computed in the percentage domain rather than by dividing a
+     * voltage gap by a voltage slope. **At most one of the two is ever a
+     * number**, and both are null when the slope is missing, flat or pointing
+     * the wrong way. Do not re-derive either here: the arithmetic needs the pack
+     * curve, which lives on the satellite.
+     */
+    timeToEmptySec: number | null
+    /** As above. It does not model the constant-voltage tail of a charge, so it
+     *  is optimistic about the last few points. */
+    timeToFullSec: number | null
 }
 
 export interface AdcsStatus {

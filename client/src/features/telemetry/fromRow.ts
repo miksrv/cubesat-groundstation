@@ -50,14 +50,32 @@ export const liveStateFromRow = (
         },
         eps: {
             timestamp: at,
-            batteryPercent: row.battery,
             voltage: row.voltage,
+            // EPS' 120 s median is deliberately not a column: the recorder keeps
+            // the raw sample because a median is recoverable from a run of them
+            // and the raw value is not. Null rather than reconstructed — a
+            // replay would otherwise show a level the satellite never published
+            // — and every consumer falls back to `voltage`, which is what the
+            // satellite's own power policy does for EPS' first ticks.
+            voltageMedian: null,
+            batteryPercent: row.battery,
+            // Real columns since schema migrations 6, 7 and 8, so a replayed
+            // mission shows the same rate row as a live satellite instead of a
+            // dash. Read off the record rather than derived: differencing two
+            // stored readings would produce a slope in exactly the windows
+            // where EPS published none on purpose — its first five minutes, and
+            // the five after the mains pin moved — and those nulls are what the
+            // policy read as "trust the pin" at the time.
+            gaugePercent: row.gaugePercent,
             externalPower: row.externalPower,
-            // Not recorded as a column — it lives in raw_json, which an
-            // export does not carry. Withheld rather than derived from two
-            // battery readings, which would be a rate this satellite never
-            // measured.
-            chargeRate: null
+            voltageRate: row.voltageRate,
+            chargeRate: row.chargeRate,
+            // Never stored, and rightly: both are derivable from the level and
+            // the slope, and deriving them needs the inferred pack curve, which
+            // lives on the satellite. A replay shows no time remaining rather
+            // than a number this dashboard invented from a curve of its own.
+            timeToEmptySec: null,
+            timeToFullSec: null
         },
         adcs: adcsFromRow(row, at),
         science: {

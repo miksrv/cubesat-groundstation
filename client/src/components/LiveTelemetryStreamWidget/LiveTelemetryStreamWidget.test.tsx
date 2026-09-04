@@ -13,7 +13,7 @@ describe('LiveTelemetryStreamWidget', () => {
                 isLoading={false}
             />
         )
-        expect(screen.getByText(/EPS Battery Voltage: 4.123 V/)).toBeInTheDocument()
+        expect(screen.getByText(/EPS Battery Voltage: 3.759 V/)).toBeInTheDocument()
     })
 
     it('shows a waiting message when there is no data yet', () => {

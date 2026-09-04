@@ -25,35 +25,111 @@ describe('worse', () => {
 })
 
 describe('getEpsStatus', () => {
-    it('is OK at a healthy charge', () => {
-        expect(getEpsStatus(live()).status).toBe('OK')
+    it('is OK on the plateau, and leads its reason with the voltage', () => {
+        const status = getEpsStatus(live())
+        expect(status.status).toBe('OK')
+        // The measured level first, the derived percentage in parentheses. The
+        // order is the point: it is what says which of the two the verdict was
+        // taken on.
+        expect(status.detail).toBe('3.759 V (49 %)')
     })
 
-    it("warns below the satellite's own SAFE threshold", () => {
-        expect(getEpsStatus(live({ eps: { ...mockLiveState.eps!, batteryPercent: 20 } })).status).toBe('WARN')
+    it("warns below the satellite's own SAFE threshold, in volts", () => {
+        // 3.58 V, exactly `SAFE_VOLTS` in obc/power_policy.py. This used to
+        // compare 25 %, which was not even the satellite's own number — SAFE was
+        // 20 % — and by 2026-09-04 the satellite had stopped comparing a
+        // percentage at all.
+        const low = { ...mockLiveState.eps!, voltage: 3.57, voltageMedian: 3.57, batteryPercent: 19.3 }
+        expect(getEpsStatus(live({ eps: low })).status).toBe('WARN')
     })
 
     it('is FAIL in the range that powers the host off', () => {
-        expect(getEpsStatus(live({ eps: { ...mockLiveState.eps!, batteryPercent: 6 } })).status).toBe('FAIL')
+        const critical = { ...mockLiveState.eps!, voltage: 3.44, voltageMedian: 3.44, batteryPercent: 9.3 }
+        expect(getEpsStatus(live({ eps: critical })).status).toBe('FAIL')
     })
 
-    it('is not alarmed by a flat battery that is plugged in and charging', () => {
-        // On mains there is no power emergency. The satellite suppresses its own
-        // descents while external power is present and the charge rate is not
-        // still falling; a dashboard shouting CRITICAL would contradict it.
-        const charging = { ...mockLiveState.eps!, batteryPercent: 4, externalPower: true, chargeRate: 6.1 }
-        expect(getEpsStatus(live({ eps: charging })).status).toBe('OK')
+    it('compares the median EPS smooths, not the raw sample', () => {
+        // `reading_from` in the satellite's power policy prefers
+        // `voltage_median` for a reason measured on the hardware: a camera
+        // capture pulls the terminal voltage down for a single sample, and a
+        // threshold in volts is sensitive to that in a way a threshold in
+        // modelled percent was not. So one dipped sample must not read as SAFE.
+        const dipped = { ...mockLiveState.eps!, voltage: 3.5, voltageMedian: 3.76 }
+        expect(getEpsStatus(live({ eps: dipped })).status).toBe('OK')
     })
 
-    it('still warns on mains when the pack is going down anyway', () => {
+    it('falls back to the raw voltage before the median exists', () => {
+        // EPS' first ticks, where one un-smoothed sample is still a measurement
+        // of the pack — and the alternative is a dashboard with no verdict for
+        // the first two minutes after every connect.
+        const first = { ...mockLiveState.eps!, voltage: 3.44, voltageMedian: null, batteryPercent: 9.3 }
+        expect(getEpsStatus(live({ eps: first })).status).toBe('FAIL')
+    })
+
+    it('is not alarmed by a gauge claiming a flat pack while the voltage sits on mains', () => {
+        // This is the drift that nearly powered a plugged-in satellite off. On
+        // 2026-09-03 the MAX17040/41's modelled state of charge fell at 8-10 %/h
+        // for an hour while the terminal voltage held 3.806-3.809 V on mains with
+        // the charge LEDs lit — so `gaugePercent` says 4 % here and the pack is
+        // demonstrably fine. Nothing in this file may read that field.
+        const drifting = {
+            ...mockLiveState.eps!,
+            voltage: 3.809,
+            voltageMedian: 3.807,
+            batteryPercent: 56.0,
+            gaugePercent: 4.0,
+            externalPower: true,
+            voltageRate: 0,
+            chargeRate: 0
+        }
+        expect(getEpsStatus(live({ eps: drifting })).status).toBe('OK')
+    })
+
+    it('still fails on mains when the voltage is falling anyway', () => {
         // The second half of the rule: without it one failed charger would
-        // disable the protection for as long as the cable stays in.
-        const failing = { ...mockLiveState.eps!, batteryPercent: 8, externalPower: true, chargeRate: -3.0 }
+        // disable the protection for as long as the cable stays in. −197 mV/h is
+        // the measured idle discharge, well past the −30 mV/h the satellite calls
+        // draining.
+        const failing = {
+            ...mockLiveState.eps!,
+            voltage: 3.41,
+            voltageMedian: 3.41,
+            batteryPercent: 7.9,
+            externalPower: true,
+            voltageRate: -197,
+            chargeRate: -19.7
+        }
         expect(getEpsStatus(live({ eps: failing })).status).toBe('FAIL')
     })
 
-    it('is UNKNOWN before EPS has said anything', () => {
+    it('trusts the mains pin while EPS has no slope to offer', () => {
+        // Null is EPS' first 300 s and the 300 s after the pin moved, and it
+        // means "not known yet". Reading it as draining would descend on a
+        // satellite that has just been plugged in — the satellite itself trusts
+        // the pin here, so a dashboard that did not would contradict it.
+        const settling = {
+            ...mockLiveState.eps!,
+            voltage: 3.5,
+            voltageMedian: 3.5,
+            batteryPercent: 13.6,
+            externalPower: true,
+            voltageRate: null,
+            chargeRate: null
+        }
+        expect(getEpsStatus(live({ eps: settling })).status).toBe('OK')
+    })
+
+    it('withholds a percentage it was not given rather than filling one in', () => {
+        const noPercent = { ...mockLiveState.eps!, batteryPercent: null }
+        expect(getEpsStatus(live({ eps: noPercent })).detail).toBe('3.759 V')
+    })
+
+    it('is UNKNOWN with no voltage at all, because a silent gauge is not 0 V', () => {
         expect(getEpsStatus(emptyLiveState).status).toBe('UNKNOWN')
+        // A percentage on its own is no verdict either: the voltage is the
+        // required field, exactly as it is in `reading_from`.
+        const percentOnly = { ...mockLiveState.eps!, voltage: null, voltageMedian: null }
+        expect(getEpsStatus(live({ eps: percentOnly })).status).toBe('UNKNOWN')
     })
 })
 

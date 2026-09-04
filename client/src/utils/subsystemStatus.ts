@@ -49,30 +49,70 @@ export const worse = (a: StatusLevel, b: StatusLevel): StatusLevel => {
     return rank[a] >= rank[b] ? a : b
 }
 
-/** Battery thresholds, from the satellite's own power policy. */
-const BATTERY_SAFE = 25
-const BATTERY_CRITICAL = 10
+/**
+ * The satellite's own descent thresholds, and **they are volts** — the same two
+ * numbers, spelled the same way, as `obc/power_policy.py` → `SAFE_VOLTS` and
+ * `CRITICAL_VOLTS`.
+ *
+ * They were percentages here (25 and 10) until 2026-09-04, and the 25 was not
+ * even the satellite's own number — SAFE was 20 %. Both are gone for the reason
+ * the satellite stopped comparing a percentage at all: the X728's gauge is a
+ * MAX17040/41 whose state of charge comes from a model with no current sense,
+ * and that model was measured drifting down at 8–10 %/h on mains with the
+ * terminal voltage flat to the millivolt (2026-09-03). Deciding on the
+ * percentage means deciding on the one quantity in the payload nothing measured,
+ * and disagreeing with the satellite about the two states that exist to protect
+ * the SD card.
+ */
+const SAFE_VOLTS = 3.58
+const CRITICAL_VOLTS = 3.45
+
+/**
+ * Below this the terminal voltage is falling, so the pack is really delivering
+ * current. Measured on the satellite 2026-09-03 across one deliberate unplug:
+ * 0 mV/h on mains against −197 mV/h at idle on battery — two orders of magnitude
+ * apart in this quantity, and barely at all in the modelled percentage, which is
+ * exactly why the percentage could not tell a desk from a dying pack.
+ */
+const DRAINING_MV_PER_HOUR = -30
 
 export const getEpsStatus = (live: LiveState): SubsystemStatus => {
     const eps = live.eps
-    if (!eps || eps.batteryPercent == null) {
+    // The median is the level the satellite's own policy compares and the raw
+    // sample is the fallback for EPS' first ticks — `reading_from` in
+    // power_policy.py prefers them in this order, and one un-smoothed sample is
+    // still a measurement of the pack. With no voltage at all there is no
+    // verdict to give: a gauge that has stopped answering must not read as 0 V.
+    const volts = eps?.voltageMedian ?? eps?.voltage ?? null
+    if (volts == null) {
         return { key: 'EPS', label: 'EPS', status: 'UNKNOWN', detail: 'no battery reading yet' }
     }
-    const charge = `${eps.batteryPercent.toFixed(1)} %`
-    // On mains there is no power emergency. The satellite suppresses its own
-    // power-driven descents while external power is present, and a dashboard
-    // shouting CRITICAL at a satellite that is plugged in and charging would be
-    // shouting about the wrong thing.
-    if (eps.externalPower === true && (eps.chargeRate == null || eps.chargeRate >= 0)) {
-        return { key: 'EPS', label: 'EPS', status: 'OK', detail: `${charge}, on mains` }
+    // Volts lead because volts are what was measured and what was compared. The
+    // percentage rides along for whoever thinks in percent, and is absent rather
+    // than invented when the satellite withheld it.
+    const level =
+        eps?.batteryPercent != null
+            ? `${volts.toFixed(3)} V (${eps.batteryPercent.toFixed(0)} %)`
+            : `${volts.toFixed(3)} V`
+    // On mains there is no power emergency — but the pin alone is not enough, or
+    // one stopped charger would disable the protection for as long as the cable
+    // stays in. The second opinion is the measured slope and only that one: the
+    // percentage slope is now a function of the voltage slope, so "both agree"
+    // became a sentence that cannot be false (the satellite dropped that half of
+    // the test on 2026-09-04 for the same reason). A null slope is EPS' first
+    // five minutes, and the five after the pin changed; the satellite reads it as
+    // "trust the pin", and so does this.
+    const draining = eps?.voltageRate != null && eps.voltageRate <= DRAINING_MV_PER_HOUR
+    if (eps?.externalPower === true && !draining) {
+        return { key: 'EPS', label: 'EPS', status: 'OK', detail: `${level}, on mains` }
     }
-    if (eps.batteryPercent < BATTERY_CRITICAL) {
-        return { key: 'EPS', label: 'EPS', status: 'FAIL', detail: `${charge} — shutdown range` }
+    if (volts < CRITICAL_VOLTS) {
+        return { key: 'EPS', label: 'EPS', status: 'FAIL', detail: `${level} — shutdown range` }
     }
-    if (eps.batteryPercent < BATTERY_SAFE) {
-        return { key: 'EPS', label: 'EPS', status: 'WARN', detail: `${charge} on battery` }
+    if (volts < SAFE_VOLTS) {
+        return { key: 'EPS', label: 'EPS', status: 'WARN', detail: `${level} on battery` }
     }
-    return { key: 'EPS', label: 'EPS', status: 'OK', detail: charge }
+    return { key: 'EPS', label: 'EPS', status: 'OK', detail: level }
 }
 
 export const getAdcsStatus = (live: LiveState): SubsystemStatus => {
